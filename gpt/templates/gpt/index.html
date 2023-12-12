@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Emergency Physician Differential Diagnosis Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="loading-spinner.css"> 
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .toolbar {
+            background-color: #ff6e4e;
+            color: white;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        textarea,
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #4c95af;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .info-icon {
+            position: relative;
+        }
+
+        .info-icon__icon {
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .info-icon__popup {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-width: 300px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1;
+        }
+
+        .info-icon__popup table {
+            width: 100%;
+        }
+
+        .info-icon__popup th,
+        .info-icon__popup td {
+            padding: 5px;
+            text-align: left;
+        }
+
+        #chat-log {
+            flex: 1;
+            width: 100%;
+            height: 250px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 6px 0;
+            overflow-y: auto;
+            resize: none;
+        }
+
+        #copy-button {
+            align-self: flex-end;
+            margin-top: 6px;
+        }
+
+        #loading-spinner {
+            display: none;
+        }
+
+        h2 {
+            margin-top: -45px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="toolbar">
+        <h1>Emergency Physician Differential Diagnosis Tool</h1>
+    </div>
+    <form id="user-form">
+        <div class="container">
+            <label for="patientInfo">Enter patient symptoms and information in the preferred language:</label>
+            <textarea id="user-input" rows="6" placeholder="Enter patient information in the preferred language"></textarea>
+            <button id="send-button">Generate Differential Diagnosis</button>
+        </div>
+        <div class="info-icon">
+            <span class="info-icon__icon">ℹ️</span>
+            <div class="info-icon__popup">
+                <table>
+                    <tr>
+                        <th>Examples</th>
+                    </tr>
+                    <tr>
+                        <td>Chest pain, shortness of breath, sweating</td>
+                    </tr>
+                    <tr>
+                        <td>Abdominal pain with nausea and vomiting</td>
+                    </tr>
+                    <tr>
+                        <td>Seizures, loss of consciousness</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="container">
+            <h2>Differential Diagnoses:</h2>
+            <textarea id="chat-log" rows="8" readonly></textarea>
+            <button id="copy-button">Copy Diagnoses</button>
+            <div id="loading-spinner"></div>
+        </div>
+    </form>
+
+    <script src="main.js"></script>
+    <script>
+        document.getElementById("copy-button").addEventListener("click", function () {
+            var chatLog = document.getElementById("chat-log");
+            chatLog.select();
+            document.execCommand("copy");
+            alert("Diagnoses copied to clipboard!");
+        });
+    </script>
+</body>
+
+</html>
