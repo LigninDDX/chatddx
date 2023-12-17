@@ -1,4 +1,6 @@
+{% load static %} 
 <!DOCTYPE html>
+
 <html>
 
 <head>
@@ -152,15 +154,19 @@
         </div>
     </form>
 
-    <script src="main.js"></script>
     <script>
-        document.getElementById("copy-button").addEventListener("click", function () {
-            var chatLog = document.getElementById("chat-log");
-            chatLog.select();
-            document.execCommand("copy");
-            alert("Diagnoses copied to clipboard!");
-        });
-    </script>
+    const API_URL = "https://api.openai.com/v1/chat/completions";
+    const API_KEY = "{{ api_key.key }}";  // Accessing API key from Django context
+</script>
+<script src="{% static 'gpt/main.js' %}"></script>
+<script>
+    document.getElementById("copy-button").addEventListener("click", function () {
+        var chatLog = document.getElementById("chat-log");
+        chatLog.select();
+        document.execCommand("copy");
+        alert("Diagnoses copied to clipboard!");
+    });
+</script>
 </body>
 
 </html>
