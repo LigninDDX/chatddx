@@ -1,4 +1,4 @@
-// chatgpt.js
+console.log("sendbutton")
 const emergencyDiagnosesList = document.getElementById('emergency-diagnoses-list');
 const infoIcon = document.querySelector('.info-icon');
 const popup = infoIcon.querySelector('.info-icon__popup');
