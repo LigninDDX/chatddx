@@ -21,7 +21,7 @@ const headers = {
 };
 
 const defaultPayload = {
-    model: "gpt-3.5-turbo-1106",
+    model: "gpt-4",
     temperature: 0.2,
     max_tokens: 4000,
 };
@@ -56,7 +56,13 @@ async function sendMessage(message, element) {
         hideLoadingSpinner();
     }
 }
+function showDisclaimer() {
+    document.getElementById('disclaimer-popup').style.display = 'block';
+}
 
+function hideDisclaimer() {
+    document.getElementById('disclaimer-popup').style.display = 'none';
+}
 
 function showLoadingSpinner() {
     document.getElementById('loading-spinner').style.display = 'block';
@@ -79,7 +85,7 @@ function showLoadingSpinner() {
   sendButton.addEventListener('click', async () => {
     const userMessage =
       userInput.value.trim() +
-      "make a list of possible differential diagnosis with most probable and consider unprejudiced critical conditions. disregard clinical suspicions inserted by the user. answer in the same language the user types.";
+      "make a list of possible differential diagnosis with most probable first. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
   
     if (userMessage) {
       sendMessage(userMessage, chatLog);
