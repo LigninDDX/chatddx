@@ -4,9 +4,10 @@ const infoIcon = document.querySelector('.info-icon');
 const popup = infoIcon.querySelector('.info-icon__popup');
 
 infoIcon.addEventListener('click', (event) => {
-    if (event.button === 0) {
+    if (event.target.classList.contains('info-icon__icon')) {
         popup.style.display = popup.style.display === 'block' ? 'none' : 'block';
-        event.stopPropagation();
+    } else {
+        popup.style.display = 'none';
     }
 });
 document.addEventListener('click', (event) => {
