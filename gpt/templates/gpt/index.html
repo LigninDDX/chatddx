@@ -10,6 +10,44 @@
     <link rel="stylesheet" href="{% static 'gpt/styles.css' %}">
     <link rel="stylesheet" href="{% static 'gpt/loading-spinner.css' %}">
     <style>
+          #report-issue-button {
+            margin-bottom: 10px;
+            align-self: flex-start;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -152,6 +190,21 @@
                     </tr>
                 </table>
             </div>
+            <button id="report-issue-button">Report Issue</button>
+
+    <!-- Modal for Report Issue -->
+    <div id="reportIssueModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeReportIssueModal()">&times;</span>
+            <label for="issueMessage">Enter your message:</label>
+            <textarea id="issueMessage" rows="4" placeholder="Type your message"></textarea>
+            <label for="issueEmail">Enter your email (optional):</label>
+            <input type="text" id="issueEmail" placeholder="Your email">
+            <button onclick="submitReportIssue()">Report Issue</button>
+            <p id="confirmationMessage"></p>
+            <button onclick="closeReportIssueModal()">OK</button>
+        </div>
+    </div>
             <div id="disclaimer-icon" class="disclaimer-icon">
                 <img src="{% static 'gpt/disclaimer1.png' %}" alt="Disclaimer Icon" onclick="showDisclaimer()">
             </div>
@@ -161,8 +214,10 @@
                 <div class="popup-content">
                     <span class="close" onclick="hideDisclaimer()">&times;</span>
                     <table>
-                        <tr>
-                            <th>Disclaimer</th>
+    <tr>
+        <table>
+            <tr>
+                <th>Disclaimer</th>
             </tr>
             <tr>
                 <td align="left">This application utilizes ChatGPT via API to generate potential differential diagnoses based on user-provided information.</td>
@@ -186,7 +241,7 @@
                 <td align="left">By using this application, users acknowledge that it is not a replacement for professional medical expertise and that the developers and providers are not responsible for any actions taken based on the information provided.</td> 
             </tr>
             <tr>
-                <td align="left">Copyright © 2023 ChatDDX</td>
+                <td align="left">Copywright © 2023 ChatDDX</td>
             </tr>
         </table>
     </div>
@@ -214,6 +269,38 @@
         alert("Diagnoses copied to clipboard!");
     });
 </script>
+<script>
+    // Get the modal
+    var reportIssueModal = document.getElementById('reportIssueModal');
+
+    // Get the button that opens the modal
+    var reportIssueButton = document.getElementById("report-issue-button");
+
+    // When the user clicks the button, open the modal
+    reportIssueButton.onclick = function () {
+        reportIssueModal.style.display = "block";
+    }
+
+    // Function to close the modal
+    function closeReportIssueModal() {
+        reportIssueModal.style.display = "none";
+    }
+
+    // Function to submit the report issue
+    function submitReportIssue() {
+        // Perform any necessary actions (e.g., send data to the server)
+        var message = document.getElementById("issueMessage").value;
+        var email = document.getElementById("issueEmail").value;
+
+        // Display confirmation message
+        document.getElementById("confirmationMessage").innerText = "Thank you for your helpful comment. We are investigating the report issue.";
+
+        // Clear input fields
+        document.getElementById("issueMessage").value = "";
+        document.getElementById("issueEmail").value = "";
+    }
+</script>
 </body>
 
 </html> 
+
