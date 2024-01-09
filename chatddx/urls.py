@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import path
+from gpt import views
 
 urlpatterns = [
-    path("gpt/", include ("gpt.urls")),
+    path("", views.index, name="index"),
     path("admin/", admin.site.urls),
 ]
