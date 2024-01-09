@@ -93,6 +93,10 @@
           type = types.str;
         };
 
+        db_root = mkOption {
+          type = types.str;
+        };
+
         hostname = mkOption {
           type = types.str;
         };
