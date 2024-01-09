@@ -120,7 +120,7 @@
             locations = {
               "/" = {
                 recommendedProxySettings = true;
-                proxyPass = "http://localhost:8000";
+                proxyPass = "http://localhost:8001";
               };
               "/static" = {
                 root = cfg.www_root;
@@ -164,7 +164,7 @@
         systemd.services.chatddx-site = {
           description = "manage chatddx-site";
           serviceConfig = {
-            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.asgi:application";
+            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.wsgi:application --bind 0.0.0.0:8001";
             User = cfg.user;
             Group = cfg.user;
             EnvironmentFile="${chatddx-prod-env}";
