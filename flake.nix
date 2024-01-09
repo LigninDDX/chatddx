@@ -151,6 +151,8 @@
             ExecStartPre = [
               "+-${pkgs.coreutils}/bin/mkdir -p ${cfg.www_root}"
               "+${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.user} ${cfg.www_root}"
+              "+-${pkgs.coreutils}/bin/mkdir -p ${cfg.db_root}"
+              "+${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.user} ${cfg.db_root}"
             ];
             ExecStart = "${chatddx-site}/bin/setup";
             User = cfg.user;
