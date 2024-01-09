@@ -1,12 +1,16 @@
 [tool.poetry]
-name = "mysite"
+name = "chatddx"
 version = "0.1.0"
 description = "chatddx"
 authors = [ "Olof Silfver <olof.silfver@gmail.com>", "Alexander Holmbäck <alexander.holmback@gmail.com>" ]
 readme = "README.md"
+packages = [
+{include="gpt"},
+{include="chatddx"},
+]
 
 [tool.poetry.scripts]
-setup = 'mysite.setup:run'
+setup = 'chatddx.setup:run'
 
 [tool.poetry.dependencies]
 python = "^3.10"

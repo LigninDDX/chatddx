@@ -44,7 +44,7 @@
         allowed_origins = "*";
         static_root = "/tmp/chatddx/static/";
         db_root = "/tmp/chatddx/db/";
-        DJANGO_SETTINGS_MODULE = "mysite.settings";
+        DJANGO_SETTINGS_MODULE = "chatddx.settings";
       };
 
       chatddx-site = let
@@ -70,7 +70,7 @@
         host = cfg.hostname;
         static_root = "${cfg.www_root}/static/";
         db_root = "${cfg.db_root}/";
-        DJANGO_SETTINGS_MODULE = "mysite.settings";
+        DJANGO_SETTINGS_MODULE = "chatddx.settings";
       }; 
 
       chatddx-prod-bin = chatddx-bin.overrideAttrs{
@@ -164,7 +164,7 @@
         systemd.services.chatddx-site = {
           description = "manage chatddx-site";
           serviceConfig = {
-            ExecStart = "${chatddx-site}/bin/gunicorn mysite.asgi:application";
+            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.asgi:application";
             User = cfg.user;
             Group = cfg.user;
             EnvironmentFile="${chatddx-prod-env}";
