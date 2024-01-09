@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -a
+source @chatddx_env@
+set +a
+
+if [ "$1" = "run" ]; then
+    echo "Starting chatddx-site..."
+    @chatddx_site@/bin/gunicorn mysite.wsgi:application
+elif [ "$1" = "manage" ]; then
+    shift
+    DJANGO_SETTINGS_MODULE=mysite.settings @chatddx_site@/bin/django-admin "${@}"
+elif [ "$1" = "setup" ]; then
+    echo "Set up chatddx..."
+    @chatddx_site@/bin/setup
+fi

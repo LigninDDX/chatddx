@@ -1,18 +1,15 @@
 [tool.poetry]
 name = "mysite"
 version = "0.1.0"
-description = ""
-authors = [
-	"Olof Silfver <olof.silfver@gmail.com>",
-	"Alexander Holmbäck <alexander.holmback@gmail.com>",
-]
+description = "chatddx"
+authors = [ "Olof Silfver <olof.silfver@gmail.com>", "Alexander Holmbäck <alexander.holmback@gmail.com>" ]
 readme = "README.md"
 
 [tool.poetry.scripts]
-setup = 'djrolf.setup:run'
+setup = 'mysite.setup:run'
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 Django = "^5.0.1"
 gunicorn = "^21.2.0"
 

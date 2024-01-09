@@ -35,7 +35,7 @@
       };
 
       chatddx-env = mkEnv {
-        secret_key = "secret-key-test-env";
+        secret_key_file = "/tmp/chatddx/secret_key";
         user = "test";
         db = "test";
         log_level = "info";
