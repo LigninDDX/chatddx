@@ -8,9 +8,13 @@ authors = [
 ]
 readme = "README.md"
 
+[tool.poetry.scripts]
+setup = 'djrolf.setup:run'
+
 [tool.poetry.dependencies]
 python = "^3.11"
 Django = "^5.0.1"
+gunicorn = "^21.2.0"
 
 
 [build-system]
