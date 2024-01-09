@@ -40,7 +40,6 @@ ALLOWED_HOSTS = [getenv("host")]
 
 INSTALLED_APPS = [
     'gpt',
-    'polls.apps.PollsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -59,7 +58,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'mysite.urls'
+ROOT_URLCONF = 'chatddx.urls'
 
 TEMPLATES = [
     {
@@ -77,7 +76,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'mysite.wsgi.application'
+WSGI_APPLICATION = 'chatddx.wsgi.application'
 
 
 # Database
