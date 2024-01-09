@@ -12,3 +12,4 @@ def index(request):
     context = {"api_key": api_key, "prompts": prompts}
     return render(request, "gpt/index.html", context)
 
+

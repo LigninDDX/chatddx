@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{% static 'gpt/loading-spinner.css' %}">
     <style>
           #report-issue-button {
-            margin-bottom: 10px;
+            margin-bottom: 50px;
             align-self: flex-start;
         }
         .modal {
@@ -190,7 +190,9 @@
                     </tr>
                 </table>
             </div>
-            <button id="report-issue-button">Report Issue</button>
+            <button id="report-issue-button">
+                <img src="{% static 'gpt/report-issue1.png' %}" alt="Report Issue" />
+            </button>
 
     <!-- Modal for Report Issue -->
     <div id="reportIssueModal" class="modal">

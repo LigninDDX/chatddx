@@ -41,3 +41,24 @@
         overflow-y: auto;
     }
 }
+
+#report-issue-button {
+    position: fixed;
+    bottom: 10px;
+    left: 20px;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+#report-issue-button img {
+    width: 50px; /* Adjust the width based on your preference */
+    height: 50px; /* Adjust the height based on your preference */
+}
+
+/* Add the media query here if needed */
+@media only screen and (max-width: 600px) {
+    #report-issue-button {
+        /* Adjust styles for smaller screens if needed */
+    }
+}
