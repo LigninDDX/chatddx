@@ -13,6 +13,17 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from os import getenv
 
+import os
+from dotenv import load_dotenv
+
+# Ladda .env-filen
+load_dotenv()
+
+# Använd miljövariabler för att ställa in Django-inställningar
+DEBUG = os.getenv('DEBUG') == 'True'
+SECRET_KEY = os.getenv('SECRET_KEY')
+DATABASE_URL = os.getenv('DATABASE_URL')
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,11 +32,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-with open(getenv("secret_key_file")) as f:
+with open(getenv("secret_key_file", BASE_DIR / "secret_key")) as f:
     SECRET_KEY = f.read()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = getenv("debug") == "true"
+DEBUG = getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = [getenv("host")]
 
