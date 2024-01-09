@@ -10,10 +10,7 @@
     <link rel="stylesheet" href="{% static 'gpt/styles.css' %}">
     <link rel="stylesheet" href="{% static 'gpt/loading-spinner.css' %}">
     <style>
-          #report-issue-button {
-            margin-bottom: 50px;
-            align-self: flex-start;
-        }
+          
         .modal {
             display: none;
             position: fixed;
@@ -190,23 +187,7 @@
                     </tr>
                 </table>
             </div>
-            <button id="report-issue-button">
-                <img src="{% static 'gpt/report-issue1.png' %}" alt="Report Issue" />
-            </button>
-
-    <!-- Modal for Report Issue -->
-    <div id="reportIssueModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeReportIssueModal()">&times;</span>
-            <label for="issueMessage">Enter your message:</label>
-            <textarea id="issueMessage" rows="4" placeholder="Type your message"></textarea>
-            <label for="issueEmail">Enter your email (optional):</label>
-            <input type="text" id="issueEmail" placeholder="Your email">
-            <button onclick="submitReportIssue()">Report Issue</button>
-            <p id="confirmationMessage"></p>
-            <button onclick="closeReportIssueModal()">OK</button>
-        </div>
-    </div>
+            
             <div id="disclaimer-icon" class="disclaimer-icon">
                 <img src="{% static 'gpt/disclaimer1.png' %}" alt="Disclaimer Icon" onclick="showDisclaimer()">
             </div>
@@ -270,37 +251,6 @@
         document.execCommand("copy");
         alert("Diagnoses copied to clipboard!");
     });
-</script>
-<script>
-    // Get the modal
-    var reportIssueModal = document.getElementById('reportIssueModal');
-
-    // Get the button that opens the modal
-    var reportIssueButton = document.getElementById("report-issue-button");
-
-    // When the user clicks the button, open the modal
-    reportIssueButton.onclick = function () {
-        reportIssueModal.style.display = "block";
-    }
-
-    // Function to close the modal
-    function closeReportIssueModal() {
-        reportIssueModal.style.display = "none";
-    }
-
-    // Function to submit the report issue
-    function submitReportIssue() {
-        // Perform any necessary actions (e.g., send data to the server)
-        var message = document.getElementById("issueMessage").value;
-        var email = document.getElementById("issueEmail").value;
-
-        // Display confirmation message
-        document.getElementById("confirmationMessage").innerText = "Thank you for your helpful comment. We are investigating the report issue.";
-
-        // Clear input fields
-        document.getElementById("issueMessage").value = "";
-        document.getElementById("issueEmail").value = "";
-    }
 </script>
 </body>
 
