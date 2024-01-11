@@ -22,7 +22,7 @@ const headers = {
 };
 
 const defaultPayload = {
-    model: "gpt-4",
+    model: "gpt-4-1106-preview",
     temperature: 0.2,
     max_tokens: 4000,
 };
