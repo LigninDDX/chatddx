@@ -22,9 +22,9 @@ const headers = {
 };
 
 const defaultPayload = {
-    model: "gpt-4-1106-preview",
+    model: "gpt-3.5-turbo-1106",
     temperature: 0.2,
-    max_tokens: 4000,
+    max_tokens: 1000,
 };
 
 async function sendMessage(message, element) {
@@ -86,7 +86,7 @@ function showLoadingSpinner() {
   sendButton.addEventListener('click', async () => {
     const userMessage =
       userInput.value.trim() +
-      "make a list of possible differential diagnosis with most probable first without explanation. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
+      "make only a list of possible differential diagnosis with most probable first. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
   
     if (userMessage) {
       sendMessage(userMessage, chatLog);
