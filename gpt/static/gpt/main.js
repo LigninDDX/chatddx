@@ -86,7 +86,7 @@ function showLoadingSpinner() {
   sendButton.addEventListener('click', async () => {
     const userMessage =
       userInput.value.trim() +
-      "make a list of possible differential diagnosis with most probable diagnosis first, answer only diagnoses. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
+      "make a list of possible differential diagnosis with most probable diagnosis first, answer each diagnosis in one word. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
   
     if (userMessage) {
       sendMessage(userMessage, chatLog);
