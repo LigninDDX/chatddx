@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+# @chatddx_static@
 set -a
 source @chatddx_env@
 set +a
