@@ -78,12 +78,12 @@
 
       chatddx-prod-env = mkEnv {
         secret_key_file = cfg.secret_key_file;
-        user = cfg.user;
-        db = cfg.user;
+        user = cfg.host;
+        db = cfg.host;
         env = "prod";
         log_level = "error";
-        host = cfg.hostname;
-        db_root = "${cfg.db_root}/";
+        host = cfg.host;
+        db_root = "/var/db/${cfg.host}/";
         DJANGO_SETTINGS_MODULE = "chatddx.settings";
       }; 
 
@@ -99,19 +99,11 @@
           default = false;
         };
 
-        user = mkOption {
+        host = mkOption {
           type = types.str;
         };
 
-        www_root = mkOption {
-          type = types.str;
-        };
-
-        db_root = mkOption {
-          type = types.str;
-        };
-
-        hostname = mkOption {
+        port = mkOption {
           type = types.str;
         };
 
@@ -127,7 +119,7 @@
 
         services.nginx = {
           enable = true;
-          virtualHosts.${cfg.hostname} = {
+          virtualHosts.${cfg.host} = {
             forceSSL = true;
             enableACME = true;
 
@@ -144,28 +136,26 @@
         };
 
         users = rec {
-          users.${cfg.user} = {
+          users.${cfg.host} = {
             isSystemUser = true;
-            group = cfg.user;
+            group = cfg.host;
             uid = 994;
           };
-          groups.${cfg.user}.gid = users.${cfg.user}.uid;
+          groups.${cfg.host}.gid = users.${cfg.host}.uid;
 
         };
 
         systemd.services.chatddx-setup = {
-          description = "setup chatddx";
+          description = "setup ${host}";
           serviceConfig = {
             Type = "oneshot";
             ExecStartPre = [
-              "+-${pkgs.coreutils}/bin/mkdir -p ${cfg.www_root}"
-              "+${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.user} ${cfg.www_root}"
-              "+-${pkgs.coreutils}/bin/mkdir -p ${cfg.db_root}"
-              "+${pkgs.coreutils}/bin/chown ${cfg.user}:${cfg.user} ${cfg.db_root}"
+              "+-${pkgs.coreutils}/bin/mkdir -p /var/db/${cfg.host}"
+              "+${pkgs.coreutils}/bin/chown ${cfg.host}:${cfg.host} /var/db/${cfg.host}"
             ];
             ExecStart = "${chatddx-site}/bin/setup";
-            User = cfg.user;
-            Group = cfg.user;
+            User = cfg.host;
+            Group = cfg.host;
             EnvironmentFile="${chatddx-prod-env}";
           };
           wantedBy = [ "multi-user.target" ];
@@ -173,11 +163,11 @@
         };
 
         systemd.services.chatddx-site = {
-          description = "manage chatddx-site";
+          description = "manage ${host}";
           serviceConfig = {
-            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.wsgi:application --bind 0.0.0.0:8001";
-            User = cfg.user;
-            Group = cfg.user;
+            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.wsgi:application --bind 0.0.0.0:${port}";
+            User = cfg.host;
+            Group = cfg.host;
             EnvironmentFile="${chatddx-prod-env}";
           };
           wantedBy = [ "multi-user.target" ];
