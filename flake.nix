@@ -128,11 +128,6 @@
             };
           };
         };
-        security.acme = {
-          acceptTerms = true;
-          defaults.email = "alxhbk@proton.me";
-        };
-        networking.firewall.allowedTCPPorts = [ 80 443 ];
 
         users = rec {
           users.${cfg.user} = {
