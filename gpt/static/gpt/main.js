@@ -1,4 +1,5 @@
-console.log("sendbutton")
+console.log("sendbutton");
+
 const emergencyDiagnosesList = document.getElementById('emergency-diagnoses-list');
 const infoIcon = document.querySelector('.info-icon');
 const popup = infoIcon.querySelector('.info-icon__popup');
@@ -10,6 +11,7 @@ infoIcon.addEventListener('click', (event) => {
         popup.style.display = 'none';
     }
 });
+
 document.addEventListener('click', (event) => {
     if (!infoIcon.contains(event.target) && popup.style.display === 'block') {
         popup.style.display = 'none';
@@ -45,7 +47,7 @@ async function sendMessage(message, element) {
         if (response.ok) {
             const data = await response.json();
             const botMessage = data.choices[0].message.content;
-            displayMessageWordByWord(botMessage, element);
+            displayMessage(botMessage, element);
         } else {
             console.error("ChatGPT API request failed.");
             return "Sorry, I couldn't generate a response.";
@@ -57,6 +59,7 @@ async function sendMessage(message, element) {
         hideLoadingSpinner();
     }
 }
+
 function showDisclaimer() {
     document.getElementById('disclaimer-popup').style.display = 'block';
 }
@@ -67,48 +70,38 @@ function hideDisclaimer() {
 
 function showLoadingSpinner() {
     document.getElementById('loading-spinner').style.display = 'block';
-  }
-  
-  function hideLoadingSpinner() {
+}
+
+function hideLoadingSpinner() {
     document.getElementById('loading-spinner').style.display = 'none';
-  }
-  
-  const userForm = document.getElementById('user-form');
-  const chatLog = document.getElementById('chat-log');
-  const userInput = document.getElementById('user-input');
-  const sendButton = document.getElementById('send-button');
-  console.log("sendbutton")
-  
-  userForm.addEventListener("submit", function (event) {
+}
+
+const userForm = document.getElementById('user-form');
+const chatLog = document.getElementById('chat-log');
+const userInput = document.getElementById('user-input');
+const sendButton = document.getElementById('send-button');
+console.log("sendbutton");
+
+userForm.addEventListener("submit", function (event) {
     event.preventDefault();
-  });
-  
-  sendButton.addEventListener('click', async () => {
+});
+
+sendButton.addEventListener('click', async () => {
     const userMessage =
-      userInput.value.trim() +
-      "make a list of possible differential diagnosis with most probable diagnosis first, answer each diagnosis in one word. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
-  
+        userInput.value.trim() +
+        "make a list of possible differential diagnosis with most probable diagnosis first, answer each diagnosis in one word. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
+
     if (userMessage) {
-      sendMessage(userMessage, chatLog);
+        sendMessage(userMessage, chatLog);
     }
-  });
-  
-  async function displayMessageWordByWord(message, element) {
-    const words = message.split(" ");
-    let currentIndex = 0;
-  
-    for (const word of words) {
-      element.value += word + ' ';
-      await sleep(100);
-    }
-  }
-  
-  function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-  
-  userInput.addEventListener('keydown', (event) => {
+});
+
+async function displayMessage(message, element) {
+    element.value = message;
+}
+
+userInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
-      sendButton.click();
+        sendButton.click();
     }
-  });
+});
