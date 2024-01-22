@@ -89,7 +89,7 @@ userForm.addEventListener("submit", function (event) {
 sendButton.addEventListener('click', async () => {
     const userMessage =
         userInput.value.trim() +
-        "make a list of possible differential diagnosis with most probable diagnosis first, answer each diagnosis in one word. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
+        "make a list of possible differential diagnosis with most probable diagnosis first. don't answer without specific symptoms, patient history, and physical examination. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
 
     if (userMessage) {
         sendMessage(userMessage, chatLog);
