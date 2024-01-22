@@ -33,7 +33,8 @@ with open(getenv("secret_key_file", BASE_DIR / "secret_key")) as f:
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = getenv("DEBUG") == "True"
-ALLOWED_HOSTS = getenv("host", default="").split(',')
+ALLOWED_HOSTS = getenv("host").split(',')
+
 
 # Application definition
 
