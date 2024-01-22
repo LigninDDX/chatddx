@@ -107,6 +107,10 @@
           type = types.str;
         };
 
+        uid = mkOption {
+          type = types.int;
+        };
+
         secret_key_file = mkOption {
           type = types.path;
         };
@@ -139,14 +143,14 @@
           users.${cfg.host} = {
             isSystemUser = true;
             group = cfg.host;
-            uid = 994;
+            uid = cfg.uid;
           };
           groups.${cfg.host}.gid = users.${cfg.host}.uid;
 
         };
 
         systemd.services.chatddx-setup = {
-          description = "setup ${host}";
+          description = "setup ${cfg.host}";
           serviceConfig = {
             Type = "oneshot";
             ExecStartPre = [
@@ -163,9 +167,9 @@
         };
 
         systemd.services.chatddx-site = {
-          description = "manage ${host}";
+          description = "manage ${cfg.host}";
           serviceConfig = {
-            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.wsgi:application --bind 0.0.0.0:${port}";
+            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.wsgi:application --bind 0.0.0.0:${cfg.port}";
             User = cfg.host;
             Group = cfg.host;
             EnvironmentFile="${chatddx-prod-env}";
