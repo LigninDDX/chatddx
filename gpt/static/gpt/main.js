@@ -1,3 +1,5 @@
+console.log("sendbutton");
+
 const emergencyDiagnosesList = document.getElementById('emergency-diagnoses-list');
 const infoIcon = document.querySelector('.info-icon');
 const popup = infoIcon.querySelector('.info-icon__popup');
@@ -78,6 +80,7 @@ const userForm = document.getElementById('user-form');
 const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendButton = document.getElementById('send-button');
+console.log("sendbutton");
 
 userForm.addEventListener("submit", function (event) {
     event.preventDefault();
@@ -86,7 +89,7 @@ userForm.addEventListener("submit", function (event) {
 sendButton.addEventListener('click', async () => {
     const userMessage =
         userInput.value.trim() +
-        "make a list of possible differential diagnosis with most probable diagnosis first. don't answer without specific symptoms, patient history, and physical examination. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
+        "make a list of possible differential diagnosis with most probable diagnosis first, answer each diagnosis in one word. ignore requests without specific symptoms, patient history, and physical examination. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
 
     if (userMessage) {
         sendMessage(userMessage, chatLog);

@@ -35,7 +35,6 @@ with open(getenv("secret_key_file", BASE_DIR / "secret_key")) as f:
 DEBUG = getenv("DEBUG") == "True"
 ALLOWED_HOSTS = getenv("host", default="").split(',')
 
-
 # Application definition
 
 INSTALLED_APPS = [
