@@ -1,5 +1,3 @@
-console.log("sendbutton");
-
 const emergencyDiagnosesList = document.getElementById('emergency-diagnoses-list');
 const infoIcon = document.querySelector('.info-icon');
 const popup = infoIcon.querySelector('.info-icon__popup');
@@ -80,7 +78,6 @@ const userForm = document.getElementById('user-form');
 const chatLog = document.getElementById('chat-log');
 const userInput = document.getElementById('user-input');
 const sendButton = document.getElementById('send-button');
-console.log("sendbutton");
 
 userForm.addEventListener("submit", function (event) {
     event.preventDefault();

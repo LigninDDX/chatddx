@@ -12,9 +12,7 @@ def ensure_path(path, owner):
         print(f"Error {e}")
 
 def run():
-    ensure_path(settings.STATIC_ROOT, settings.USER)
     ensure_path(settings.DB_ROOT, settings.USER)
-    execute_from_command_line(('','collectstatic', '--no-input'))
     execute_from_command_line(('','migrate'))
 
 if __name__ == '__main__':
