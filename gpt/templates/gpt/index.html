@@ -240,7 +240,7 @@
     const API_KEY = "{{ api_key.key }}";
     const SYSTEM_PROMPTS = [
             {% for prompt in prompts %}
-                { role: "{{ prompt.role }}", message: "{{ prompt.message }}" } {% if not forloop.last %},{% endif %}
+                { role: "{{ prompt.role }}", content: "{{ prompt.message }}" } {% if not forloop.last %},{% endif %}
             {% endfor %}
         ];
 

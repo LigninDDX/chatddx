@@ -16,6 +16,7 @@ setup = 'chatddx.setup:run'
 python = "^3.10"
 Django = "^5.0.1"
 gunicorn = "^21.2.0"
+dj-user-login-history = "^1.0.5"
 
 
 [build-system]

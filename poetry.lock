@@ -18,6 +18,20 @@ typing-extensions = {version = ">=4", markers = "python_version < \"3.11\""}
 tests = ["mypy (>=0.800)", "pytest", "pytest-asyncio"]
 
 [[package]]
+name = "dj-user-login-history"
+version = "1.0.5"
+description = "Django app which keep track of user login history."
+optional = false
+python-versions = "*"
+files = [
+    {file = "dj-user-login-history-1.0.5.tar.gz", hash = "sha256:daacfda515baf6f3c61b635c14d46cbe8b919266d097468f81d3be2058a03e84"},
+    {file = "dj_user_login_history-1.0.5-py3-none-any.whl", hash = "sha256:4d89d16eb97839ab1bb9541e98c271d611a438b6b8aa74b8381031514fc0e9c5"},
+]
+
+[package.dependencies]
+django = ">=2.2"
+
+[[package]]
 name = "django"
 version = "5.0.1"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -109,4 +123,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "1821ea913f1412cdb9b6f778806f902c4e85bf56b499a76a0ff517b521919cb2"
+content-hash = "12243c64de3fbb835281561c66b79d8cb0539176054f480e4d20f1147df1f9ea"

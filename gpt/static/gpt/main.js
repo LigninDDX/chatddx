@@ -30,13 +30,14 @@ const defaultPayload = {
 };
 
 async function sendMessage(message, element) {
+    const messages = SYSTEM_PROMPTS.concat([{ role: "user", content: message }]);
     try {
         showLoadingSpinner();
 
         const payload = {
-            ...defaultPayload,
-            messages: [{ role: "user", content: message }],
+            ...defaultPayload, messages
         };
+        console.log(payload);
 
         const response = await fetch(API_URL, {
             method: "POST",
@@ -50,6 +51,7 @@ async function sendMessage(message, element) {
             displayMessage(botMessage, element);
         } else {
             console.error("ChatGPT API request failed.");
+            console.error(response);
             return "Sorry, I couldn't generate a response.";
         }
     } catch (error) {
@@ -87,9 +89,7 @@ userForm.addEventListener("submit", function (event) {
 });
 
 sendButton.addEventListener('click', async () => {
-    const userMessage =
-        userInput.value.trim() +
-        "make a list of possible differential diagnosis with most probable diagnosis first, answer each diagnosis in one word. ignore requests without specific symptoms, patient history, and physical examination. consider critical diagnosis important for emergency physicians. answer in the same language the user types.";
+    const userMessage = userInput.value.trim();
 
     if (userMessage) {
         sendMessage(userMessage, chatLog);
