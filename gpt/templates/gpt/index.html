@@ -237,7 +237,13 @@
 
     <script>
     const API_URL = "https://api.openai.com/v1/chat/completions";
-    const API_KEY = "{{ api_key.key }}";  // Accessing API key from Django context
+    const API_KEY = "{{ api_key.key }}";
+    const SYSTEM_PROMPTS = [
+            {% for prompt in prompts %}
+                { role: "{{ prompt.role }}", message: "{{ prompt.message }}" } {% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
     console.log("sendbutton")
 </script>
 <script src="{% static 'gpt/main.js' %}"></script>
@@ -246,7 +252,7 @@
         var chatLog = document.getElementById("chat-log");
         chatLog.select();
         document.execCommand("copy");
-        alert("Diagnoser kopierade till urklipp!");
+        alert("Text kopierad till urklipp!");
     });
 </script>
 </body>

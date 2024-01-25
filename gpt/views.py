@@ -9,7 +9,10 @@ from django.contrib.auth.decorators import login_required
 def index(request):
     api_key = APIKey.objects.get(id=1)
     prompts = Prompt.objects.filter(active=True)
-    context = {"api_key": api_key, "prompts": prompts}
+    context = {
+        "api_key": api_key,
+        "prompts": prompts,
+        }
     return render(request, "gpt/index.html", context)
 
 
