@@ -36,6 +36,10 @@ class OpenAIMessage(models.Model):
     class Meta:
         verbose_name_plural = "OpenAI Messages"
 
+    description = models.CharField(
+            default="",
+            max_length=255,
+            )
     content = models.TextField()
     role = models.ForeignKey(OpenAIMessageRole, on_delete=models.PROTECT)
     name = models.CharField(
@@ -46,15 +50,19 @@ class OpenAIMessage(models.Model):
             )
 
     def __str__(self):
-        return f"{self.role.name}: {self.content[:10]}..."
+        return self.description
 
 class OpenAIChat(models.Model):
     class Meta:
         verbose_name_plural = "OpenAI Chat Configuration"
 
     def __str__(self):
-        return self.endpoint
+        return self.description
 
+    description = models.CharField(
+            max_length=255,
+            default="",
+            )
     active = models.BooleanField(default=True)
     endpoint = models.CharField(max_length=255)
     api_key = models.CharField(max_length=255)
