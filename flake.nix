@@ -17,7 +17,7 @@
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
-    inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication;
+    inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication defaultPoetryOverrides;
     mkEnv = env: pkgs.writeText "env" (
       concatStringsSep "\n" (mapAttrsToList (k: v: "${k}=${v}") env)
       );
@@ -65,6 +65,15 @@
       chatddx-site = let
         app = mkPoetryApplication {
           projectDir = self;
+          overrides = defaultPoetryOverrides.extend
+          (self: super: {
+            dj-user-login-history = super.dj-user-login-history.overridePythonAttrs
+            (
+              old: {
+                buildInputs = (old.buildInputs or [ ]) ++ [ super.setuptools ];
+              }
+              );
+            });
         };
       in app.dependencyEnv;
 
