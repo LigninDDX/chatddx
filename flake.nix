@@ -2,9 +2,8 @@
   description = "deploy chatddx";
 
   inputs = {
-    my-nixos.url = "github:ahbk/my-nixos";
-    nixpkgs.follows = "my-nixos/nixpkgs";
-    nixpkgs-stable.follows = "my-nixos/nixpkgs-stable";
+    nixpkgs.url = "github:ahbk/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:ahbk/nixpkgs/nixos-23.11";
 
     poetry2nix = {
       url = "github:ahbk/poetry2nix";

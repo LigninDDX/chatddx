@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
-from os import getenv
+from os import getenv, path
 
 try:
     from dotenv import load_dotenv
@@ -86,7 +86,7 @@ WSGI_APPLICATION = 'chatddx.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': getenv("db_root", str(BASE_DIR)) + "db.sqlite3",
+        'NAME': path.join(getenv("db_root", str(BASE_DIR)), "db.sqlite3"),
     }
 }
 
