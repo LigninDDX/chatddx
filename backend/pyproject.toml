@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "chatddx-backend"
+version = "0.1.0"
+description = ""
+authors = ["Alexander Holmbäck <alexander.holmback@gmail.com>"]
+readme = "README.md"
+packages = [
+  { include = "app" },
+  { include = "api" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Django = "^5.0.1"
+gunicorn = "^21.2.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

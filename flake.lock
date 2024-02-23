@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "buildNodeModules": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1700734302,
+        "narHash": "sha256-xQVkntT26jOX3sABTB3K7Hz0caDD3OZL8jKGPy+LG9g=",
+        "owner": "adisbladis",
+        "repo": "buildNodeModules",
+        "rev": "acd11250c9c600e034a1ad3aa6c87fc11df28190",
+        "type": "github"
+      },
+      "original": {
+        "owner": "adisbladis",
+        "repo": "buildNodeModules",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -55,22 +75,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-stable": {
-      "locked": {
-        "lastModified": 1706373441,
-        "narHash": "sha256-S1hbgNbVYhuY2L05OANWqmRzj4cElcbLuIkXTb69xkk=",
-        "owner": "ahbk",
-        "repo": "nixpkgs",
-        "rev": "56911ef3403a9318b7621ce745f5452fb9ef6867",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ahbk",
-        "ref": "nixos-23.11",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "poetry2nix": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -97,8 +101,8 @@
     },
     "root": {
       "inputs": {
+        "buildNodeModules": "buildNodeModules",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-stable": "nixpkgs-stable",
         "poetry2nix": "poetry2nix"
       }
     },

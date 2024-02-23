@@ -1,188 +1,109 @@
 {
-  description = "deploy chatddx";
+  description = "build chatddx";
 
   inputs = {
     nixpkgs.url = "github:ahbk/nixpkgs/nixos-unstable";
-    nixpkgs-stable.url = "github:ahbk/nixpkgs/nixos-23.11";
 
     poetry2nix = {
       url = "github:ahbk/poetry2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    buildNodeModules = {
+      url = "github:adisbladis/buildNodeModules";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, poetry2nix, ... }: 
+  outputs = { self, nixpkgs, poetry2nix, buildNodeModules, ... }: 
   with nixpkgs.lib;
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
-    inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication defaultPoetryOverrides;
+
+    inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication;
+    inherit (buildNodeModules.lib.${system}) fetchNodeModules hooks;
+
+    hostname = "chatddx.com";
+
     mkEnv = env: pkgs.writeText "env" (
       concatStringsSep "\n" (mapAttrsToList (k: v: "${k}=${v}") env)
       );
   in {
     packages.${system} = rec {
-
-      default = chatddx-bin;
-
-      chatddx-bin = pkgs.substituteAll {
-        src = "${self}/bin/chatddx";
-        dir = "bin";
-        isExecutable = true;
-        chatddx_static = chatddx-static;
-        chatddx_site = chatddx-site;
-        chatddx_env = chatddx-env;
+      default = pkgs.buildEnv {
+        name = hostname;
+        paths = [
+          svelte.app
+          django.bin
+        ];
       };
 
-      chatddx-env = mkEnv {
-        secret_key_file = "/tmp/chatddx/secret_key";
-        user = "test";
-        db = "test";
-        log_level = "info";
-        env = "test";
-        host = "*";
-        allowed_origins = "*";
-        db_root = "/tmp/chatddx/db/";
-        DJANGO_SETTINGS_MODULE = "chatddx.settings";
-      };
-
-      chatddx-static = pkgs.stdenv.mkDerivation {
-        pname = "chatddx-static";
+      svelte.app = pkgs.stdenv.mkDerivation {
+        pname = "${hostname}-svelte";
         version = "0.1.0";
-        src = self;
+        src = "${self}/client";
+        env = mkEnv {
+          PUBLIC_API="http://localhost:8000";
+          PUBLIC_API_SSR="http://localhost:8000";
+          ORIGIN="http://localhost:3000";
+        };
+
+        nodeModules = fetchNodeModules {
+          packageRoot = "${self}/client";
+        };
+
+        nativeBuildInputs = [
+          hooks.npmConfigHook
+          pkgs.nodejs_20
+          pkgs.npmHooks.npmBuildHook
+          pkgs.npmHooks.npmInstallHook
+        ];
+
         buildPhase = ''
-          echo "key" > ./secret_key
+          set -a
+          source $env
+          set +a
+          npm run build
+        '';
 
-          export static_root=$out/static
-          export DJANGO_SETTINGS_MODULE=chatddx.settings
-          export secret_key_file=./secret_key
-
-          ${chatddx-site}/bin/django-admin collectstatic --no-input
+        installPhase = ''
+          cp -r . $out
         '';
       };
 
-      chatddx-site = let
+      django = rec {
+        bin = pkgs.substituteAll {
+          src = "${self}/backend/bin/chatddx.com";
+          dir = "bin";
+          isExecutable = true;
+          app = app.dependencyEnv;
+          inherit env static;
+        };
+
+        env = mkEnv {
+          DEBUG = "false";
+          STATE_DIR = "/var/lib/${hostname}";
+          HOST = hostname;
+          SECRET_KEY_FILE = ./backend/secret_key;
+          DJANGO_SETTINGS_MODULE = "app.settings";
+        };
+
         app = mkPoetryApplication {
-          projectDir = self;
-          overrides = defaultPoetryOverrides.extend
-          (self: super: {
-            dj-user-login-history = super.dj-user-login-history.overridePythonAttrs
-            (
-              old: {
-                buildInputs = (old.buildInputs or [ ]) ++ [ super.setuptools ];
-              }
-              );
-            });
-        };
-      in app.dependencyEnv;
-
-    };
-
-    nixosModules.default = { config, lib, ... }:
-    let
-      cfg = config.chatddx;
-      inherit (lib) mkOption types mkIf;
-      inherit (self.packages.${system}) chatddx-bin chatddx-site chatddx-static;
-
-      chatddx-prod-env = mkEnv {
-        secret_key_file = cfg.secret_key_file;
-        user = cfg.host;
-        db = cfg.host;
-        env = "prod";
-        log_level = "error";
-        host = cfg.host;
-        db_root = "/var/db/${cfg.host}/";
-        DJANGO_SETTINGS_MODULE = "chatddx.settings";
-      }; 
-
-      chatddx-prod-bin = chatddx-bin.overrideAttrs{
-        chatddx_env = chatddx-prod-env;
-      };
-
-    in {
-
-      options.chatddx = {
-        enable = mkOption {
-          type = types.bool;
-          default = false;
+          projectDir = "${self}/backend";
+          groups = [];
+          checkGroups = [];
         };
 
-        host = mkOption {
-          type = types.str;
-        };
-
-        port = mkOption {
-          type = types.str;
-        };
-
-        uid = mkOption {
-          type = types.int;
-        };
-
-        secret_key_file = mkOption {
-          type = types.path;
-        };
-      };
-
-      config = mkIf cfg.enable {
-        environment = {
-          systemPackages = [ chatddx-prod-bin ];
-        };
-
-        services.nginx = {
-          enable = true;
-          virtualHosts.${cfg.host} = {
-            forceSSL = true;
-            enableACME = true;
-
-            locations = {
-              "/" = {
-                recommendedProxySettings = true;
-                proxyPass = "http://localhost:8001";
-              };
-              "/static" = {
-                root = chatddx-static;
-              };
-            };
-          };
-        };
-
-        users = rec {
-          users.${cfg.host} = {
-            isSystemUser = true;
-            group = cfg.host;
-            uid = cfg.uid;
-          };
-          groups.${cfg.host}.gid = users.${cfg.host}.uid;
-
-        };
-
-        systemd.services.chatddx-setup = {
-          description = "setup ${cfg.host}";
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStartPre = [
-              "+-${pkgs.coreutils}/bin/mkdir -p /var/db/${cfg.host}"
-              "+${pkgs.coreutils}/bin/chown ${cfg.host}:${cfg.host} /var/db/${cfg.host}"
-            ];
-            ExecStart = "${chatddx-site}/bin/setup";
-            User = cfg.host;
-            Group = cfg.host;
-            EnvironmentFile="${chatddx-prod-env}";
-          };
-          wantedBy = [ "multi-user.target" ];
-          before = [ "chatddx-site.service" ];
-        };
-
-        systemd.services.chatddx-site = {
-          description = "manage ${cfg.host}";
-          serviceConfig = {
-            ExecStart = "${chatddx-site}/bin/gunicorn chatddx.wsgi:application --bind 0.0.0.0:${cfg.port}";
-            User = cfg.host;
-            Group = cfg.host;
-            EnvironmentFile="${chatddx-prod-env}";
-          };
-          wantedBy = [ "multi-user.target" ];
+        static = pkgs.stdenv.mkDerivation {
+          pname = "${hostname}-static";
+          version = app.version;
+          src = "${self}/backend";
+          buildPhase = ''
+            export STATIC_ROOT=$out
+            export DJANGO_SETTINGS_MODULE=app.settings
+            ${app.dependencyEnv}/bin/django-admin collectstatic --no-input
+          '';
         };
       };
     };
