@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# @chatddx_static@
-set -a
-source @chatddx_env@
-set +a
-
-cd @chatddx_site@ && ./bin/django-admin "${@}"
