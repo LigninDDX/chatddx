@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import { Container } from 'postcss';
+import type { PageData } from './$types';
   import OpenAI from "openai";
 
   export let data: PageData;
@@ -52,19 +53,20 @@
   ChatDDx -  Differentialdiagnostiskt beslutsstöd för läkare
 </h1>
 </section>
-<section class="p-2 form-control max-w-prose center container mx-auto">
+<section class="p-2 form-control max-w-full center container mx-auto ">
   <div class=" ">Ange patientens symtom, bakgrund och undersökningsfynd</div>
-  <label class="form-control max-w-prose center container mx-auto">
+  <label class="form-control center container mx-auto">
     <div class="label">
     </div>
     <textarea
         id="user-prompt"
         rows="7"
-        class="textarea textarea-primary textarea-md"
+        class="p-0 textarea textarea-primary textarea-md leading-tight"
         placeholder="Ange relevant patientdata"
         ></textarea>
-  <button class="btn max-w-full" onclick="my_modal_1.showModal()">Disclaimer</button>
-  <dialog id="my_modal_1" class="modal">  
+        <modal Container >
+         <button class="btn my-0.5 textarea-primary text-xs" onclick="my_modal_1.showModal()">Disclaimer</button>
+  <dialog id="my_modal_1" class="modal ">  
     <div class="modal-box max-w-full">
       <h3 class="font text-med">  <table>
         <tr>
@@ -105,7 +107,8 @@
       </div>
     </div>
   </dialog>
-  <button class="btn" onclick="my_modal_2.showModal()">Information <span class="info-icon__icon">ℹ️</button>
+
+  <button class="btn my-0.5 textarea-primary text-xs " onclick="my_modal_2.showModal()">Information ℹ️</button>
   <dialog id="my_modal_2" class="modal">  
     <div class="modal-box max-w-full">
       <h3 class="font text-med">  <table>
@@ -132,8 +135,8 @@
       </div>
     </div>
   </dialog>
-
-  <div class="flex py-2 max-w-prose">
+</modal>
+  <div class="flex py-2">
     <button id="query-button" class="btn btn-primary mr-4" on:click={()=>run(data.oai.diagnoses)}>Generera differentialdiagnoser</button>
     <span id="query-loading" class="loading loading-spinner loading-lg text-secondary hidden"></span>
   </div>
