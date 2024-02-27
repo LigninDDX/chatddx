@@ -108,7 +108,7 @@ import type { PageData } from './$types';
     </div>
   </dialog>
 
-  <button class="btn my-0.5 textarea-primary text-xs " onclick="my_modal_2.showModal()">Information ℹ️</button>
+  <button class="btn my-2 textarea-primary text-xs " onclick="my_modal_2.showModal()">Information ℹ️</button>
   <dialog id="my_modal_2" class="modal">  
     <div class="modal-box max-w-full">
       <h3 class="font text-med">  <table>
