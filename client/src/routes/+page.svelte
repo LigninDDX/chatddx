@@ -76,7 +76,7 @@ import type { PageData } from './$types';
                 <th>Disclaimer</th>
               </tr>
               <tr>
-                  <td align="left">This application utilizes ChatGPT via API to generate potential differential diagnoses based on user-provided information. Input and output are logged anonymously to enhance prompts and aid in the development of an AI Copilot for improving user input feedback. Do not provide personal data such as name or social security number.</td>
+                  <td align="left">This application utilizes ChatGPT via API to generate potential differential diagnoses with the most probable diagnosis first based on user-provided information. Input and output are logged anonymously to enhance prompts and aid in the development of an AI Copilot for improving user input feedback. Do not provide personal data such as name or social security number.</td>
               </tr>
               <tr>
                   <td align="left">It is crucial to understand that the information provided by this application is not a substitute for professional medical advice, diagnosis, or treatment.</td>
@@ -98,7 +98,7 @@ import type { PageData } from './$types';
               </tr>
               <tr>
                 <td align="left">&nbsp;</td> <!-- Empty row for spacing -->
-            </tr>
+            </tr>g
             <tr>
               <tr>
                   <td align="left">Copyright © 2023 ChatDDX</td>
