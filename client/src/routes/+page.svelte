@@ -54,7 +54,7 @@ import type { PageData } from './$types';
 </h1>
 </section>
 <section class="p-2 form-control max-w-full center container mx-auto leading-tight">
-  <div class=" ">Enter the patient's symtoms, background and findnings</div>
+  <div class=" ">Enter the patient's symtoms, background and findnings. Input in Swedish or English.</div>
   <label class="form-control center container mx-auto">
     <div class="label">
     </div>
@@ -76,7 +76,7 @@ import type { PageData } from './$types';
                 <th>Disclaimer</th>
               </tr>
               <tr>
-                  <td align="left">This application utilizes ChatGPT via API to generate potential differential diagnoses based on user-provided information. Do not provide personal data such as name or social security number.</td>
+                  <td align="left">This application utilizes ChatGPT via API to generate potential differential diagnoses based on user-provided information. Input and output are logged to improve prompts and for the development of an AI Copilot for enhanced feedback loop. Do not provide personal data such as name or social security number.</td>
               </tr>
               <tr>
                   <td align="left">It is crucial to understand that the information provided by this application is not a substitute for professional medical advice, diagnosis, or treatment.</td>
@@ -124,7 +124,7 @@ import type { PageData } from './$types';
               <th>How to use</th>
             </tr>
             <tr>
-              <td class="example" style="padding-bottom: 10px;"> Enter pathological and clinically relevant patient information in a similar way you would use when consulting another EM specialist</td>
+              <td class="example" style="padding-bottom: 10px;">Enter pathological and clinically relevant patient information in the same manner as you would when consulting another EM specialist.</td>
             </tr>
             <tr>
               <td class="example" style="padding-bottom: 10px;">Example 1: Previously healthy patient who became ill with abdominal pain, fever, diarrhea, and vomiting after a 5-day cruise. Status with reduced general condition, tachycardia, fever, and general abdominal pain. CRP 178, leukocytosis, and blood gas with metabolic acidosis with hypokalemia and renal failure.</td>
