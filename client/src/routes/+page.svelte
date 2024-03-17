@@ -82,7 +82,7 @@ import type { PageData } from './$types';
                   <td align="left">It is crucial to understand that the information provided by this application is not a substitute for professional medical advice, diagnosis, or treatment.</td>
               </tr>
               <tr>
-                  <td align="left">The generated differentials are algorithmically derived and should be considered as suggestions for further exploration rather than definitive conclusions.</td>
+                  <td align="left">The generated differential diagnoses are algorithmically derived and should be considered as suggestions for further exploration rather than definitive conclusions.</td>
               </tr>
               <tr>
                   <td align="left">Users are strongly encouraged to consult with qualified healthcare professionals for accurate diagnosis and personalized medical advice.</td>
