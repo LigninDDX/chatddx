@@ -64,7 +64,7 @@ import type { PageData } from './$types';
         class="p-0 textarea textarea-primary textarea-md leading-tight"
         placeholder="Enter revelvant patient data"
         ></textarea>
-        <modal Container >
+        <modal Container>
          <button class="btn my-0.5 textarea-primary text-xs" onclick="my_modal_1.showModal()">Disclaimer</button>
   <dialog id="my_modal_1" class="modal ">  
     <div class="modal-box max-w-full">
@@ -82,7 +82,7 @@ import type { PageData } from './$types';
                   <td align="left">It is crucial to understand that the information provided by this application is not a substitute for professional medical advice, diagnosis, or treatment.</td>
               </tr>
               <tr>
-                  <td align="left">The generated differentials are algorithmically derived and should be considered as suggestions for further exploration rather than definitive conclusions.</td>
+                  <td align="left">The generated differential diagnoses are algorithmically derived and should be considered as suggestions for further exploration rather than definitive conclusions.</td>
               </tr>
               <tr>
                   <td align="left">Users are strongly encouraged to consult with qualified healthcare professionals for accurate diagnosis and personalized medical advice.</td>
