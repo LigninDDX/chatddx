@@ -64,7 +64,7 @@ import type { PageData } from './$types';
         class="p-0 textarea textarea-primary textarea-md leading-tight"
         placeholder="Enter revelvant patient data"
         ></textarea>
-        <modal Container >
+        <modal Container>
          <button class="btn my-0.5 textarea-primary text-xs" onclick="my_modal_1.showModal()">Disclaimer</button>
   <dialog id="my_modal_1" class="modal ">  
     <div class="modal-box max-w-full">
