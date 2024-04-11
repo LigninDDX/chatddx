@@ -7,7 +7,7 @@ class OpenAIMessageRole(models.Model):
         verbose_name_plural = "OpenAI Message Roles"
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
     name = models.CharField(max_length=255)
 
@@ -17,7 +17,7 @@ class OpenAIModel(models.Model):
         verbose_name_plural = "OpenAI Models"
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
     name = models.CharField(max_length=255)
 
@@ -49,7 +49,7 @@ class OpenAIMessage(models.Model):
         verbose_name_plural = "OpenAI Messages"
 
     def __str__(self):
-        return self.description
+        return str(self.description)
 
     description = models.CharField(
         default="",
@@ -80,7 +80,7 @@ class OpenAIChat(models.Model):
         verbose_name_plural = "OpenAI Chat Configuration"
 
     def __str__(self):
-        return self.identifier
+        return str(self.identifier)
 
     identifier = models.CharField(
         max_length=255,
@@ -191,7 +191,7 @@ class OpenAIChatCluster(models.Model):
         verbose_name_plural = "OpenAI Chat Cluster"
 
     def __str__(self):
-        return self.identifier
+        return str(self.identifier)
 
     identifier = models.CharField(max_length=255)
     diagnoses = models.ForeignKey(
