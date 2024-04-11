@@ -98,7 +98,7 @@ import type { PageData } from './$types';
               </tr>
               <tr>
                 <td align="left">&nbsp;</td> <!-- Empty row for spacing -->
-            </tr>g
+            </tr>
             <tr>
               <tr>
                   <td align="left">Copyright © 2023 ChatDDX</td>
