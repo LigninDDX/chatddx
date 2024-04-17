@@ -1,50 +1,44 @@
 <script lang="ts">
-  import { Container } from 'postcss';
-import type { PageData } from './$types';
-  import OpenAI from "openai";
+async function testi() {
+  const button = document.getElementById('query-button') as HTMLButtonElement;
+  button.disabled = true;
 
-  export let data: PageData;
+  const loading = document.getElementById('query-loading') as HTMLElement;
+  loading.classList.remove("hidden");
 
-  let client = new OpenAI({
-    baseURL: data.oai.diagnoses.endpoint,
-    apiKey: data.oai.diagnoses.api_key,
-    dangerouslyAllowBrowser: true,
-    fetch,
-  });
+  const userResponse = document.getElementById('user-response') as HTMLElement;
+  userResponse.textContent = "";
 
-  async function run({api_key, endpoint, identifier, ...payload}) {
-    let content = document.getElementById('user-prompt').value.trim();
-    let button = document.getElementById('query-button');
-    let loading = document.getElementById('query-loading');
-    let response = document.getElementById('response');
+  const content = (document.getElementById('user-prompt') as HTMLInputElement).value.trim();
+  const messages =[ { content, role: 'user' } ] ;
 
-    let result;
-    let messages = [...data.oai.diagnoses.messages, { content, role: "user" }];
+  let response;
 
-    response.textContent = "";
+  try {
+    response = await fetch('/api/openai', {
+      method: 'POST',
+      body: JSON.stringify({ messages }),
+    });
 
-    button.disabled = true;
-    loading.classList.remove("hidden");
-
-    try {
-      result = await client.chat.completions.create({...payload, messages});
-    } catch (error) {
-      response.textContent = `Error fetching data from OpenAI: ${error.message}`;
-      button.disabled = false;
-      loading.classList.add("hidden");
+    if (!response.ok) {
+      userResponse.textContent = `Server returned status code ${response.status}`;
       return;
     }
 
-    if (data.oai.diagnoses.stream) {
-      for await (const chunk of result) {
-        response.textContent = response.textContent + (chunk.choices[0]?.delta?.content || "");
-      }
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      userResponse.textContent = `Error fetching data from OpenAI: ${error.message}`;
     } else {
-      response.textContent = (result.choices[0].message.content || "");
+      userResponse.textContent = "An unexpected error occured";
     }
+    return;
+  } finally {
     button.disabled = false;
     loading.classList.add("hidden");
   }
+
+  userResponse.textContent = ((await response.json()).choices[0].message.content || "");
+};
 
 </script>
 
@@ -146,9 +140,9 @@ import type { PageData } from './$types';
   </dialog>
 </modal>
   <div class="flex py-2">
-    <button id="query-button" class="btn btn-primary mr-4" on:click={()=>run(data.oai.diagnoses)}>Generate differential diagnoses</button>
+    <button id="query-button" class="btn btn-primary mr-4" on:click={testi}>Generate differential diagnoses</button>
     <span id="query-loading" class="loading loading-spinner loading-lg text-secondary hidden"></span>
   </div>
   <div class="">Differential diagnosis</div> 
-  <pre id="response" class="whitespace-pre-wrap break-words center: true,max-w-prose bg-base-200 rounded-lg min-h-64 p-2"></pre>
+  <pre id="user-response" class="whitespace-pre-wrap break-words center: true,max-w-prose bg-base-200 rounded-lg min-h-64 p-2"></pre>
 </section>
