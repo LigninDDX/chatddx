@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { OpenAIStream, StreamingTextResponse } from 'ai';
 import type { RequestHandler } from './$types';
 import { PUBLIC_API_SSR } from '$env/static/public';
 
@@ -39,7 +40,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       }))],
     });
 
-    return new Response(JSON.stringify(response));
+    if (payload.stream) {
+      const stream = OpenAIStream(response);
+      return new StreamingTextResponse(stream);
+    } else {
+      return new Response(JSON.stringify(response));
+    }
   } catch (error) {
     console.error('Error in OpenAI API request:', error);
 
