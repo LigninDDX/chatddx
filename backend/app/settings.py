@@ -4,6 +4,7 @@ Django 5.0.1
 
 from pathlib import Path
 from os import getenv, environ
+from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATE_DIR = Path(getenv("STATE_DIR", BASE_DIR))
@@ -23,6 +24,8 @@ else:
 
 INSTALLED_APPS = [
     "api.apps.ApiConfig",
+    "cms.apps.CmsConfig",
+    "modeltranslation",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -34,6 +37,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -99,6 +103,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
+LANGUAGES = [
+        ("en", _("English")),
+        ("sv", _("Swedish")),
+]
 
 TIME_ZONE = "UTC"
 

@@ -2,7 +2,6 @@ from django.http import JsonResponse, HttpResponse
 from .models import OpenAIChatCluster
 import logging
 
-
 def chat_cluster(request, cluster):
     if not request.user.is_authenticated:
         return HttpResponse("Unauthorized", status=401)
