@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.forms.models import model_to_dict 
+import markdown2
 
 class AssistantPage(models.Model):
     class Meta:
@@ -22,5 +23,8 @@ class AssistantPage(models.Model):
         return str(self.title)
 
     def serialize(self):
-        return model_to_dict(self, fields=[field.name for field in self._meta.fields])
+        data = model_to_dict(self, fields=[field.name for field in self._meta.fields])
+        data["disclaimerText"] = markdown2.markdown(data["disclaimerText"])
+        data["usageText"] = markdown2.markdown(data["usageText"])
+        return data
 
