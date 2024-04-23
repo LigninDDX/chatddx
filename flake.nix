@@ -21,7 +21,7 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
 
-    inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication;
+    inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication defaultPoetryOverrides;
     inherit (buildNodeModules.lib.${system}) fetchNodeModules hooks;
 
     hostname = "chatddx.com";
@@ -93,7 +93,14 @@
           projectDir = "${self}/backend";
           groups = [];
           checkGroups = [];
-        };
+          overrides = defaultPoetryOverrides.extend
+          (self: super: {
+            dj-user-login-history = super.dj-user-login-history.overridePythonAttrs
+            (old: {
+                buildInputs = (old.buildInputs or [ ]) ++ [ super.setuptools ];
+              });
+            });
+          };
 
         static = pkgs.stdenv.mkDerivation {
           pname = "${hostname}-static";
