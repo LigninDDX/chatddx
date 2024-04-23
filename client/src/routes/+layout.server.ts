@@ -3,9 +3,12 @@ import { redirect, error } from '@sveltejs/kit';
 import { PUBLIC_API_SSR } from '$env/static/public';
 
 export const load: LayoutServerLoad = async ({ fetch, cookies }) => {
-  const response = await fetch(`${PUBLIC_API_SSR}/en/cms/assistant`, {
+  const sessionid = cookies.get('sessionid');
+  const django_language = cookies.get('django_language');
+
+  const response = await fetch(`${PUBLIC_API_SSR}/cms/assistant`, {
     headers: {
-      'Cookie': `sessionid=${cookies.get('sessionid')}`,
+      'Cookie': `sessionid=${sessionid}; django_language=${django_language}`,
     }
   });
   let content;
@@ -20,5 +23,5 @@ export const load: LayoutServerLoad = async ({ fetch, cookies }) => {
     error(response.status, response.statusText);
   }
 
-  return { content };
+  return { content, django_language };
 };

@@ -4,6 +4,8 @@ import type { PageData } from './$types';
 
 export let data: PageData;
 const content = data.content;
+
+let form: HTMLFormElement;
  
 const { input, handleSubmit, messages, isLoading } = useChat({
   api: 'api/openai',
@@ -13,8 +15,19 @@ $: assistantMessages = $messages.filter(m => m.role === 'assistant');
 
 </script>
 
-<section class="p-2 bg-orange-600 text-white">
-<h1 class="text-3xl">{content.title}</h1>
+<section class="p-2 bg-orange-600 flex">
+  <h1 class="text-3xl text-white">{content.title}</h1>
+  <form bind:this={form} action="?/setlang&redirectTo=/" method="post">
+    <select
+      class="select select-bordered"
+      name="lang"
+      on:change={() => form.requestSubmit()}
+    >
+      {#each content.languages as [ id, name ]}
+        <option value="{id}" selected={content.lang === id}>{name}</option>
+      {/each}
+    </select>
+  </form>
 </section>
 <section class="p-2 form-control max-w-full center container mx-auto leading-tight">
   <div class=" ">{content.promptLabel}</div>

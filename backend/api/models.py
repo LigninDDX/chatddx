@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.contrib.auth.models import User
 
 class OpenAIMessageRole(models.Model):
     class Meta:
@@ -215,3 +216,16 @@ class OpenAIChatCluster(models.Model):
             "examinations": self.examinations.serialize(),
             "details": self.details.serialize(),
         }
+
+class PromptHistory(models.Model):
+    class Meta:
+        verbose_name_plural = "Prompt history"
+
+    def __str__(self):
+        return str(self.timestamp)
+
+    config = models.ForeignKey(OpenAIChat, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    prompt = models.TextField()
+    response = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)

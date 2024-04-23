@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "api.apps.ApiConfig",
     "cms.apps.CmsConfig",
     "modeltranslation",
+    "login_history",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

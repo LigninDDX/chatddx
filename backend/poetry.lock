@@ -15,6 +15,20 @@ files = [
 tests = ["mypy (>=0.800)", "pytest", "pytest-asyncio"]
 
 [[package]]
+name = "dj-user-login-history"
+version = "1.0.5"
+description = "Django app which keep track of user login history."
+optional = false
+python-versions = "*"
+files = [
+    {file = "dj-user-login-history-1.0.5.tar.gz", hash = "sha256:daacfda515baf6f3c61b635c14d46cbe8b919266d097468f81d3be2058a03e84"},
+    {file = "dj_user_login_history-1.0.5-py3-none-any.whl", hash = "sha256:4d89d16eb97839ab1bb9541e98c271d611a438b6b8aa74b8381031514fc0e9c5"},
+]
+
+[package.dependencies]
+django = ">=2.2"
+
+[[package]]
 name = "django"
 version = "5.0.4"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -147,4 +161,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d40cc825dc5f937713cde692056d3bbc22e4c706877a970530c9019304acbd1f"
+content-hash = "8790696c93971e3135b1a18b8e6e4cbc9bcbdadd234fec2e46908ef99563b3bd"
