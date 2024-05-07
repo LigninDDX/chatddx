@@ -1,5 +1,7 @@
 <script lang="ts">
 import { useChat } from 'ai/svelte';
+import { get } from 'svelte/store';
+import type { ChatRequestOptions, } from '$lib/ai-types.ts';
 import type { PageData } from './$types';
 
 export let data: PageData;
@@ -7,9 +9,24 @@ const content = data.content;
 
 let form: HTMLFormElement;
 
-const { input, handleSubmit, messages, isLoading } = useChat({
+const { input, append, messages, isLoading } = useChat({
   api: 'api/openai',
 });
+
+const handleSubmit = (e: any, options: ChatRequestOptions = {}) => {
+    e.preventDefault();
+    const inputValue = get(input);
+    if (!inputValue) return;
+
+    append(
+      {
+        content: inputValue,
+        role: 'user',
+        createdAt: new Date(),
+      },
+      options,
+    );
+  };
 
 $: assistantMessages = $messages.filter(m => m.role === 'assistant');
 
