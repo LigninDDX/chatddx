@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
   try {
     const { messages } = await request.json();
-    const message = messages.map((m: any) => m.content).join('\n');
+    const message = messages.at(-1);
     const { api_key, endpoint, identifier, ...payload } = await getOptions(sessionid);
 
     let openai = new OpenAI({
@@ -60,10 +60,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     const response = await openai.chat.completions.create({
       ...payload,
-      messages: [ ...payload.messages, ...messages.map((message: any) => ({
-        content: message.content,
-        role: message.role,
-      }))],
+      messages: [ ...payload.messages, message ],
     });
 
     if (payload.stream) {
@@ -74,7 +71,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
           content += chunk;
         },
         onFinal() {
-          logResponse(sessionid, content, message, identifier);
+          logResponse(sessionid, content, message.content, identifier);
         },
       }
       const stream = OpenAIStream(response, streamCallbacks);
