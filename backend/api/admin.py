@@ -15,6 +15,11 @@ class AIUserInline(admin.StackedInline):
 
 
 class UserAdmin(BaseUserAdmin):
+    list_display = BaseUserAdmin.list_display + ('get_config_field',)
+    def get_config_field(self, obj):
+        return obj.aiuser.config if hasattr(obj, 'aiuser') else None
+    get_config_field.short_description = 'config'
+
     inlines = [AIUserInline]
 
 admin.site.unregister(User)
