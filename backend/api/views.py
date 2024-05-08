@@ -4,6 +4,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import logging
 import json
+from django.core.exceptions import ObjectDoesNotExist
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -27,10 +28,6 @@ def chat_cluster(request, cluster):
         return HttpResponse("Unauthorized", status=401)
 
     try:
-        payload = OpenAIChatCluster.objects.get(identifier=cluster).serialize()
-    except OpenAIChatCluster.DoesNotExist:
-        message = f"Cluster `{cluster}` does not exist"
-        logging.error(message)
-        return HttpResponse(message, status=404)
-
-    return JsonResponse(payload)
+        return JsonResponse(request.user.aiuser.config.serialize())
+    except ObjectDoesNotExist:
+        return HttpResponse("Not Found", status=404)

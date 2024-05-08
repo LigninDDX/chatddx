@@ -217,6 +217,7 @@ class OpenAIChatCluster(models.Model):
             "details": self.details.serialize(),
         }
 
+
 class PromptHistory(models.Model):
     class Meta:
         verbose_name_plural = "Prompt history"
@@ -229,3 +230,12 @@ class PromptHistory(models.Model):
     prompt = models.TextField()
     response = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class AIUser(models.Model):
+
+    def __str__(self):
+        return str(self.user.username)
+
+    user = models.OneToOneField(User, on_delete=models.PROTECT)
+    config = models.ForeignKey(OpenAIChat, on_delete=models.PROTECT)
