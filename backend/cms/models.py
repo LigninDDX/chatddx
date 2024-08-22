@@ -18,7 +18,7 @@ class AssistantPage(models.Model):
     disclaimerOpen = models.CharField(max_length=255)
     disclaimerClose = models.CharField(max_length=255)
     disclaimerText = models.TextField()
-
+    copyButton = models.CharField(max_length=255)
     def __str__(self):
         return str(self.title)
 

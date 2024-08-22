@@ -14,7 +14,7 @@ SCHEME = getenv("SCHEME", "http")
 
 if DEBUG:
     ALLOWED_HOSTS = ['*']
-    CSRF_TRUSTED_ORIGINS = [f"http://localhost:5173"]
+    CSRF_TRUSTED_ORIGINS = [f"http://127.0.0.1:5173"]
     SECRET_KEY = "django-insecure-@dl&bssqzr%xaviwu73kb!bng!(sgx#^u0+q7!$_&=kw+*4$#z"
 else:
     ALLOWED_HOSTS = [environ["HOST"], "localhost"]

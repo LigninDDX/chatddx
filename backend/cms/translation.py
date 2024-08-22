@@ -15,4 +15,5 @@ class AssistansPageTranslationOptions(TranslationOptions):
         'disclaimerOpen',
         'disclaimerClose',
         'disclaimerText',
+        'copyButton',
     )

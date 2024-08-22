@@ -32,7 +32,7 @@ $: assistantMessages = $messages.filter(m => m.role === 'assistant');
 
 </script>
 
-<section class="p-2 bg-orange-600 flex">
+<section class="p-2 bg-blue-600 flex">
   <h1 class="text-3xl text-white grow">
     {content.title}
   </h1>
@@ -82,7 +82,22 @@ $: assistantMessages = $messages.filter(m => m.role === 'assistant');
       id="user-response"
       class="whitespace-pre-wrap break-words bg-base-200 rounded-lg min-h-64 p-2"
     >{#if assistantMessages.length}{assistantMessages?.at(-1)?.content || ""}{/if}</pre>
-  </section>
+  <button id="copy-btn" class="bg-blue-500 text-white p-2 rounded-lg mt-2">
+    {content.copyButton}
+</button>
+
+<script>
+  // Funktion för att kopiera text
+  document.getElementById('copy-btn').addEventListener('click', function() {
+      const textToCopy = document.getElementById('user-response').innerText;
+      navigator.clipboard.writeText(textToCopy).then(() => {
+          alert('Texten är kopierad till urklippet!');
+      }).catch(err => {
+          console.error('Kunde inte kopiera text:', err);
+      });
+  });
+</script>
+</section>
   <section>
 
     <span class="link" onclick="my_modal_1.showModal()">{content.disclaimerOpen}</span>
