@@ -2,16 +2,14 @@
   "nodes": {
     "buildNodeModules": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1707354861,
-        "narHash": "sha256-L10H5hh9S6y20c7AKuKJ2h9BczODqpTCoGEZBDPJhd0=",
+        "lastModified": 1721879795,
+        "narHash": "sha256-xisS3Xq4pSS8SMpRpD/YltBMyzNI4lofvuIFN+BizrI=",
         "owner": "adisbladis",
         "repo": "buildNodeModules",
-        "rev": "76c7c56dd9dcea355a8e2ebd0f228a8f2d1e1ee8",
+        "rev": "98a462e86162ad8fc123f071e2e45fa5fd576e24",
         "type": "github"
       },
       "original": {
@@ -61,11 +59,27 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1717196966,
-        "narHash": "sha256-yZKhxVIKd2lsbOqYd5iDoUIwsRZFqE87smE2Vzf6Ck0=",
+        "lastModified": 1708407325,
+        "narHash": "sha256-P93MEydbhBe97i+8JKZUgfxZRr7/LoMiHvfb8VLFZ4k=",
+        "owner": "adisbladis",
+        "repo": "nixpkgs",
+        "rev": "f73c22fb5094f9829695469130b2c04059c7a425",
+        "type": "github"
+      },
+      "original": {
+        "owner": "adisbladis",
+        "ref": "fetchnpmlock",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1723991338,
+        "narHash": "sha256-Grh5PF0+gootJfOJFenTTxDTYPidA3V28dqJ/WV7iis=",
         "owner": "ahbk",
         "repo": "nixpkgs",
-        "rev": "57610d2f8f0937f39dbd72251e9614b1561942d8",
+        "rev": "8a3354191c0d7144db9756a74755672387b702ba",
         "type": "github"
       },
       "original": {
@@ -86,15 +100,15 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1712185021,
-        "narHash": "sha256-9eoA4YEk/ryguJ5PFExBr04iQe+LiNQsfHMW7R/xseg=",
-        "owner": "ahbk",
+        "lastModified": 1724208502,
+        "narHash": "sha256-TCRcEPSfgAw/t7kClmlr23s591N06mQCrhzlAO7cyFw=",
+        "owner": "nix-community",
         "repo": "poetry2nix",
-        "rev": "8faf4d3e52270fc9ea7454cba4c137be4eb92734",
+        "rev": "884b66152b0c625b8220b570a31dc7acc36749a3",
         "type": "github"
       },
       "original": {
-        "owner": "ahbk",
+        "owner": "nix-community",
         "repo": "poetry2nix",
         "type": "github"
       }
@@ -102,7 +116,7 @@
     "root": {
       "inputs": {
         "buildNodeModules": "buildNodeModules",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "poetry2nix": "poetry2nix"
       }
     },

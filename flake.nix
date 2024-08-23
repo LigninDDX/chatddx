@@ -5,24 +5,23 @@
     nixpkgs.url = "github:ahbk/nixpkgs/nixos-unstable";
 
     poetry2nix = {
-      url = "github:ahbk/poetry2nix";
+      url = "github:nix-community/poetry2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     buildNodeModules = {
       url = "github:adisbladis/buildNodeModules";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, poetry2nix, buildNodeModules, ... }: 
+  outputs = { self, nixpkgs, poetry2nix, ... }@inputs: 
   with nixpkgs.lib;
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
 
     inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication defaultPoetryOverrides;
-    inherit (buildNodeModules.lib.${system}) fetchNodeModules hooks;
+    buildNodeModules = (inputs.buildNodeModules.lib.${system});
 
     hostname = "chatddx.com";
 
@@ -42,19 +41,20 @@
       svelte.app = pkgs.stdenv.mkDerivation {
         pname = "${hostname}-svelte";
         version = "0.1.0";
-        src = "${self}/client";
+        src = ./client;
         env = mkEnv {
           PUBLIC_API="http://localhost:8000";
           PUBLIC_API_SSR="http://localhost:8000";
           ORIGIN="http://localhost:3000";
         };
 
-        nodeModules = fetchNodeModules {
-          packageRoot = "${self}/client";
+        npmDeps = buildNodeModules.buildNodeModules {
+          npmRoot = ./client;
+          nodejs = pkgs.nodejs_20;
         };
 
         nativeBuildInputs = [
-          hooks.npmConfigHook
+          buildNodeModules.hooks.linkNodeModulesHook
           pkgs.nodejs_20
           pkgs.npmHooks.npmBuildHook
           pkgs.npmHooks.npmInstallHook
