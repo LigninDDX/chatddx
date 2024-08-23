@@ -14,8 +14,8 @@ export default defineConfig({
     //  cert: fs.readFileSync('./dev.chatddx.com.pem'),
     //},
     proxy: {
-      '/admin': 'http://127.0.0.1:8000',
-      '/static': 'http://127.0.0.1:8000'
+      '/admin': 'http://localhost:8000',
+      '/static': 'http://localhost:8000'
     }
   }
 });
