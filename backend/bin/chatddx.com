@@ -4,9 +4,9 @@ source @env@
 set +a
 
 if [ "$1" = "runserver" ]; then
-  @app@/bin/gunicorn app.wsgi:application "${@:2}"
+  @depEnv@/bin/gunicorn app.wsgi:application "${@:2}"
 elif [ "$1" = "static" ]; then
   echo @static@
 else
-  cd @app@ && ./bin/django-admin "${@}"
+  cd @depEnv@ && ./bin/django-admin "${@}"
 fi
