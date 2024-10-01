@@ -97,6 +97,7 @@
             DEBUG = "true";
             DJANGO_SETTINGS_MODULE = "app.settings";
             HOST = "localhost";
+            SCHEME = "http";
             SECRET_KEY_FILE = "./secret_key";
             STATE_DIR = "./";
           };
