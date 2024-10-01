@@ -15,7 +15,6 @@
       self,
       nixpkgs,
       poetry2nix,
-      ...
     }:
     let
       inherit (nixpkgs.lib) concatStringsSep mapAttrsToList;
@@ -23,14 +22,15 @@
 
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
-      hostname = "chatddx.com";
+      name = "chatddx";
+      version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
 
       mkEnv = env: pkgs.writeText "env" (concatStringsSep "\n" (mapAttrsToList (k: v: "${k}=${v}") env));
     in
     {
       packages.${system} = rec {
         default = pkgs.buildEnv {
-          name = hostname;
+          inherit name;
           paths = [
             svelte.app
             django.bin
@@ -38,8 +38,8 @@
         };
 
         svelte.app = pkgs.buildNpmPackage {
-          pname = "${hostname}-svelte";
-          version = "0.1.0";
+          pname = "${name}-web";
+          inherit version;
           src = ./client;
           env = mkEnv {
             PUBLIC_API = "http://localhost:8000";
@@ -72,22 +72,6 @@
         };
 
         django = rec {
-          bin = pkgs.substituteAll {
-            src = ./backend/bin/chatddx.com;
-            dir = "bin";
-            isExecutable = true;
-            depEnv = app.dependencyEnv;
-            inherit env static app;
-          };
-
-          env = mkEnv {
-            DEBUG = "false";
-            DJANGO_SETTINGS_MODULE = "app.settings";
-            HOST = hostname;
-            SECRET_KEY_FILE = ./backend/secret_key;
-            STATE_DIR = "/var/lib/${hostname}";
-          };
-
           app = mkPoetryApplication {
             projectDir = ./backend;
             groups = [ ];
@@ -101,9 +85,25 @@
             );
           };
 
+          bin = pkgs.substituteAll {
+            src = ./backend/bin/manage;
+            dir = "bin";
+            isExecutable = true;
+            depEnv = app.dependencyEnv;
+            inherit env static app;
+          };
+
+          env = mkEnv {
+            DEBUG = "true";
+            DJANGO_SETTINGS_MODULE = "app.settings";
+            HOST = "localhost";
+            SECRET_KEY_FILE = "./secret_key";
+            STATE_DIR = "./";
+          };
+
           static = pkgs.stdenv.mkDerivation {
-            pname = "${hostname}-static";
-            version = app.version;
+            pname = "${name}-static";
+            inherit version;
             src = ./backend;
             buildPhase = ''
               export STATIC_ROOT=$out
@@ -114,16 +114,21 @@
         };
       };
 
-      devShells.${system} = {
+      devShells.${system} = with self.packages.${system}; {
         default = pkgs.mkShell {
-          name = "chatddx.com";
-          packages = with self.packages.${system}; [
+          inherit name;
+          packages = [
             default
             django.app.dependencyEnv
           ];
-          shellHook = '''';
+          shellHook = ''
+            echo "flake: ${version}"
+            echo "nixpkgs: ${nixpkgs.shortRev}"
+            set -a
+            source ${django.env}
+            set +a
+          '';
         };
       };
-
     };
 }
