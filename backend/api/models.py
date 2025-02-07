@@ -232,6 +232,7 @@ class TestBattery(models.Model):
     def __str__(self):
         return str(self.name)
 
+    name = models.CharField(max_length=16)
     indata = models.TextField()
     procedure = models.ManyToManyField(TestProcedure)
     expect = models.TextField()
