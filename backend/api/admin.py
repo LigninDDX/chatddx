@@ -6,7 +6,7 @@ from . import models
 
 
 class PromptHistoryAdmin(admin.ModelAdmin):
-    list_display = ['timestamp', 'config', 'user', 'prompt', 'response']
+    list_display = ["timestamp", "config", "user", "prompt", "response"]
 
 
 class AIUserInline(admin.StackedInline):
@@ -15,12 +15,15 @@ class AIUserInline(admin.StackedInline):
 
 
 class UserAdmin(BaseUserAdmin):
-    list_display = BaseUserAdmin.list_display + ('get_config_field',)
+    list_display = BaseUserAdmin.list_display + ("get_config_field",)
+
     def get_config_field(self, obj):
-        return obj.aiuser.config if hasattr(obj, 'aiuser') else None
-    get_config_field.short_description = 'config'
+        return obj.aiuser.config if hasattr(obj, "aiuser") else None
+
+    get_config_field.short_description = "config"
 
     inlines = [AIUserInline]
+
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
@@ -30,4 +33,7 @@ admin.site.register(models.OpenAIMessage)
 admin.site.register(models.OpenAIMessageRole)
 admin.site.register(models.OpenAIModel)
 admin.site.register(models.OpenAILogitBias)
+admin.site.register(models.TestBattery)
+admin.site.register(models.TestProcedure)
+admin.site.register(models.TestResult)
 admin.site.register(models.PromptHistory, PromptHistoryAdmin)

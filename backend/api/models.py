@@ -1,6 +1,7 @@
-from django.db import models
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+
 
 class OpenAIMessageRole(models.Model):
     class Meta:
@@ -156,7 +157,6 @@ class OpenAIChat(models.Model):
     )
 
     def serialize(self):
-
         result = {
             "identifier": self.identifier,
             "endpoint": self.endpoint,
@@ -183,7 +183,6 @@ class OpenAIChat(models.Model):
                 result[attr] = val
 
         return result
-
 
 
 class OpenAIChatCluster(models.Model):
@@ -218,6 +217,28 @@ class OpenAIChatCluster(models.Model):
         }
 
 
+class TestProcedure(models.Model):
+    name = models.CharField(max_length=16)
+    description = models.TextField()
+
+
+class TestBattery(models.Model):
+    indata = models.TextField()
+    procedure = models.ManyToManyField(TestProcedure)
+    model = models.ForeignKey(
+        OpenAIChat,
+        on_delete=models.PROTECT,
+    )
+
+
+class TestResult(models.Model):
+    length = models.IntegerField()
+    test = models.ForeignKey(
+        TestBattery,
+        on_delete=models.PROTECT,
+    )
+
+
 class PromptHistory(models.Model):
     class Meta:
         verbose_name_plural = "Prompt history"
@@ -233,7 +254,6 @@ class PromptHistory(models.Model):
 
 
 class AIUser(models.Model):
-
     def __str__(self):
         return str(self.user.username)
 

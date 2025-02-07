@@ -4,8 +4,21 @@
   inputs = {
     nixpkgs.url = "github:ahbk/nixpkgs/nixos-unstable";
 
-    poetry2nix = {
-      url = "github:nix-community/poetry2nix";
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -14,18 +27,45 @@
     {
       self,
       nixpkgs,
-      poetry2nix,
+      uv2nix,
+      pyproject-nix,
+      pyproject-build-systems,
     }:
     let
-      inherit (nixpkgs.lib) concatStringsSep mapAttrsToList;
-      inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication defaultPoetryOverrides;
+      inherit (nixpkgs.lib) concatStringsSep mapAttrsToList composeManyExtensions;
+
+      name = "chatddx";
+      version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
+      apiRoot = ./backend;
+      webRoot = ./client;
+      python = pkgs.python312;
 
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
-      name = "chatddx";
-      version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
+
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
+      overlay = workspace.mkPyprojectOverlay {
+        sourcePreference = "wheel";
+      };
 
       mkEnv = env: pkgs.writeText "env" (concatStringsSep "\n" (mapAttrsToList (k: v: "${k}=${v}") env));
+
+      pyprojectOverrides = _final: _prev: {
+        # Implement build fixups here.
+        # Note that uv2nix is _not_ using Nixpkgs buildPythonPackage.
+        # It's using https://pyproject-nix.github.io/pyproject.nix/build.html
+      };
+
+      pythonSet =
+        # Use base package set from pyproject.nix builders
+        (pkgs.callPackage pyproject-nix.build.packages {
+          inherit python;
+        }).overrideScope
+          (composeManyExtensions [
+            pyproject-build-systems.overlays.default
+            overlay
+            pyprojectOverrides
+          ]);
     in
     {
       packages.${system} = rec {
@@ -33,21 +73,21 @@
           inherit name;
           paths = [
             svelte.app
-            django.bin
+            django.app
           ];
         };
 
         svelte.app = pkgs.buildNpmPackage {
           pname = "${name}-web";
           inherit version;
-          src = ./client;
+          src = webRoot;
           env = mkEnv {
             PUBLIC_API = "http://localhost:8000";
             PUBLIC_API_SSR = "http://localhost:8000";
             ORIGIN = "http://localhost:3000";
           };
 
-          npmDeps = pkgs.importNpmLock { npmRoot = ./client; };
+          npmDeps = pkgs.importNpmLock { npmRoot = webRoot; };
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
 
           buildPhase = ''
@@ -72,24 +112,13 @@
         };
 
         django = rec {
-          app = mkPoetryApplication {
-            projectDir = ./backend;
-            groups = [ ];
-            checkGroups = [ ];
-            overrides = defaultPoetryOverrides.extend (
-              final: prev: {
-                dj-user-login-history = prev.dj-user-login-history.overridePythonAttrs (old: {
-                  buildInputs = (old.buildInputs or [ ]) ++ [ prev.setuptools ];
-                });
-              }
-            );
-          };
+          app = pythonSet.mkVirtualEnv "chatddx-api-env" workspace.deps.default;
 
           bin = pkgs.substituteAll {
-            src = ./backend/bin/manage;
+            src = apiRoot + /bin/manage;
             dir = "bin";
             isExecutable = true;
-            depEnv = app.dependencyEnv;
+            depEnv = app;
             inherit env static app;
           };
 
@@ -105,11 +134,11 @@
           static = pkgs.stdenv.mkDerivation {
             pname = "${name}-static";
             inherit version;
-            src = ./backend;
+            src = apiRoot;
             buildPhase = ''
               export STATIC_ROOT=$out
               export DJANGO_SETTINGS_MODULE=app.settings
-              ${app.dependencyEnv}/bin/django-admin collectstatic --no-input
+              ${app}/bin/django-admin collectstatic --no-input
             '';
           };
         };
@@ -120,7 +149,7 @@
           inherit name;
           packages = [
             default
-            django.app.dependencyEnv
+            pkgs.uv
           ];
           shellHook = ''
             echo "flake: ${version}"
