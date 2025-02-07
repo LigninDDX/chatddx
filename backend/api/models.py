@@ -218,13 +218,23 @@ class OpenAIChatCluster(models.Model):
 
 
 class TestProcedure(models.Model):
+    def __str__(self):
+        return str(self.name)
+
     name = models.CharField(max_length=16)
-    description = models.TextField()
+    description = models.TextField(null=True)
 
 
 class TestBattery(models.Model):
+    class Meta:
+        verbose_name_plural = "Test batteries"
+
+    def __str__(self):
+        return str(self.name)
+
     indata = models.TextField()
     procedure = models.ManyToManyField(TestProcedure)
+    expect = models.TextField()
     model = models.ForeignKey(
         OpenAIChat,
         on_delete=models.PROTECT,
@@ -232,6 +242,9 @@ class TestBattery(models.Model):
 
 
 class TestResult(models.Model):
+    def __str__(self):
+        return str(self.name)
+
     length = models.IntegerField()
     test = models.ForeignKey(
         TestBattery,

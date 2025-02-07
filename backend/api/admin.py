@@ -9,6 +9,10 @@ class PromptHistoryAdmin(admin.ModelAdmin):
     list_display = ["timestamp", "config", "user", "prompt", "response"]
 
 
+class TestBatteryAdmin(admin.ModelAdmin):
+    list_display = ["indata", "expect", "model"]
+
+
 class AIUserInline(admin.StackedInline):
     model = models.AIUser
     verbose_name_plural = "AI Users"
@@ -33,7 +37,7 @@ admin.site.register(models.OpenAIMessage)
 admin.site.register(models.OpenAIMessageRole)
 admin.site.register(models.OpenAIModel)
 admin.site.register(models.OpenAILogitBias)
-admin.site.register(models.TestBattery)
+admin.site.register(models.TestBattery, TestBatteryAdmin)
 admin.site.register(models.TestProcedure)
 admin.site.register(models.TestResult)
 admin.site.register(models.PromptHistory, PromptHistoryAdmin)
