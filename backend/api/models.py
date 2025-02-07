@@ -232,6 +232,10 @@ class TestBattery(models.Model):
     def __str__(self):
         return str(self.name)
 
+    def truncated_indata(self):
+        elipsis = "" if len(self.indata) < 100 else "..."
+        return str(self.indata)[0:100] + elipsis
+
     name = models.CharField(max_length=16)
     indata = models.TextField()
     procedure = models.ManyToManyField(TestProcedure)

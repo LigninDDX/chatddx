@@ -10,7 +10,7 @@ class PromptHistoryAdmin(admin.ModelAdmin):
 
 
 class TestBatteryAdmin(admin.ModelAdmin):
-    list_display = ["indata", "expect", "model"]
+    list_display = ["name", "truncated_indata", "expect", "model"]
 
 
 class AIUserInline(admin.StackedInline):
