@@ -52,11 +52,11 @@ class Command(BaseCommand):
                 print(f"{test}:{chat}")
                 client = get_client(chat)
                 schat = get_chat(chat)
-                schat["messages"].append({"role": "user", "content": test.input})
-                print(schat["messages"])
+                messages = schat["messages"] + [{"role": "user", "content": test.input}]
+                print(messages)
                 completion = client.chat.completions.create(
                     model=schat["model"],
-                    messages=schat["messages"],
+                    messages=messages,
                 )
                 output = completion.choices[0].message.content.strip()
                 suggestions = output.split("\n")
