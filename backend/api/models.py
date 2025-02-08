@@ -1,37 +1,50 @@
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db.models import (
+    CASCADE,
+    PROTECT,
+    BooleanField,
+    CharField,
+    DateTimeField,
+    FloatField,
+    ForeignKey,
+    IntegerField,
+    ManyToManyField,
+    Model,
+    OneToOneField,
+    TextField,
+)
 
 
-class OpenAIMessageRole(models.Model):
+class OpenAIMessageRole(Model):
     class Meta:
         verbose_name_plural = "OpenAI Message Roles"
 
     def __str__(self):
         return str(self.name)
 
-    name = models.CharField(max_length=255)
+    name = CharField(max_length=255)
 
 
-class OpenAIModel(models.Model):
+class OpenAIModel(Model):
     class Meta:
         verbose_name_plural = "OpenAI Models"
 
     def __str__(self):
         return str(self.name)
 
-    name = models.CharField(max_length=255)
+    name = CharField(max_length=255)
 
 
-class OpenAILogitBias(models.Model):
+class OpenAILogitBias(Model):
     class Meta:
         verbose_name_plural = "OpenAI Logit Biases"
 
     def __str__(self):
         return f"{self.token} ({self.bias})"
 
-    token = models.CharField(max_length=255)
-    bias = models.IntegerField(
+    token = CharField(max_length=255)
+    bias = IntegerField(
         validators=[
             MaxValueValidator(100),
             MinValueValidator(-100),
@@ -45,20 +58,20 @@ class OpenAILogitBias(models.Model):
         }
 
 
-class OpenAIMessage(models.Model):
+class OpenAIMessage(Model):
     class Meta:
         verbose_name_plural = "OpenAI Messages"
 
     def __str__(self):
         return str(self.description)
 
-    description = models.CharField(
+    description = CharField(
         default="",
         max_length=255,
     )
-    content = models.TextField()
-    role = models.ForeignKey(OpenAIMessageRole, on_delete=models.PROTECT)
-    name = models.CharField(
+    content = TextField()
+    role = ForeignKey(OpenAIMessageRole, on_delete=PROTECT)
+    name = CharField(
         max_length=255,
         default=None,
         null=True,
@@ -76,25 +89,25 @@ class OpenAIMessage(models.Model):
         return m_dict
 
 
-class OpenAIChat(models.Model):
+class OpenAIChat(Model):
     class Meta:
         verbose_name_plural = "OpenAI Chat Configuration"
 
     def __str__(self):
         return str(self.identifier)
 
-    identifier = models.CharField(
+    identifier = CharField(
         max_length=255,
         unique=True,
     )
-    active = models.BooleanField(default=True)
-    endpoint = models.CharField(max_length=255)
-    api_key = models.CharField(max_length=255)
-    messages = models.ManyToManyField(OpenAIMessage)
-    model = models.ForeignKey(OpenAIModel, on_delete=models.PROTECT)
-    stream = models.BooleanField(default=False)
+    active = BooleanField(default=True)
+    endpoint = CharField(max_length=255)
+    api_key = CharField(max_length=255)
+    messages = ManyToManyField(OpenAIMessage)
+    model = ForeignKey(OpenAIModel, on_delete=PROTECT)
+    stream = BooleanField(default=False)
 
-    frequency_penalty = models.FloatField(
+    frequency_penalty = FloatField(
         default=None,
         null=True,
         blank=True,
@@ -104,12 +117,12 @@ class OpenAIChat(models.Model):
         ],
     )
 
-    logit_bias = models.ManyToManyField(
+    logit_bias = ManyToManyField(
         OpenAILogitBias,
         blank=True,
     )
 
-    max_tokens = models.IntegerField(
+    max_tokens = IntegerField(
         default=None,
         null=True,
         blank=True,
@@ -119,7 +132,7 @@ class OpenAIChat(models.Model):
         ],
     )
 
-    presence_penalty = models.FloatField(
+    presence_penalty = FloatField(
         default=None,
         null=True,
         blank=True,
@@ -129,7 +142,7 @@ class OpenAIChat(models.Model):
         ],
     )
 
-    temperature = models.FloatField(
+    temperature = FloatField(
         default=None,
         null=True,
         blank=True,
@@ -139,7 +152,7 @@ class OpenAIChat(models.Model):
         ],
     )
 
-    top_p = models.FloatField(
+    top_p = FloatField(
         default=None,
         null=True,
         blank=True,
@@ -149,7 +162,7 @@ class OpenAIChat(models.Model):
         ],
     )
 
-    user = models.CharField(
+    user = CharField(
         max_length=255,
         default=None,
         blank=True,
@@ -185,27 +198,27 @@ class OpenAIChat(models.Model):
         return result
 
 
-class OpenAIChatCluster(models.Model):
+class OpenAIChatCluster(Model):
     class Meta:
         verbose_name_plural = "OpenAI Chat Cluster"
 
     def __str__(self):
         return str(self.identifier)
 
-    identifier = models.CharField(max_length=255)
-    diagnoses = models.ForeignKey(
+    identifier = CharField(max_length=255)
+    diagnoses = ForeignKey(
         OpenAIChat,
-        on_delete=models.PROTECT,
+        on_delete=PROTECT,
         related_name="diagnoses",
     )
-    examinations = models.ForeignKey(
+    examinations = ForeignKey(
         OpenAIChat,
-        on_delete=models.PROTECT,
+        on_delete=PROTECT,
         related_name="examinations",
     )
-    details = models.ForeignKey(
+    details = ForeignKey(
         OpenAIChat,
-        on_delete=models.PROTECT,
+        on_delete=PROTECT,
         related_name="details",
     )
 
@@ -217,63 +230,73 @@ class OpenAIChatCluster(models.Model):
         }
 
 
-class TestProcedure(models.Model):
+class DDXTestGroup(Model):
     def __str__(self):
         return str(self.name)
 
-    name = models.CharField(max_length=16)
-    description = models.TextField(null=True)
+    name = CharField(max_length=100)
 
 
-class TestBattery(models.Model):
-    class Meta:
-        verbose_name_plural = "Test batteries"
-
+class DDXTest(Model):
     def __str__(self):
         return str(self.name)
 
-    def truncated_indata(self):
-        elipsis = "" if len(self.indata) < 100 else "..."
-        return str(self.indata)[0:100] + elipsis
+    def truncated_input(self):
+        elipsis = "" if len(self.input) < 100 else "..."
+        return str(self.input)[0:100] + elipsis
 
-    name = models.CharField(max_length=16)
-    indata = models.TextField()
-    procedure = models.ManyToManyField(TestProcedure)
-    expect = models.TextField()
-    model = models.ForeignKey(
-        OpenAIChat,
-        on_delete=models.PROTECT,
-    )
+    def group_list(self):
+        return ", ".join([str(g) for g in self.groups.all()])
+
+    def chat_list(self):
+        return ", ".join([str(m) for m in self.chats.all()])
+
+    name = CharField(max_length=100)
+    input = TextField()
+    expect = TextField()
+    chats = ManyToManyField(OpenAIChat)
+    groups = ManyToManyField(DDXTestGroup)
 
 
-class TestResult(models.Model):
+class DDXTestRun(Model):
     def __str__(self):
-        return str(self.name)
+        return str(self.pk)
 
-    length = models.IntegerField()
-    test = models.ForeignKey(
-        TestBattery,
-        on_delete=models.PROTECT,
-    )
+    timestamp = DateTimeField(auto_now_add=True)
+    group = ForeignKey(DDXTestGroup, on_delete=PROTECT)
 
 
-class PromptHistory(models.Model):
+class DDXTestResult(Model):
+    def __str__(self):
+        return str(f"Result: {self.test.name}")
+
+    def expect(self):
+        return self.test.expect
+
+    run = ForeignKey(DDXTestRun, on_delete=CASCADE)
+    test = ForeignKey(DDXTest, on_delete=PROTECT)
+    chat = ForeignKey(OpenAIChat, on_delete=PROTECT)
+    output = TextField()
+    expect_pos = IntegerField()
+
+
+class PromptHistory(Model):
     class Meta:
         verbose_name_plural = "Prompt history"
 
     def __str__(self):
         return str(self.timestamp)
 
-    config = models.ForeignKey(OpenAIChat, on_delete=models.PROTECT)
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    prompt = models.TextField()
-    response = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    config = ForeignKey(OpenAIChat, on_delete=PROTECT)
+    user = ForeignKey(User, on_delete=PROTECT)
+    prompt = TextField()
+    response = TextField()
+    timestamp = DateTimeField(auto_now_add=True)
 
 
-class AIUser(models.Model):
+class AIUser(Model):
     def __str__(self):
         return str(self.user.username)
 
-    user = models.OneToOneField(User, on_delete=models.PROTECT)
-    config = models.ForeignKey(OpenAIChat, on_delete=models.PROTECT)
+    user = OneToOneField(User, on_delete=PROTECT)
+    config = ForeignKey(OpenAIChat, on_delete=PROTECT)

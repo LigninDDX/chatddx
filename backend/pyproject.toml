@@ -11,6 +11,8 @@ dependencies = [
   "django-modeltranslation>=0.19.7",
   "dj-user-login-history>=1.0.6",
   "markdown2>=2.5.0",
+  "openai>=1.61.1",
+  "thefuzz>=0.22.1",
 ]
 
 [build-system]

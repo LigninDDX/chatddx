@@ -9,8 +9,13 @@ class PromptHistoryAdmin(admin.ModelAdmin):
     list_display = ["timestamp", "config", "user", "prompt", "response"]
 
 
-class TestBatteryAdmin(admin.ModelAdmin):
-    list_display = ["name", "truncated_indata", "expect", "model"]
+class DDXTestAdmin(admin.ModelAdmin):
+    save_as = True
+    list_display = ["name", "truncated_input", "expect", "chat_list", "group_list"]
+
+
+class DDXTestResultAdmin(admin.ModelAdmin):
+    list_display = ["run", "test", "chat", "expect", "output", "expect_pos"]
 
 
 class AIUserInline(admin.StackedInline):
@@ -37,7 +42,8 @@ admin.site.register(models.OpenAIMessage)
 admin.site.register(models.OpenAIMessageRole)
 admin.site.register(models.OpenAIModel)
 admin.site.register(models.OpenAILogitBias)
-admin.site.register(models.TestBattery, TestBatteryAdmin)
-admin.site.register(models.TestProcedure)
-admin.site.register(models.TestResult)
+admin.site.register(models.DDXTest, DDXTestAdmin)
+admin.site.register(models.DDXTestResult, DDXTestResultAdmin)
+admin.site.register(models.DDXTestRun)
+admin.site.register(models.DDXTestGroup)
 admin.site.register(models.PromptHistory, PromptHistoryAdmin)
