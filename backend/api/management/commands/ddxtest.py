@@ -63,11 +63,13 @@ class Command(BaseCommand):
                 saved = False
                 for rank, suggestion in enumerate(suggestions):
                     ratio = 0
+
                     for expect in expects:
                         ratio = max(
                             ratio,
                             fuzz.ratio(
-                                suggestion.strip().lower(), expect.strip().lower()
+                                re.sub(r"^\d+\.\s*", "", suggestion).strip().lower(),
+                                expect.strip().lower(),
                             ),
                         )
                         print(
