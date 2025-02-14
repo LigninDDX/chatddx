@@ -273,6 +273,9 @@ class DDXTestResult(Model):
     def expect(self):
         return self.test.expect
 
+    def timestamp(self):
+        return self.run.timestamp
+
     run = ForeignKey(DDXTestRun, on_delete=CASCADE)
     test = ForeignKey(DDXTest, on_delete=PROTECT)
     chat = ForeignKey(OpenAIChat, on_delete=PROTECT)
