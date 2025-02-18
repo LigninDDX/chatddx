@@ -135,8 +135,8 @@ STATIC_ROOT = getenv("STATIC_ROOT")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CELERY_BROKER_URL = "redis+socket:///run/redis-alex/redis.sock?virtual_host=0"
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_URL = getenv("CELERY_BROKER_URL")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
 
 UNFOLD = {
     "THEME": "dark",
