@@ -1,3 +1,4 @@
+from api.tasks import ddxtest_task
 from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -39,13 +40,13 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 
 @admin.register(models.PromptHistory)
 class PromptHistoryAdmin(ModelAdmin):
-    list_display = ["timestamp", "config", "user", "prompt", "response"]
+    list_display = ["__str__", "config", "user", "prompt", "response"]
 
 
 @admin.register(models.Diagnosis)
 class DiagnosisAdmin(ModelAdmin):
     list_display = [
-        "name",
+        "__str__",
         "pattern",
     ]
 
@@ -53,15 +54,15 @@ class DiagnosisAdmin(ModelAdmin):
 @admin.register(models.DDXTestCase)
 class DDXTestCaseAdmin(ModelAdmin):
     save_as = True
-    list_display = ["name", "truncated_input", "diagnosis_list", "group_list"]
+    list_display = ["__str__", "truncated_input", "diagnosis_list", "group_list"]
 
 
 @admin.register(models.DDXCaseResult)
 class DDXCaseResultAdmin(ModelAdmin):
     list_display = [
+        "__str__",
         "run",
         "timestamp",
-        "case",
         "chat",
         "response_formated",
         "patterns_formated",
@@ -86,7 +87,18 @@ class DDXCaseResultAdmin(ModelAdmin):
 
 @admin.register(models.DDXTestRun)
 class DDXTestRunAdmin(ModelAdmin):
-    list_display = ["timestamp", "group"]
+    list_display = ["__str__", "timestamp", "status", "chat", "group"]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change and any(
+            key in request.POST for key in ["_save", "_continue", "_addanother"]
+        ):
+            self.run_ddxtest(obj.pk)
+
+    def run_ddxtest(self, run_id):
+        print(f"Running custom function for {run_id}")
+        ddxtest_task.delay(run_id)
 
 
 @admin.register(models.OpenAIMessage)
@@ -107,7 +119,13 @@ class OpenAIChatMessagesInline(TabularInline):
 
 @admin.register(models.OpenAIChat)
 class OpenAIChatAdmin(ModelAdmin):
+    list_display = ["__str__", "model", "messages_formated"]
     inlines = [OpenAIChatMessagesInline]
+
+    def messages_formated(self, obj):
+        return format_html("<br>".join([str(m) for m in obj.messages.all()]))
+
+    messages_formated.short_description = "Prompts"
 
 
 @admin.register(models.OpenAIChatCluster)

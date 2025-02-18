@@ -13,6 +13,7 @@ from django.db.models import (
     Model,
     OneToOneField,
     PositiveIntegerField,
+    TextChoices,
     TextField,
 )
 
@@ -104,7 +105,7 @@ class OpenAIChat(Model):
         verbose_name_plural = "OpenAI Chat Configuration"
 
     def __str__(self):
-        return str(self.identifier)
+        return self.identifier
 
     identifier = CharField(
         max_length=255,
@@ -304,7 +305,20 @@ class DDXTestCase(Model):
 
 class DDXTestRun(Model):
     def __str__(self):
-        return str(self.pk)
+        return f"Test run: {self.pk}"
+
+    class Status(TextChoices):
+        NOT_STARTED = "not_started", "Not Started"
+        STARTED = "started", "Started"
+        FAILED = "failed", "Failed"
+        COMPLETED = "completed", "Completed"
+        CANCELLED = "cancelled", "Cancelled"
+
+    status = CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.NOT_STARTED,
+    )
 
     timestamp = DateTimeField(auto_now_add=True)
     group = ForeignKey(DDXTestGroup, on_delete=PROTECT)

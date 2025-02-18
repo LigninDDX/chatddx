@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "cms.apps.CmsConfig",
     "modeltranslation",
     "login_history",
+    "django_celery_results",
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
@@ -77,9 +78,15 @@ WSGI_APPLICATION = "app.wsgi.application"
 
 DATABASES = {
     "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": getenv("DB_NAME"),
+        "USER": getenv("DB_USER"),
+        "HOST": getenv("DB_HOST"),
+    },
+    "sqlite": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": STATE_DIR / "db.sqlite3",
-    }
+    },
 }
 
 CACHES = {
@@ -99,7 +106,7 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": "WARNING",
+        "level": getenv("LOG_LEVEL"),
     },
 }
 
@@ -137,6 +144,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CELERY_BROKER_URL = getenv("CELERY_BROKER_URL")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
+CELERY_RESULT_BACKEND = "django-db"
 
 UNFOLD = {
     "THEME": "dark",

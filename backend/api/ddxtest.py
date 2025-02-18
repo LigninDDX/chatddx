@@ -1,15 +1,7 @@
 import logging
 import re
 
-from api.models import (
-    DDXCaseResult,
-    DDXCaseResult_diagnoses,
-    DDXTestCase,
-    DDXTestGroup,
-    DDXTestRun,
-    Diagnosis,
-    OpenAIChat,
-)
+from api.models import DDXCaseResult, DDXCaseResult_diagnoses, DDXTestRun
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -28,8 +20,8 @@ def get_openai_client(chat):
     return _openai_client
 
 
-def run(group_name: str, chat_identifier: str) -> int:
-    run_id, chat, cases = load_env(group_name, chat_identifier)
+def run(run_id: int) -> int:
+    chat, cases = load_env(run_id)
 
     for case in cases:
         run_case(run_id, chat, case)
@@ -47,7 +39,7 @@ def run_case(run_id, chat, case):
 
 def save_test_results(
     run_id: int, case: dict, response: str, results: list[tuple[int, int]]
-) -> DDXCaseResult:
+) -> int:
     ddxcaseresult = DDXCaseResult.objects.create(
         run_id=run_id,
         case_id=case["pk"],
@@ -65,7 +57,7 @@ def save_test_results(
         ]
     )
 
-    return ddxcaseresult
+    return ddxcaseresult.pk
 
 
 def evaluate_response(case: dict, response: str) -> list[tuple[int, int]]:
@@ -95,26 +87,12 @@ def render_pattern(p: str) -> str:
     return p
 
 
-def load_env(group_name: str, chat_identifier: str) -> int:
-    try:
-        group = DDXTestGroup.objects.get(name=group_name)
-    except DDXTestGroup.DoesNotExist:
-        raise Exception(
-            f"Group '{group_name}' does not exist: {DDXTestGroup.objects.values_list('name', flat=True)}"
-        )
-
-    try:
-        chat = OpenAIChat.objects.get(identifier=chat_identifier)
-    except OpenAIChat.DoesNotExist:
-        raise Exception(
-            f"Chat '{chat_identifier}' does not exist: {OpenAIChat.objects.values_list('identifier', flat=True)}"
-        )
-
-    test_run = DDXTestRun.objects.create(group=group, chat=chat)
+def load_env(run_id: int) -> int:
+    test_run = DDXTestRun.objects.get(pk=run_id)
     serialized_chat = test_run.chat.serialize()
     cases = [c.serialize() for c in test_run.group.ddxtestcase_set.all()]
 
-    return test_run.pk, serialized_chat, cases
+    return serialized_chat, cases
 
 
 def query_chat(chat: dict, case: dict) -> str:
