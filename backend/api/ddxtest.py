@@ -14,32 +14,43 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-
-def run(group_name: str, chat_identifier: str) -> DDXTestRun:
-    test_run = load_env(group_name, chat_identifier)
-    chat = test_run.chat.serialize()
-
-    client = OpenAI(
-        api_key=chat["api_key"],
-        base_url=chat["endpoint"],
-    )
-
-    for case in test_run.group.ddxtestcase_set.all():
-        logger.info(case)
-        response = query_chat(client, chat, case)
-        result = evaluate_response(case, response)
-        logger.info(result)
-        save_test_result(test_run, case, response, result)
-
-    return test_run
+_openai_client = None
 
 
-def save_test_result(
-    test_run: DDXTestRun, case: DDXTestCase, response: str, results: tuple[int, str]
+def get_openai_client(chat):
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = OpenAI(
+            api_key=chat["api_key"],
+            base_url=chat["endpoint"],
+        )
+
+    return _openai_client
+
+
+def run(group_name: str, chat_identifier: str) -> int:
+    run_id, chat, cases = load_env(group_name, chat_identifier)
+
+    for case in cases:
+        run_case(run_id, chat, case)
+
+    return run_id
+
+
+def run_case(run_id, chat, case):
+    logger.info(case)
+    response = query_chat(chat, case)
+    results = evaluate_response(case, response)
+    logger.info(results)
+    return save_test_results(run_id, case, response, results)
+
+
+def save_test_results(
+    run_id: int, case: dict, response: str, results: list[tuple[int, int]]
 ) -> DDXCaseResult:
     ddxcaseresult = DDXCaseResult.objects.create(
-        run=test_run,
-        case=case,
+        run_id=run_id,
+        case_id=case["pk"],
         response=response,
     )
 
@@ -47,17 +58,17 @@ def save_test_result(
         [
             DDXCaseResult_diagnoses(
                 ddxcaseresult=ddxcaseresult,
-                diagnosis=diagnosis,
+                diagnosis_id=diagnosis_pk,
                 rank=rank,
             )
-            for diagnosis, rank in results
+            for diagnosis_pk, rank in results
         ]
     )
 
     return ddxcaseresult
 
 
-def evaluate_response(case: DDXTestCase, response: str) -> tuple[Diagnosis, int]:
+def evaluate_response(case: dict, response: str) -> list[tuple[int, int]]:
     suggestions = [
         re.sub(r"^\d+\.\s*", "", s).strip().lower()
         for s in response.strip().split("\n")
@@ -70,7 +81,7 @@ def evaluate_response(case: DDXTestCase, response: str) -> tuple[Diagnosis, int]
             0,
         )
 
-    return [(d, match(render_pattern(d.pattern))) for d in case.diagnoses.all()]
+    return [(d["pk"], match(render_pattern(d["pattern"]))) for d in case["diagnoses"]]
 
 
 def render_pattern(p: str) -> str:
@@ -84,7 +95,7 @@ def render_pattern(p: str) -> str:
     return p
 
 
-def load_env(group_name: str, chat_identifier: str) -> DDXTestRun:
+def load_env(group_name: str, chat_identifier: str) -> int:
     try:
         group = DDXTestGroup.objects.get(name=group_name)
     except DDXTestGroup.DoesNotExist:
@@ -99,12 +110,17 @@ def load_env(group_name: str, chat_identifier: str) -> DDXTestRun:
             f"Chat '{chat_identifier}' does not exist: {OpenAIChat.objects.values_list('identifier', flat=True)}"
         )
 
-    return DDXTestRun.objects.create(group=group, chat=chat)
+    test_run = DDXTestRun.objects.create(group=group, chat=chat)
+    serialized_chat = test_run.chat.serialize()
+    cases = [c.serialize() for c in test_run.group.ddxtestcase_set.all()]
+
+    return test_run.pk, serialized_chat, cases
 
 
-def query_chat(client: OpenAI, chat: dict, case: DDXTestCase) -> str:
-    messages = chat["messages"] + [{"role": "user", "content": case.input}]
+def query_chat(chat: dict, case: dict) -> str:
+    messages = chat["messages"] + [{"role": "user", "content": case["input"]}]
 
+    client = get_openai_client(chat)
     completion = client.chat.completions.create(
         model=chat["model"],
         messages=messages,

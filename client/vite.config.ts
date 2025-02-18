@@ -15,6 +15,7 @@ export default defineConfig({
     //},
     proxy: {
       '/admin': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
       '/static': 'http://localhost:8000'
     }
   }

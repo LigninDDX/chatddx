@@ -16,6 +16,7 @@ dependencies = [
   "redis>=5.2.1",
   "celery>=5.4.0",
   "django-unfold>=0.49.1",
+  "flower>=2.0.1",
 ]
 
 [build-system]

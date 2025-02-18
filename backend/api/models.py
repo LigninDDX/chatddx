@@ -250,6 +250,13 @@ class Diagnosis(Model):
     def __str__(self):
         return self.name
 
+    def serialize(self):
+        return {
+            "pk": self.pk,
+            "name": self.name,
+            "pattern": self.pattern,
+        }
+
     name = CharField(max_length=255)
     pattern = CharField(max_length=255)
 
@@ -257,6 +264,11 @@ class Diagnosis(Model):
 class DDXTestGroup(Model):
     def __str__(self):
         return str(self.name)
+
+    def serialize(self):
+        return {
+            "name": self.name,
+        }
 
     name = CharField(max_length=255)
 
@@ -274,6 +286,15 @@ class DDXTestCase(Model):
 
     def group_list(self):
         return ", ".join([str(g) for g in self.groups.all()])
+
+    def serialize(self):
+        return {
+            "pk": self.pk,
+            "name": self.name,
+            "input": self.input,
+            "diagnoses": [d.serialize() for d in self.diagnoses.all()],
+            "groups": [g.serialize() for g in self.groups.all()],
+        }
 
     name = CharField(max_length=255)
     input = TextField()
