@@ -155,7 +155,7 @@
             echo "flake: ${version}"
             echo "nixpkgs: ${nixpkgs.shortRev}"
             set -a
-            source ${django.env}
+            source ./backend/.env
             set +a
           '';
         };

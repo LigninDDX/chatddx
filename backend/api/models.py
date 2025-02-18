@@ -12,6 +12,7 @@ from django.db.models import (
     ManyToManyField,
     Model,
     OneToOneField,
+    PositiveIntegerField,
     TextField,
 )
 
@@ -89,6 +90,15 @@ class OpenAIMessage(Model):
         return m_dict
 
 
+class OpenAIChat_messages(Model):
+    openaichat = ForeignKey("OpenAIChat", on_delete=CASCADE)
+    openaimessage = ForeignKey("OpenAIMessage", on_delete=CASCADE)
+    order = PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+
 class OpenAIChat(Model):
     class Meta:
         verbose_name_plural = "OpenAI Chat Configuration"
@@ -103,7 +113,7 @@ class OpenAIChat(Model):
     active = BooleanField(default=True)
     endpoint = CharField(max_length=255)
     api_key = CharField(max_length=255)
-    messages = ManyToManyField(OpenAIMessage)
+    messages = ManyToManyField(OpenAIMessage, through=OpenAIChat_messages)
     model = ForeignKey(OpenAIModel, on_delete=PROTECT)
     stream = BooleanField(default=False)
 
@@ -176,7 +186,10 @@ class OpenAIChat(Model):
             "api_key": self.api_key,
             "model": self.model.name,
             "stream": self.stream,
-            "messages": [m.serialize() for m in self.messages.all()],
+            "messages": [
+                m.serialize()
+                for m in self.messages.all().order_by("openaichat_messages__order")
+            ],
         }
 
         logit_bias = self.logit_bias.all()
@@ -230,14 +243,25 @@ class OpenAIChatCluster(Model):
         }
 
 
+class Diagnosis(Model):
+    class Meta:
+        verbose_name_plural = "Diagnoses"
+
+    def __str__(self):
+        return self.name
+
+    name = CharField(max_length=255)
+    pattern = CharField(max_length=255)
+
+
 class DDXTestGroup(Model):
     def __str__(self):
         return str(self.name)
 
-    name = CharField(max_length=100)
+    name = CharField(max_length=255)
 
 
-class DDXTest(Model):
+class DDXTestCase(Model):
     def __str__(self):
         return str(self.name)
 
@@ -245,16 +269,15 @@ class DDXTest(Model):
         elipsis = "" if len(self.input) < 100 else "..."
         return str(self.input)[0:100] + elipsis
 
+    def diagnosis_list(self):
+        return ", ".join([str(g) for g in self.diagnoses.all()])
+
     def group_list(self):
         return ", ".join([str(g) for g in self.groups.all()])
 
-    def chat_list(self):
-        return ", ".join([str(m) for m in self.chats.all()])
-
-    name = CharField(max_length=100)
+    name = CharField(max_length=255)
     input = TextField()
-    expect = TextField()
-    chats = ManyToManyField(OpenAIChat)
+    diagnoses = ManyToManyField(Diagnosis)
     groups = ManyToManyField(DDXTestGroup)
 
 
@@ -264,23 +287,43 @@ class DDXTestRun(Model):
 
     timestamp = DateTimeField(auto_now_add=True)
     group = ForeignKey(DDXTestGroup, on_delete=PROTECT)
+    chat = ForeignKey(OpenAIChat, on_delete=PROTECT)
 
 
-class DDXTestResult(Model):
+class DDXCaseResult_diagnoses(Model):
     def __str__(self):
-        return str(f"Result: {self.test.name}")
+        return str(f"{self.diagnosis}: {self.rank}")
 
-    def expect(self):
-        return self.test.expect
+    ddxcaseresult = ForeignKey("DDXCaseResult", on_delete=CASCADE)
+    diagnosis = ForeignKey("Diagnosis", on_delete=CASCADE)
+    rank = PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["rank"]
+
+
+class DDXCaseResult(Model):
+    def __str__(self):
+        return str(f"Result: {self.case.name}")
+
+    def chat(self):
+        return self.run.chat
+
+    def patterns(self):
+        return "\n".join([d.pattern for d in self.case.diagnoses.all()])
+
+    def ranks(self):
+        return "\n".join(
+            [str(d) for d in DDXCaseResult_diagnoses.objects.filter(ddxcaseresult=self)]
+        )
 
     def timestamp(self):
         return self.run.timestamp
 
     run = ForeignKey(DDXTestRun, on_delete=CASCADE)
-    test = ForeignKey(DDXTest, on_delete=PROTECT)
-    chat = ForeignKey(OpenAIChat, on_delete=PROTECT)
-    output = TextField()
-    expect_pos = IntegerField()
+    case = ForeignKey(DDXTestCase, on_delete=PROTECT)
+    response = TextField()
+    diagnoses = ManyToManyField(Diagnosis, through=DDXCaseResult_diagnoses)
 
 
 class PromptHistory(Model):

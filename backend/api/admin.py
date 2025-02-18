@@ -1,70 +1,27 @@
 from django.contrib import admin, messages
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User
-from django.core.management import call_command
-from django.shortcuts import redirect
-from django.urls import path
+from django.contrib.auth.models import Group, User
+from django.utils.html import format_html
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
 from . import models
 
-
-class PromptHistoryAdmin(admin.ModelAdmin):
-    list_display = ["timestamp", "config", "user", "prompt", "response"]
-
-
-class DDXTestAdmin(admin.ModelAdmin):
-    save_as = True
-    list_display = ["name", "truncated_input", "expect", "chat_list", "group_list"]
-    change_list_template = "admin/api/DDXTest/change_list.html"
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path("run-ddxtests/", self.run_command, name="run_ddxtests"),
-        ]
-        return custom_urls + urls
-
-    def run_command(self, request):
-        arg = request.GET.get("arg", None)
-        if arg:
-            call_command("ddxtest", arg)
-            self.message_user(
-                request, f"Command executed with argument: {arg}", messages.SUCCESS
-            )
-        else:
-            self.message_user(request, "No argument selected!", messages.ERROR)
-
-        self.message_user(request, "Command executed successfully", messages.SUCCESS)
-        return redirect(request.META.get("HTTP_REFERER", "admin:index"))
-
-    def changelist_view(self, request, extra_context=None):
-        extra_context = extra_context or {}
-        extra_context["test_groups"] = models.DDXTestGroup.objects.all()
-        return super().changelist_view(request, extra_context=extra_context)
+admin.site.unregister(User)
+admin.site.unregister(Group)
 
 
-class DDXTestResultAdmin(admin.ModelAdmin):
-    list_display = [
-        "run",
-        "timestamp",
-        "test",
-        "chat",
-        "expect",
-        "output",
-        "expect_pos",
-    ]
-
-
-class DDXTestRunAdmin(admin.ModelAdmin):
-    list_display = ["timestamp", "group"]
-
-
-class AIUserInline(admin.StackedInline):
+class AIUserInline(StackedInline):
     model = models.AIUser
     verbose_name_plural = "AI Users"
 
 
-class UserAdmin(BaseUserAdmin):
+@admin.register(User)
+class UserAdmin(BaseUserAdmin, ModelAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
     list_display = BaseUserAdmin.list_display + ("get_config_field",)
 
     def get_config_field(self, obj):
@@ -75,16 +32,99 @@ class UserAdmin(BaseUserAdmin):
     inlines = [AIUserInline]
 
 
-admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
-admin.site.register(models.OpenAIChatCluster)
-admin.site.register(models.OpenAIChat)
-admin.site.register(models.OpenAIMessage)
-admin.site.register(models.OpenAIMessageRole)
-admin.site.register(models.OpenAIModel)
-admin.site.register(models.OpenAILogitBias)
-admin.site.register(models.DDXTest, DDXTestAdmin)
-admin.site.register(models.DDXTestResult, DDXTestResultAdmin)
-admin.site.register(models.DDXTestRun, DDXTestRunAdmin)
-admin.site.register(models.DDXTestGroup)
-admin.site.register(models.PromptHistory, PromptHistoryAdmin)
+@admin.register(Group)
+class GroupAdmin(BaseGroupAdmin, ModelAdmin):
+    pass
+
+
+@admin.register(models.PromptHistory)
+class PromptHistoryAdmin(ModelAdmin):
+    list_display = ["timestamp", "config", "user", "prompt", "response"]
+
+
+@admin.register(models.Diagnosis)
+class DiagnosisAdmin(ModelAdmin):
+    list_display = [
+        "name",
+        "pattern",
+    ]
+
+
+@admin.register(models.DDXTestCase)
+class DDXTestCaseAdmin(ModelAdmin):
+    save_as = True
+    list_display = ["name", "truncated_input", "diagnosis_list", "group_list"]
+
+
+@admin.register(models.DDXCaseResult)
+class DDXCaseResultAdmin(ModelAdmin):
+    list_display = [
+        "run",
+        "timestamp",
+        "case",
+        "chat",
+        "response_formated",
+        "patterns_formated",
+        "ranks_formated",
+    ]
+
+    def ranks_formated(self, obj):
+        return format_html(obj.ranks().replace("\n", "<br>"))
+
+    ranks_formated.short_description = "Ranks"
+
+    def response_formated(self, obj):
+        return format_html(obj.response.replace("\n", "<br>"))
+
+    response_formated.short_description = "Response"
+
+    def patterns_formated(self, obj):
+        return format_html(obj.patterns().replace("\n", "<br>"))
+
+    patterns_formated.short_description = "Patterns"
+
+
+@admin.register(models.DDXTestRun)
+class DDXTestRunAdmin(ModelAdmin):
+    list_display = ["timestamp", "group"]
+
+
+@admin.register(models.OpenAIMessage)
+class OpenAIMessageAdmin(ModelAdmin):
+    pass
+
+
+@admin.register(models.DDXTestGroup)
+class DDXTestGroup(ModelAdmin):
+    pass
+
+
+class OpenAIChatMessagesInline(TabularInline):
+    model = models.OpenAIChat_messages
+    fields = ["openaimessage", "order"]
+    extra = 1
+
+
+@admin.register(models.OpenAIChat)
+class OpenAIChatAdmin(ModelAdmin):
+    inlines = [OpenAIChatMessagesInline]
+
+
+@admin.register(models.OpenAIChatCluster)
+class OpenAIChatClusterAdmin(ModelAdmin):
+    pass
+
+
+@admin.register(models.OpenAIMessageRole)
+class OpenAIMessageRoleAdmin(ModelAdmin):
+    pass
+
+
+@admin.register(models.OpenAIModel)
+class OpenAIModelAdmin(ModelAdmin):
+    pass
+
+
+@admin.register(models.OpenAILogitBias)
+class OpenAILogitBiad(ModelAdmin):
+    pass

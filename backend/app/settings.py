@@ -2,8 +2,9 @@
 Django 5.0.1
 """
 
+from os import environ, getenv
 from pathlib import Path
-from os import getenv, environ
+
 from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,7 +14,7 @@ DEBUG = getenv("DEBUG", "True").lower() in ["true", "1", "yes"]
 SCHEME = getenv("SCHEME", "http")
 
 if DEBUG:
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ["*"]
     CSRF_TRUSTED_ORIGINS = [f"http://localhost:5173"]
     SECRET_KEY = "django-insecure-@dl&bssqzr%xaviwu73kb!bng!(sgx#^u0+q7!$_&=kw+*4$#z"
 else:
@@ -27,6 +28,13 @@ INSTALLED_APPS = [
     "cms.apps.CmsConfig",
     "modeltranslation",
     "login_history",
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    "unfold.contrib.inlines",
+    "unfold.contrib.import_export",
+    "unfold.contrib.guardian",
+    "unfold.contrib.simple_history",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -74,6 +82,13 @@ DATABASES = {
     }
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "unix:///run/redis-alex/redis.sock?db=0",
+    }
+}
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -105,8 +120,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 LANGUAGES = [
-        ("en", _("English")),
-        ("sv", _("Swedish")),
+    ("en", _("English")),
+    ("sv", _("Swedish")),
 ]
 
 TIME_ZONE = "UTC"
@@ -119,3 +134,10 @@ STATIC_URL = "static/"
 STATIC_ROOT = getenv("STATIC_ROOT")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_BROKER_URL = "redis+socket:///run/redis-alex/redis.sock?virtual_host=0"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+UNFOLD = {
+    "THEME": "dark",
+}
