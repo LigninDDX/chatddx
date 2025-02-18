@@ -180,8 +180,18 @@ class OpenAIChat(Model):
         null=True,
     )
 
+    def save(self, *args, **kwargs):
+        # Invalidate ddxtest client if a chat is updated
+        if self.pk:
+            from api.ddxtest import invalidate_client_cache
+
+            invalidate_client_cache(self.pk)
+
+        super().save(*args, **kwargs)
+
     def serialize(self):
         result = {
+            "pk": self.pk,
             "identifier": self.identifier,
             "endpoint": self.endpoint,
             "api_key": self.api_key,

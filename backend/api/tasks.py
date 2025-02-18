@@ -15,7 +15,9 @@ def ddxtest_task(run_id):
     DDXTestRun.objects.filter(pk=run_id).update(status=DDXTestRun.Status.STARTED)
 
     chord_task = chord(task_group)(
-        ddxtest_completed.s(run_id).on_error(ddxtest_failed.s(run_id))
+        ddxtest_completed.s(run_id, chat["pk"]).on_error(
+            ddxtest_failed.s(run_id, chat["pk"])
+        )
     )
 
     return chord_task.id
@@ -32,19 +34,21 @@ def ddxtest_case_task(run_id, chat, case):
 
 
 @shared_task
-def ddxtest_completed(results, run_id):
+def ddxtest_completed(results, run_id, chat_pk):
     msg = f"Test run {run_id} completed ({len(results)} cases)"
     logger.info(msg)
+    ddxtest.invalidate_client_cache(chat_pk)
     DDXTestRun.objects.filter(pk=run_id).update(status=DDXTestRun.Status.COMPLETED)
     return msg
 
 
 @shared_task
-def ddxtest_failed(request, exc, traceback, run_id):
+def ddxtest_failed(request, exc, traceback, run_id, chat_pk):
     msg = f"Test run {run_id} failed"
     logger.error(msg)
     logger.error(request)
     logger.error(exc)
     logger.error(traceback)
+    ddxtest.invalidate_client_cache(chat_pk)
     DDXTestRun.objects.filter(pk=run_id).update(status=DDXTestRun.Status.FAILED)
     return msg

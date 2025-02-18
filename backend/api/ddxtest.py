@@ -6,18 +6,26 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-_openai_client = None
+_openai_clients: dict[int, OpenAI] = {}
 
 
-def get_openai_client(chat):
-    global _openai_client
-    if _openai_client is None:
-        _openai_client = OpenAI(
+def get_openai_client(chat) -> OpenAI:
+    if chat["pk"] not in _openai_clients:
+        _openai_clients[chat["pk"]] = OpenAI(
             api_key=chat["api_key"],
             base_url=chat["endpoint"],
+            timeout=30,
         )
+        logger.debug(f"Created new client for config {chat['pk']}")
 
-    return _openai_client
+    return _openai_clients[chat["pk"]]
+
+
+def invalidate_client_cache(pk: int):
+    if pk in _openai_clients:
+        client = _openai_clients.pop(pk)
+        client.close()  # Clean up resources
+        logger.debug(f"Invalidated client cache for config {pk}")
 
 
 def run(run_id: int) -> int:

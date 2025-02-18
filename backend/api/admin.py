@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, User
+from django.db import transaction
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
@@ -94,7 +95,7 @@ class DDXTestRunAdmin(ModelAdmin):
         if not change and any(
             key in request.POST for key in ["_save", "_continue", "_addanother"]
         ):
-            self.run_ddxtest(obj.pk)
+            transaction.on_commit(lambda: self.run_ddxtest(obj.pk))
 
     def run_ddxtest(self, run_id):
         print(f"Running custom function for {run_id}")
