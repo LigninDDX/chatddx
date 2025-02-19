@@ -191,7 +191,6 @@ class OpenAIChat(Model):
 
     def serialize(self):
         result = {
-            "pk": self.pk,
             "identifier": self.identifier,
             "endpoint": self.endpoint,
             "api_key": self.api_key,

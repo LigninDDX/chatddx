@@ -98,6 +98,7 @@ def render_pattern(p: str) -> str:
 def load_env(run_id: int) -> int:
     test_run = DDXTestRun.objects.get(pk=run_id)
     serialized_chat = test_run.chat.serialize()
+    serialized_chat["pk"] = test_run.chat.pk
     cases = [c.serialize() for c in test_run.group.ddxtestcase_set.all()]
 
     return serialized_chat, cases
