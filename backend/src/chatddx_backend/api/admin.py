@@ -1,14 +1,17 @@
-from api.tasks import ddxtest_task
+from chatddx_backend.api import ddxtest, models
+from chatddx_backend.api.tasks import ddxtest_task
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, User
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
-from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
-from . import models
+# from django.contrib.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
 admin.site.unregister(User)
 admin.site.unregister(Group)
@@ -44,8 +47,24 @@ class PromptHistoryAdmin(ModelAdmin):
     list_display = ["__str__", "config", "user", "prompt", "response"]
 
 
+class DiagnosisForm(forms.ModelForm):
+    def clean_pattern(self):
+        value = self.cleaned_data["pattern"]
+        try:
+            eval(ddxtest.render_pattern(""), {"s": ""})
+        except Exception as e:
+            raise ValidationError(f"Invalid pattern: {e}")
+
+        return value
+
+    class Meta:
+        model = models.Diagnosis
+        fields = "__all__"
+
+
 @admin.register(models.Diagnosis)
-class DiagnosisAdmin(ModelAdmin):
+class DiagnosisAdmin(admin.ModelAdmin):
+    # form = DiagnosisForm
     list_display = [
         "__str__",
         "pattern",

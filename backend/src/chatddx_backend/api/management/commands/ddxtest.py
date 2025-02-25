@@ -1,6 +1,6 @@
-from api import ddxtest
-from api.models import DDXTestGroup, DDXTestRun, OpenAIChat
-from api.tasks import ddxtest_task
+from chatddx_backend.api import ddxtest
+from chatddx_backend.api.models import DDXTestGroup, DDXTestRun, OpenAIChat
+from chatddx_backend.api.tasks import ddxtest_task
 from django.core.management.base import BaseCommand, CommandError
 
 

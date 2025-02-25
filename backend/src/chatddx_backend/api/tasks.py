@@ -1,8 +1,8 @@
 import logging
 
-from api import ddxtest
-from api.models import DDXTestRun
 from celery import chord, shared_task
+from chatddx_backend.api import ddxtest
+from chatddx_backend.api.models import DDXTestRun
 
 logger = logging.getLogger(__name__)
 

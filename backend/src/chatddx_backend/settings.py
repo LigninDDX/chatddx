@@ -24,18 +24,17 @@ else:
         SECRET_KEY = f.read()
 
 INSTALLED_APPS = [
-    "api.apps.ApiConfig",
-    "cms.apps.CmsConfig",
+    "chatddx_backend.api.apps.ApiConfig",
+    "chatddx_backend.cms.apps.CmsConfig",
     "modeltranslation",
     "login_history",
     "django_celery_results",
+    "pghistory",
+    "pgtrigger",
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
     "unfold.contrib.inlines",
-    "unfold.contrib.import_export",
-    "unfold.contrib.guardian",
-    "unfold.contrib.simple_history",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -43,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -55,7 +55,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "app.urls"
+ROOT_URLCONF = "chatddx_backend.urls"
 
 TEMPLATES = [
     {
@@ -73,7 +73,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "app.wsgi.application"
+WSGI_APPLICATION = "chatddx_backend.wsgi.application"
 
 
 DATABASES = {

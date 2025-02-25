@@ -1,7 +1,11 @@
 import logging
 import re
 
-from api.models import DDXCaseResult, DDXCaseResult_diagnoses, DDXTestRun
+from chatddx_backend.api.models import (
+    DDXCaseResult,
+    DDXCaseResult_diagnoses,
+    DDXTestRun,
+)
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)

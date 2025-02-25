@@ -1,8 +1,10 @@
-from django.http import JsonResponse, HttpResponse
-from django.utils import translation
-from django.conf import settings
-from .models import AssistantPage
 import logging
+
+from chatddx_backend.cms.models import AssistantPage
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.utils import translation
+
 
 def assistant(request):
     if not request.user.is_authenticated:

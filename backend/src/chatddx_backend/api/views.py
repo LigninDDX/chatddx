@@ -1,10 +1,12 @@
-from django.http import JsonResponse, HttpResponse
-from .models import OpenAIChatCluster, OpenAIChat, PromptHistory
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-import logging
 import json
+import logging
+
+from chatddx_backend.api.models import OpenAIChat, OpenAIChatCluster, PromptHistory
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -15,13 +17,14 @@ def chat_history(request):
     data = json.loads(request.body)
 
     result = PromptHistory.objects.create(
-        user = request.user,
-        config = OpenAIChat.objects.get(identifier=data["config"]),
-        prompt = data["prompt"],
-        response = data["response"],
+        user=request.user,
+        config=OpenAIChat.objects.get(identifier=data["config"]),
+        prompt=data["prompt"],
+        response=data["response"],
     )
 
     return JsonResponse({"success": "true"})
+
 
 def chat_cluster(request, cluster):
     if not request.user.is_authenticated:

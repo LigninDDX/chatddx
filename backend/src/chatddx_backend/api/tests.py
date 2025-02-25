@@ -1,5 +1,10 @@
+from chatddx_backend.api import models
 from django.test import TestCase
-from api import models
+
+
+def test_hello():
+    assert True
+
 
 class APITestCase(TestCase):
     def setUp(self):

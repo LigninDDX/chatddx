@@ -1,3 +1,4 @@
+import pghistory
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (
@@ -253,6 +254,7 @@ class OpenAIChatCluster(Model):
         }
 
 
+@pghistory.track(model_name="DiagnosisSnapshot")
 class Diagnosis(Model):
     class Meta:
         verbose_name_plural = "Diagnoses"

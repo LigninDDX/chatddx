@@ -14,8 +14,8 @@ def auth_check(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("api.urls")),
+    path("api/", include("chatddx_backend.api.urls")),
     path("auth/", auth_check, name="auth_check"),
 ]
-urlpatterns += i18n_patterns(path("cms/", include("cms.urls")))
+urlpatterns += i18n_patterns(path("cms/", include("chatddx_backend.cms.urls")))
 urlpatterns += staticfiles_urlpatterns()

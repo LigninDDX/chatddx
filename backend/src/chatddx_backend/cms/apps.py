@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class ApiConfig(AppConfig):
+class CmsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "api"
+    name = "chatddx_backend.cms"
