@@ -93,7 +93,6 @@ dependencies = [
     { name = "django" },
     { name = "django-celery-results" },
     { name = "django-modeltranslation" },
-    { name = "django-pghistory" },
     { name = "django-unfold" },
     { name = "flower" },
     { name = "gunicorn" },
@@ -132,7 +131,6 @@ requires-dist = [
     { name = "django", specifier = ">=5.1.0" },
     { name = "django-celery-results", specifier = ">=2.5.1" },
     { name = "django-modeltranslation", specifier = ">=0.19.7" },
-    { name = "django-pghistory", specifier = ">=3.5.2" },
     { name = "django-unfold", specifier = ">=0.49.1" },
     { name = "flower", specifier = ">=2.0.1" },
     { name = "gunicorn", specifier = ">=23.0.0" },
@@ -317,31 +315,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d7/85/16e4f8d3c6f2bb57ca1ac4573005705a9a3b9dc42844a0465c1cc867d766/django_modeltranslation-0.19.12.tar.gz", hash = "sha256:d3a48c4b0e2a8033fc53a4e4d4d8c27c52e81bfbf00ae65fc76bd4ef64177d5b", size = 76812 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/f1/6097be1aa0477008b05bcfd6103916dd214a1cab48ac5bf8e4593c341d90/django_modeltranslation-0.19.12-py3-none-any.whl", hash = "sha256:6f42811876cb36370a2a727f4669bf9fa086d3c2efad573aedf49f339ba48cd1", size = 53830 },
-]
-
-[[package]]
-name = "django-pghistory"
-version = "3.5.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-    { name = "django-pgtrigger" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/f0/a3170aafc42875a43b04a0ae6f1cce103f16eed4013147d6b5d7b6f46c29/django_pghistory-3.5.2.tar.gz", hash = "sha256:49d2fb0a5b86cffd409cfc9bfce1dee5401fbbdb18779b04bc26cea8c4e967d7", size = 31221 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/43/83ad03cda0e613d8e9df6398c5d6ce07cdbca8cdaad9e69841f9c58e3d1e/django_pghistory-3.5.2-py3-none-any.whl", hash = "sha256:5f81a386e4c93e34b95de2064bbf42aabe4e20be53f7ad6638d25f137338f101", size = 38319 },
-]
-
-[[package]]
-name = "django-pgtrigger"
-version = "4.13.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/98/d93f658316901c54a00ec0caefc3e73796b2f7ffcc1fd11188da22c45027/django_pgtrigger-4.13.3.tar.gz", hash = "sha256:c525f9e81f120d166c4bd5fe8c3770640356f0644edf0fc2b7f6426008e52f77", size = 30723 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/cb/3bb87d45b1b46ef36f3786fbfcda0a43f80c8fa4e742a350a2cd1512557e/django_pgtrigger-4.13.3-py3-none-any.whl", hash = "sha256:d6e4d17021bbd5e425a308f07414b237b9b34423275d86ad756b90c307df3ca4", size = 34059 },
 ]
 
 [[package]]

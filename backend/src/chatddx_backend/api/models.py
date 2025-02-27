@@ -1,4 +1,3 @@
-import pghistory
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (
@@ -184,7 +183,7 @@ class OpenAIChat(Model):
     def save(self, *args, **kwargs):
         # Invalidate ddxtest client if a chat is updated
         if self.pk:
-            from api.ddxtest import invalidate_client_cache
+            from chatddx_backend.api.ddxtest import invalidate_client_cache
 
             invalidate_client_cache(self.pk)
 
@@ -254,7 +253,6 @@ class OpenAIChatCluster(Model):
         }
 
 
-@pghistory.track(model_name="DiagnosisSnapshot")
 class Diagnosis(Model):
     class Meta:
         verbose_name_plural = "Diagnoses"

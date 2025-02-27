@@ -29,8 +29,6 @@ INSTALLED_APPS = [
     "modeltranslation",
     "login_history",
     "django_celery_results",
-    "pghistory",
-    "pgtrigger",
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
@@ -82,10 +80,6 @@ DATABASES = {
         "NAME": getenv("DB_NAME"),
         "USER": getenv("DB_USER"),
         "HOST": getenv("DB_HOST"),
-    },
-    "sqlite": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": STATE_DIR / "db.sqlite3",
     },
 }
 
