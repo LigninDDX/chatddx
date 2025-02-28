@@ -93,7 +93,7 @@ def render_pattern(p: str) -> str:
     # example pattern: "diverticulitis | (((gastro & intestinal) | gi) & inflammation)"
     # string in the pattern are quoted and compared with "in s" which is a source string
     # made available by closure.
-    p = re.sub(r"\b[a-zA-Z]+\b", lambda m: f'("{m.group(0)}" in s)', p)
+    p = re.sub(r"\b[^\s]+\b", lambda m: f'("{m.group(0)}" in s)', p)
     p = p.replace("|", " or ").replace("&", " and ")
     p = re.sub(r"\s{2,}", " ", p)
     return p
