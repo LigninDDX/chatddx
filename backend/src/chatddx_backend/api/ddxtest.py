@@ -99,7 +99,7 @@ def render_pattern(p: str) -> str:
     return p
 
 
-def load_env(run_id: int) -> int:
+def load_env(run_id: int) -> tuple[dict, list]:
     test_run = DDXTestRun.objects.get(pk=run_id)
     serialized_chat = test_run.chat.serialize()
     serialized_chat["pk"] = test_run.chat.pk

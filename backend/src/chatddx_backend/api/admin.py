@@ -7,7 +7,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 
 # from django.contrib.admin import ModelAdmin, StackedInline, TabularInline
@@ -90,17 +90,17 @@ class DDXCaseResultAdmin(ModelAdmin):
     ]
 
     def ranks_formated(self, obj):
-        return format_html(obj.ranks().replace("\n", "<br>"))
+        return mark_safe(obj.ranks().replace("\n", "<br>"))
 
     ranks_formated.short_description = "Ranks"
 
     def response_formated(self, obj):
-        return format_html(obj.response.replace("\n", "<br>"))
+        return mark_safe(obj.response.replace("\n", "<br>"))
 
     response_formated.short_description = "Response"
 
     def patterns_formated(self, obj):
-        return format_html(obj.patterns().replace("\n", "<br>"))
+        return mark_safe(obj.patterns().replace("\n", "<br>"))
 
     patterns_formated.short_description = "Patterns"
 
@@ -108,17 +108,21 @@ class DDXCaseResultAdmin(ModelAdmin):
 @admin.register(models.DDXTestRun)
 class DDXTestRunAdmin(ModelAdmin):
     list_display = ["__str__", "timestamp", "status", "chat", "group"]
+    exclude = ("status", "snapshot")
+
+    def has_change_permission(self, request, obj=None):
+        if obj:
+            return False
+        return super().has_change_permission(request, obj)
 
     def save_model(self, request, obj, form, change):
+        cases = obj.group.ddxtestcase_set.all()
+        obj.snapshot = {
+            "chat": obj.chat.serialize(),
+            "group": [case.serialize() for case in cases],
+        }
         super().save_model(request, obj, form, change)
-        if not change and any(
-            key in request.POST for key in ["_save", "_continue", "_addanother"]
-        ):
-            transaction.on_commit(lambda: self.run_ddxtest(obj.pk))
-
-    def run_ddxtest(self, run_id):
-        print(f"Running custom function for {run_id}")
-        ddxtest_task.delay(run_id)
+        transaction.on_commit(lambda: ddxtest_task.delay(obj.pk))
 
 
 @admin.register(models.OpenAIMessage)
@@ -143,7 +147,7 @@ class OpenAIChatAdmin(ModelAdmin):
     inlines = [OpenAIChatMessagesInline]
 
     def messages_formated(self, obj):
-        return format_html("<br>".join([str(m) for m in obj.messages.all()]))
+        return mark_safe("<br>".join([str(m) for m in obj.messages.all()]))
 
     messages_formated.short_description = "Prompts"
 

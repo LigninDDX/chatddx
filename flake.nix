@@ -121,19 +121,26 @@
             pyprojectOverrides
           ]);
     in
-    {
+    rec {
       checks.${system} = pythonSet.chatddx-backend.passthru.tests;
+
+      djangoPkgs.${system} = {
+        bin = packages.${system}.django_bin;
+        static = packages.${system}.django_static;
+        app = packages.${system}.django_app;
+        env = packages.${system}.django_env;
+      };
 
       packages.${system} = rec {
         default = pkgs.buildEnv {
           inherit name;
           paths = [
-            svelte_app
+            svelte
             django_bin
           ];
         };
 
-        svelte_app = pkgs.buildNpmPackage {
+        svelte = pkgs.buildNpmPackage {
           pname = "${name}-web";
           inherit version;
           src = webRoot;

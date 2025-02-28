@@ -9,6 +9,7 @@ from django.db.models import (
     FloatField,
     ForeignKey,
     IntegerField,
+    JSONField,
     ManyToManyField,
     Model,
     OneToOneField,
@@ -332,6 +333,7 @@ class DDXTestRun(Model):
     timestamp = DateTimeField(auto_now_add=True)
     group = ForeignKey(DDXTestGroup, on_delete=PROTECT)
     chat = ForeignKey(OpenAIChat, on_delete=PROTECT)
+    snapshot = JSONField(editable=False, null=True)
 
 
 class DDXCaseResult_diagnoses(Model):
