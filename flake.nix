@@ -36,14 +36,15 @@
 
       name = "chatddx";
       version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
-      apiRoot = ./backend;
-      webRoot = ./client;
+      backendRoot = ./backend;
+      clientRoot = ./client;
+      siteRoot = ./site;
       python = pkgs.python312;
 
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
-      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = backendRoot; };
       overlay = workspace.mkPyprojectOverlay {
         sourcePreference = "wheel";
       };
@@ -143,14 +144,14 @@
         svelte = pkgs.buildNpmPackage {
           pname = "${name}-web";
           inherit version;
-          src = webRoot;
+          src = clientRoot;
           env = mkEnv {
             PUBLIC_API = "http://localhost:8000";
             PUBLIC_API_SSR = "http://localhost:8000";
             ORIGIN = "http://localhost:3000";
           };
 
-          npmDeps = pkgs.importNpmLock { npmRoot = webRoot; };
+          npmDeps = pkgs.importNpmLock { npmRoot = clientRoot; };
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
 
           buildPhase = ''
@@ -177,7 +178,7 @@
         django_app = pythonSet.mkVirtualEnv "chatddx-api-env" workspace.deps.default;
 
         django_bin = pkgs.substituteAll {
-          src = apiRoot + /src/chatddx_backend/bin/manage;
+          src = backendRoot + /src/chatddx_backend/bin/manage;
           dir = "bin";
           isExecutable = true;
           inherit django_env django_static django_app;
@@ -195,7 +196,7 @@
         django_static = pkgs.stdenv.mkDerivation {
           pname = "${name}-static";
           inherit version;
-          src = apiRoot;
+          src = backendRoot;
           buildPhase = ''
             export STATIC_ROOT=$out
             export DJANGO_SETTINGS_MODULE=chatddx_backend.settings
@@ -234,13 +235,33 @@
           };
         in
         rec {
-          default = uv2nix;
-          uv2nix = pkgs.mkShell {
+          default = pkgs.mkShell {
+            inherit name;
+            pakages = [
+            ];
+            inputsFrom = [
+              uv2nix-env
+              node-env
+            ];
+            shellHook = ''
+              echo "flake: ${version}"
+              echo "nixpkgs: ${nixpkgs.shortRev}"
+              ${uv2nix-env.shellHook}
+              ${node-env.shellHook}
+            '';
+          };
+          node-env = pkgs.mkShell {
+            inherit name;
+            packages = [
+              pkgs.nodejs
+            ];
+            shellHook = '''';
+          };
+          uv2nix-env = pkgs.mkShell {
             inherit name;
             packages = [
               venv
               pkgs.uv
-              pkgs.nodejs
             ];
             env = {
               UV_NO_SYNC = "1";
@@ -250,21 +271,6 @@
             shellHook = ''
               export REPO_ROOT=$(git rev-parse --show-toplevel)
               unset PYTHONPATH
-              echo "flake: ${version}"
-              echo "nixpkgs: ${nixpkgs.shortRev}"
-              set -a
-              source ./backend/.env
-              set +a
-            '';
-          };
-          old = pkgs.mkShell {
-            inherit name;
-            packages = [
-              pkgs.uv
-            ];
-            shellHook = ''
-              echo "flake: ${version}"
-              echo "nixpkgs: ${nixpkgs.shortRev}"
               set -a
               source ./backend/.env
               set +a
