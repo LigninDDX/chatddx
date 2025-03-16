@@ -138,9 +138,26 @@
           paths = [
             svelte
             django_bin
+            site
           ];
         };
 
+        site = pkgs.buildNpmPackage {
+          pname = "${name}-site";
+          inherit version;
+          src = siteRoot;
+
+          npmDeps = pkgs.importNpmLock { npmRoot = siteRoot; };
+          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
+
+          buildPhase = ''
+            npm run build
+          '';
+
+          installPhase = ''
+            cp -r ./build $out
+          '';
+        };
         svelte = pkgs.buildNpmPackage {
           pname = "${name}-web";
           inherit version;
@@ -238,6 +255,7 @@
           default = pkgs.mkShell {
             inherit name;
             pakages = [
+              self.packages.${system}.default
             ];
             inputsFrom = [
               uv2nix-env
