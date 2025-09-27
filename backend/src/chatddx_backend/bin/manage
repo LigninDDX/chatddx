@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-set -a
-source @django_env@
-set +a
+# manage.sh
 
-if [ "$1" = "runserver" ]; then
-  @django_app@/bin/gunicorn chatddx_backend.wsgi:application "${@:2}"
-elif [ "$1" = "static" ]; then
-  echo @django_static@
-else
-  cd @django_app@ && ./bin/django-admin "${@}"
-fi
+case "$1" in
+runserver)
+  "$DJANGO_APP/bin/gunicorn" chatddx_backend.wsgi:application "${@:2}"
+  ;;
+static)
+  echo "$DJANGO_STATIC"
+  ;;
+*)
+  cd "$DJANGO_APP" && ./bin/django-admin "${@}"
+  ;;
+esac

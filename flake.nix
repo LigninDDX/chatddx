@@ -2,7 +2,8 @@
   description = "build chatddx";
 
   inputs = {
-    nixpkgs.url = "github:ahbk/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:kompismoln/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
 
     pyproject-nix = {
       url = "github:pyproject-nix/pyproject.nix";
@@ -27,138 +28,59 @@
     {
       self,
       nixpkgs,
+      flake-utils,
       uv2nix,
       pyproject-nix,
       pyproject-build-systems,
     }:
-    let
-      inherit (nixpkgs.lib) concatStringsSep mapAttrsToList composeManyExtensions;
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        inherit (nixpkgs) lib;
 
-      name = "chatddx";
-      version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
-      apiRoot = ./backend;
-      webRoot = ./client;
-      python = pkgs.python312;
+        name = "chatddx";
+        version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
+        apiRoot = ./backend;
+        webRoot = ./client;
+        python = pkgs.python312;
 
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = nixpkgs.legacyPackages.${system};
 
-      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
-      overlay = workspace.mkPyprojectOverlay {
-        sourcePreference = "wheel";
-      };
-
-      mkEnv = env: pkgs.writeText "env" (concatStringsSep "\n" (mapAttrsToList (k: v: "${k}=${v}") env));
-
-      derivations = {
-        mypy =
-          final:
-          let
-            venv = final.mkVirtualEnv "chatddx-backend-typing-env" {
-              chatddx-backend = [ "typing" ];
-            };
-          in
-          pkgs.stdenv.mkDerivation {
-            name = "${final.chatddx-backend.name}-mypy";
-            inherit (final.chatddx-backend) src;
-            nativeBuildInputs = [
-              venv
-            ];
-            dontConfigure = true;
-            dontInstall = true;
-            buildPhase = ''
-              mkdir $out
-              mypy --strict . --junit-xml $out/junit.xml
-            '';
-          };
-
-        pytest =
-          final:
-          let
-            venv = final.mkVirtualEnv "chatddx-backend-pytest-env" {
-              chatddx-backend = [ "test" ];
-            };
-          in
-          pkgs.stdenv.mkDerivation {
-            name = "${final.chatddx-backend.name}-pytest";
-            inherit (final.chatddx-backend) src;
-            nativeBuildInputs = [
-              venv
-            ];
-
-            dontConfigure = true;
-
-            buildPhase = ''
-              runHook preBuild
-              pytest --cov tests --cov-report html tests
-              runHook postBuild
-            '';
-
-            installPhase = ''
-              runHook preInstall
-              mv htmlcov $out
-              runHook postInstall
-            '';
-          };
-      };
-
-      pyprojectOverrides = final: prev: {
-        chatddx-backend = prev.chatddx-backend.overrideAttrs (old: {
-          passthru = old.passthru // {
-            tests =
-              (old.tests or { }) // { mypy = derivations.mypy final; } // { pytest = derivations.pytest final; };
-          };
-        });
-      };
-
-      pythonSet =
-        (pkgs.callPackage pyproject-nix.build.packages {
-          inherit python;
-        }).overrideScope
-          (composeManyExtensions [
-            pyproject-build-systems.overlays.default
-            overlay
-            pyprojectOverrides
-          ]);
-    in
-    rec {
-      checks.${system} = pythonSet.chatddx-backend.passthru.tests;
-
-      djangoPkgs.${system} = {
-        bin = packages.${system}.django_bin;
-        static = packages.${system}.django_static;
-        app = packages.${system}.django_app;
-        env = packages.${system}.django_env;
-      };
-
-      packages.${system} = rec {
-        default = pkgs.buildEnv {
-          inherit name;
-          paths = [
-            svelte
-            django_bin
-          ];
+        workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
+        overlay = workspace.mkPyprojectOverlay {
+          sourcePreference = "wheel";
         };
 
-        svelte = pkgs.buildNpmPackage {
+        pyprojectOverrides = _final: _prev: { };
+
+        pythonSet =
+          (pkgs.callPackage pyproject-nix.build.packages {
+            inherit python;
+          }).overrideScope
+            (
+              lib.composeManyExtensions [
+                pyproject-build-systems.overlays.default
+                overlay
+                pyprojectOverrides
+              ]
+            );
+
+        svelte-env = {
+          PUBLIC_API = "http://localhost:8000";
+          PUBLIC_API_SSR = "http://localhost:8000";
+          ORIGIN = "http://localhost:3000";
+        };
+
+        svelte-app = pkgs.buildNpmPackage {
           pname = "${name}-web";
           inherit version;
           src = webRoot;
-          env = mkEnv {
-            PUBLIC_API = "http://localhost:8000";
-            PUBLIC_API_SSR = "http://localhost:8000";
-            ORIGIN = "http://localhost:3000";
-          };
-
+          env = svelte-env;
           npmDeps = pkgs.importNpmLock { npmRoot = webRoot; };
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
 
           buildPhase = ''
-            set -a
-            source $env
-            set +a
             npm run build
-
             mkdir bin
 
             cat <<EOF > bin/run
@@ -174,102 +96,60 @@
           '';
         };
 
-        django_app = pythonSet.mkVirtualEnv "chatddx-api-env" workspace.deps.default;
+        django-app = pythonSet.mkVirtualEnv "${name}-django-app" workspace.deps.default;
 
-        django_bin = pkgs.substituteAll {
-          src = apiRoot + /src/chatddx_backend/bin/manage;
-          dir = "bin";
-          isExecutable = true;
-          inherit django_env django_static django_app;
+        django-manage = pkgs.writeShellApplication {
+          name = "${name}-django-manage";
+          text = builtins.readFile (apiRoot + /src/chatddx_backend/bin/manage);
+          runtimeEnv = django-env;
         };
 
-        django_env = mkEnv {
+        django-static = pkgs.stdenv.mkDerivation {
+          pname = "${name}-django-static";
+          inherit version;
+          src = apiRoot;
+          buildPhase = ''
+            export STATIC_ROOT=$out
+            export DJANGO_SETTINGS_MODULE=chatddx_backend.settings
+            ${django-app}/bin/django-admin collectstatic --no-input
+          '';
+        };
+
+        django-env = {
           DEBUG = "true";
           DJANGO_SETTINGS_MODULE = "chatddx_backend.settings";
           HOST = "localhost";
           SCHEME = "http";
           SECRET_KEY_FILE = "./secret_key";
           STATE_DIR = "./";
+          DJANGO_APP = django-app;
+          DJANGO_STATIC = django-static;
+        };
+      in
+      {
+        packages = {
+          inherit
+            django-app
+            django-static
+            django-manage
+            svelte-app
+            ;
         };
 
-        django_static = pkgs.stdenv.mkDerivation {
-          pname = "${name}-static";
-          inherit version;
-          src = apiRoot;
-          buildPhase = ''
-            export STATIC_ROOT=$out
-            export DJANGO_SETTINGS_MODULE=chatddx_backend.settings
-            ${django_app}/bin/django-admin collectstatic --no-input
-          '';
-        };
-      };
-
-      devShells.${system} =
-        let
-          editableOverlay = workspace.mkEditablePyprojectOverlay {
-            root = "$REPO_ROOT/backend";
-          };
-          editablePythonSet = pythonSet.overrideScope (composeManyExtensions [
-            editableOverlay
-            (final: prev: {
-              chatddx-backend = prev.chatddx-backend.overrideAttrs (old: {
-                src = pkgs.lib.fileset.toSource {
-                  root = old.src;
-                  fileset = pkgs.lib.fileset.unions [
-                    (old.src + "/pyproject.toml")
-                    (old.src + "/README.md")
-                    (old.src + "/src/chatddx_backend/__init__.py")
-                  ];
-                };
-                nativeBuildInputs =
-                  old.nativeBuildInputs
-                  ++ final.resolveBuildSystem {
-                    editables = [ ];
-                  };
-              });
-            })
-          ]);
-          venv = editablePythonSet.mkVirtualEnv "chatddx-backend-dev-env" {
-            chatddx-backend = [ "dev" ];
-          };
-        in
-        rec {
-          default = uv2nix;
-          uv2nix = pkgs.mkShell {
+        devShells = {
+          default = pkgs.mkShell {
             inherit name;
             packages = [
-              venv
-              pkgs.uv
-              pkgs.nodejs
-            ];
-            env = {
-              UV_NO_SYNC = "1";
-              UV_PYTHON = "${venv}/bin/python";
-              UV_PYTHON_DOWNLOADS = "never";
-            };
-            shellHook = ''
-              export REPO_ROOT=$(git rev-parse --show-toplevel)
-              unset PYTHONPATH
-              echo "flake: ${version}"
-              echo "nixpkgs: ${nixpkgs.shortRev}"
-              set -a
-              source ./backend/.env
-              set +a
-            '';
-          };
-          old = pkgs.mkShell {
-            inherit name;
-            packages = [
+              django-manage
               pkgs.uv
             ];
+            env = django-env // svelte-env;
             shellHook = ''
               echo "flake: ${version}"
               echo "nixpkgs: ${nixpkgs.shortRev}"
-              set -a
-              source ./backend/.env
-              set +a
             '';
           };
         };
-    };
+      }
+    );
 }
