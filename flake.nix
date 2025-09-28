@@ -98,11 +98,18 @@
 
         django-app = pythonSet.mkVirtualEnv "${name}-django-app" workspace.deps.default;
 
-        django-manage = pkgs.writeShellApplication {
-          name = "${name}-django-manage";
-          text = builtins.readFile (apiRoot + /src/chatddx_backend/bin/manage);
-          runtimeEnv = django-env;
-        };
+        mkDjangoManage =
+          {
+            runtimeEnv ? { },
+            ...
+          }:
+          pkgs.writeShellApplication {
+            name = "${name}-django-manage";
+            text = builtins.readFile (apiRoot + /src/chatddx_backend/bin/manage);
+            runtimeEnv = django-env // runtimeEnv;
+          };
+
+        django-manage = mkDjangoManage { };
 
         django-static = pkgs.stdenv.mkDerivation {
           pname = "${name}-django-static";
@@ -134,6 +141,10 @@
             django-manage
             svelte-app
             ;
+        };
+
+        lib = {
+          inherit mkDjangoManage;
         };
 
         devShells = {
