@@ -65,6 +65,9 @@ def diagnose_symptoms(request):
     """
     Drop-in replacement for the Supabase 'diagnose' edge function.
     """
+    if not request.user.is_authenticated:
+        return HttpResponse(status=401)
+
     if request.method == "OPTIONS":
         response = HttpResponse()
         response["Access-Control-Allow-Origin"] = "*"
@@ -79,7 +82,7 @@ def diagnose_symptoms(request):
     try:
         body = json.loads(request.body)
         symptoms = body.get("symptoms")
-        chat = OpenAIChat.objects.get(identifier="testgpt").serialize()
+        chat = request.user.aiuser.config.serialize()
 
         if not chat["api_key"]:
             return JsonResponse({"error": "API Key is not configured"}, status=500)
