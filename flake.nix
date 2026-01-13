@@ -81,18 +81,23 @@
 
           buildPhase = ''
             npm run build
-            mkdir bin
-
-            cat <<EOF > bin/run
-            #!/usr/bin/env bash
-            ${pkgs.nodejs}/bin/node $out/build
-            EOF
-
-            chmod +x bin/run
           '';
 
           installPhase = ''
-            cp -r . $out
+            npm prune --production
+
+            mkdir -p $out
+
+            cp -r build node_modules package.json $out
+
+            mkdir -p $out/bin
+            cat <<EOF > $out/bin/run
+            #!/usr/bin/env bash
+            # 'exec' replaces the shell process, handling signals better
+            exec ${pkgs.nodejs}/bin/node $out/build
+            EOF
+
+            chmod +x $out/bin/run
           '';
         };
 
