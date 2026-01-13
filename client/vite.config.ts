@@ -1,22 +1,18 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vitest/config';
-import fs from 'fs';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
 
-export default defineConfig({
-  plugins: [sveltekit()],
-  test: {
-    include: ['src/**/*.{test,spec}.{js,ts}']
-  },
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
   server: {
-    host: '0.0.0.0',
-    //https: {
-    //  key: fs.readFileSync('./dev.chatddx.com-key.pem'),
-    //  cert: fs.readFileSync('./dev.chatddx.com.pem'),
-    //},
-    proxy: {
-      '/admin': 'http://localhost:8000',
-      '/auth': 'http://localhost:8000',
-      '/static': 'http://localhost:8000'
-    }
-  }
-});
+    host: "::",
+    port: 8080,
+  },
+  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+}));

@@ -123,6 +123,7 @@
           STATE_DIR = "./";
           DJANGO_APP = django-app;
           DJANGO_STATIC = django-static;
+          DB_NAME = "chatddx";
         };
       in
       {
@@ -140,7 +141,9 @@
             inherit name;
             packages = [
               django-manage
+              django-app
               pkgs.uv
+              pkgs.nodejs
             ];
             env = django-env // svelte-env;
             shellHook = ''
