@@ -147,6 +147,7 @@
             ];
             env = django-env // svelte-env;
             shellHook = ''
+              export PYTHONPATH="$PYTHONPATH:$(pwd)/backend/src"
               echo "flake: ${version}"
               echo "nixpkgs: ${nixpkgs.shortRev}"
             '';
