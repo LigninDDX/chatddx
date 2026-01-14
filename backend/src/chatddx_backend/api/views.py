@@ -13,30 +13,6 @@ from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
 
-# The System Prompt from the Deno function
-SYSTEM_PROMPT = """Du är en erfaren akutläkare som hjälper till med differentialdiagnostik. 
-            
-Din uppgift är att baserat på symtom och anamnes ge en lista med möjliga differentialdiagnoser rankade efter sannolikhet.
-
-VIKTIGT: Detta är ENDAST för utbildnings- och referenssyfte. Ersätter INTE klinisk bedömning.
-
-Svara ALLTID på svenska med följande JSON-format:
-{
-  "diagnoser": [
-    {
-      "diagnos": "Diagnosnamn",
-      "sannolikhet": "hög/medel/låg",
-      "beskrivning": "Kort förklaring varför denna diagnos övervägs",
-      "varningsflaggor": ["Lista med allvarliga tecken att vara uppmärksam på"],
-      "utredning": ["Förslag på lämplig utredning"]
-    }
-  ],
-  "akut_varning": "Om det finns tecken på livshotande tillstånd, beskriv här. Annars null",
-  "sammanfattning": "Kort sammanfattning av differentialdiagnostisk bedömning"
-}
-
-Ge 3-6 diagnoser beroende på komplexitet. Prioritera alltid livshotande tillstånd först."""
-
 
 def extract_json_from_text(text):
     """
@@ -93,8 +69,8 @@ def diagnose_symptoms(request):
 
         completion = client.chat.completions.create(
             model=chat["model"],
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+            messages=chat["messages"]
+            + [
                 {"role": "user", "content": symptoms},
             ],
             response_format={"type": "json_object"},
