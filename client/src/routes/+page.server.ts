@@ -36,7 +36,6 @@ export const actions: Actions = {
       }
 
       const data = await response.json();
-      console.log(data);
       return { success: true, results: data };
     } catch (err) {
       console.error('Network/Server Error:', err);

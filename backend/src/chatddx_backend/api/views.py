@@ -15,16 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 def extract_json_from_text(text):
-    """
-    Mimics the Deno regex logic to extract JSON from potential Markdown code blocks.
-    """
     try:
-        # Match ```json ... ``` or just {...}
         match = re.search(r"```json\n?([\s\S]*?)\n?```", text)
         if match:
             return json.loads(match.group(1))
 
-        # Fallback: look for the first { and last }
         match = re.search(r"(\{[\s\S]*\})", text)
         if match:
             return json.loads(match.group(1))
@@ -32,15 +27,11 @@ def extract_json_from_text(text):
         return json.loads(text)
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse AI response: {e}")
-        # Return raw content if parsing fails, matching Deno behavior
         return {"raw": text}
 
 
 @csrf_exempt
 def diagnose_symptoms(request):
-    """
-    Drop-in replacement for the Supabase 'diagnose' edge function.
-    """
     if not request.user.is_authenticated:
         return HttpResponse(status=401)
 
@@ -79,11 +70,9 @@ def diagnose_symptoms(request):
         content = completion.choices[0].message.content
         logger.info("AI response received")
 
-        # 5. Parse and Return
         diagnosis_result = extract_json_from_text(content)
 
         response = JsonResponse(diagnosis_result)
-        # Add CORS headers to actual response
         response["Access-Control-Allow-Origin"] = "*"
         return response
 
