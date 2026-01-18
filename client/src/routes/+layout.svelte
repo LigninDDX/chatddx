@@ -1,7 +1,12 @@
-<script lang="ts">
-  import type { LayoutData } from './$types';
-  import '../app.css';
+<script>
+  import "../app.css";
+  import { Toaster } from "$lib/components/ui/sonner";
 
-  export let data: LayoutData;
+  let { children } = $props();
 </script>
-<slot />
+
+<div class="app-container">
+  {@render children()}
+</div>
+
+<Toaster />
