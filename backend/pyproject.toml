@@ -1,8 +1,7 @@
 [project]
 name = "chatddx-backend"
 version = "0.0.0+dev"
-description = "Django instance serving chatddx"
-readme = "README.md"
+description = "chatddx backend"
 requires-python = ">=3.12"
 dependencies = [
   "Django>=6.0.2",
@@ -42,18 +41,9 @@ typing = [
 requires = ["uv_build>=0.9.0,<0.10.0"]
 build-backend = "uv_build"
 
-[tool.django-stubs]
-django_settings_module = "chatddx_backend.settings"
-
 [tool.pyright]
 include = ["src"]
-exclude = ["**/__pycache__"]
 ignore = ["**/migrations/*"]
-pythonPlatform = "Linux"
-reportMissingTypeArgument = "information"
-reportPrivateUsage = "information"
-typeCheckingMode = "standard"
-reportAttributeAccessIssue = false
 
 [tool.ruff]
 extend-exclude = ["tests"]
