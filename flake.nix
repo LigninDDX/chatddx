@@ -1,21 +1,16 @@
 {
   description = "build chatddx";
-
   inputs = {
-    nixpkgs.url = "github:kompismoln/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
-
+    nixpkgs.url = "github:kompismoln/nixpkgs/nixos-unstable"; # org-wide version pin
     pyproject-nix = {
       url = "github:pyproject-nix/pyproject.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
     uv2nix = {
       url = "github:pyproject-nix/uv2nix";
       inputs.pyproject-nix.follows = "pyproject-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
     pyproject-build-systems = {
       url = "github:pyproject-nix/build-system-pkgs";
       inputs.pyproject-nix.follows = "pyproject-nix";
@@ -28,136 +23,141 @@
     {
       self,
       nixpkgs,
-      flake-utils,
       uv2nix,
       pyproject-nix,
       pyproject-build-systems,
     }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        inherit (nixpkgs) lib;
-
-        name = "chatddx";
-        version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
-        apiRoot = ./backend;
-        webRoot = ./client;
-        python = pkgs.python312;
-
-        pkgs = nixpkgs.legacyPackages.${system};
-
-        workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
-        overlay = workspace.mkPyprojectOverlay {
-          sourcePreference = "wheel";
-        };
-
-        pyprojectOverrides = _final: _prev: { };
-
-        pythonSet =
-          (pkgs.callPackage pyproject-nix.build.packages {
-            inherit python;
-          }).overrideScope
-            (
-              lib.composeManyExtensions [
-                pyproject-build-systems.overlays.default
-                overlay
-                pyprojectOverrides
-              ]
-            );
-
-        svelte-env = {
-          PUBLIC_API = "http://localhost:8000";
-          PUBLIC_API_SSR = "http://localhost:8000";
-          ORIGIN = "http://localhost:3000";
-        };
-
-        svelte-app = pkgs.buildNpmPackage {
-          pname = "${name}-web";
-          inherit version;
+    let
+      inherit (nixpkgs) lib;
+      name = "chatddx";
+      version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
+      apiRoot = ./backend;
+      webRoot = ./client;
+      forAllSystems = lib.genAttrs lib.systems.flakeExposed;
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
+      overlay = workspace.mkPyprojectOverlay {
+        sourcePreference = "wheel";
+      };
+      editableOverlay = workspace.mkEditablePyprojectOverlay {
+        root = "$BACKEND_ROOT";
+      };
+      pythonSets = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          python = pkgs.python312;
+        in
+        (pkgs.callPackage pyproject-nix.build.packages {
+          inherit python;
+        }).overrideScope
+          (
+            lib.composeManyExtensions [
+              pyproject-build-systems.overlays.wheel
+              overlay
+            ]
+          )
+      );
+    in
+    {
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
           src = webRoot;
-          env = svelte-env;
-          npmDeps = pkgs.importNpmLock { npmRoot = webRoot; };
-          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
+        in
+        rec {
+          svelte-app = pkgs.stdenv.mkDerivation {
+            pname = "${name}-client";
+            inherit src version;
 
-          buildPhase = ''
-            npm run build
-          '';
+            nativeBuildInputs = with pkgs; [
+              nodejs
+              pnpm
+              pnpmConfigHook
+              makeWrapper
+            ];
 
-          installPhase = ''
-            npm prune --production
+            pnpmDeps = pkgs.fetchPnpmDeps {
+              pname = name;
+              inherit src version;
+              fetcherVersion = 2;
+              hash = "sha256-gQPPm/ymE1nuXQdFqRtQIgR7ON3EFV0c7De+F34dRKc=";
+            };
 
-            mkdir -p $out
+            buildPhase = ''
+              runHook preBuild
+              pnpm build
+              runHook postBuild
+            '';
 
-            cp -r build node_modules package.json $out
+            installPhase = ''
+              mkdir -p $out/{lib,bin}
+              cp -r build $out/lib/
+              makeWrapper ${pkgs.nodejs}/bin/node $out/bin/run \
+                --add-flags "$out/lib/build/index.js" \
+                --set NODE_ENV production
+            '';
+          };
 
-            mkdir -p $out/bin
-            cat <<EOF > $out/bin/run
-            #!/usr/bin/env bash
-            # 'exec' replaces the shell process, handling signals better
-            exec ${pkgs.nodejs}/bin/node $out/build
-            EOF
+          # workspace.deps.default excludes dev/test dependency-groups
+          django-app = pythonSets.${system}.mkVirtualEnv "${name}-django-app" workspace.deps.default;
 
-            chmod +x $out/bin/run
-          '';
-        };
+          django-manage = pkgs.writeShellApplication {
+            name = "${name}-django-manage";
+            # manage is also a stand-alone script
+            text = builtins.readFile (apiRoot + /src/chatddx_backend/bin/manage);
+          };
 
-        django-app = pythonSet.mkVirtualEnv "${name}-django-app" workspace.deps.default;
+          django-static = pkgs.stdenv.mkDerivation {
+            pname = "${name}-django-static";
+            inherit version;
+            src = apiRoot;
+            buildPhase = ''
+              export STATIC_ROOT=$out
+              export DJANGO_SETTINGS_MODULE=${name}_backend.settings
+              ${django-app}/bin/django-admin collectstatic --no-input
+            '';
+            installPhase = ":";
+          };
+        }
+      );
 
-        django-manage = pkgs.writeShellApplication {
-          name = "manage";
-          text = builtins.readFile (apiRoot + /src/chatddx_backend/bin/manage);
-        };
-
-        django-static = pkgs.stdenv.mkDerivation {
-          pname = "${name}-django-static";
-          inherit version;
-          src = apiRoot;
-          buildPhase = ''
-            export STATIC_ROOT=$out
-            export DJANGO_SETTINGS_MODULE=chatddx_backend.settings
-            ${django-app}/bin/django-admin collectstatic --no-input
-          '';
-        };
-
-        django-env = {
-          DEBUG = "true";
-          DJANGO_SETTINGS_MODULE = "chatddx_backend.settings";
-          HOST = "localhost";
-          SCHEME = "http";
-          SECRET_KEY_FILE = "./secret_key";
-          STATE_DIR = "./";
-          DJANGO_APP = django-app;
-          DJANGO_STATIC = django-static;
-          DB_NAME = "chatddx";
-        };
-      in
-      {
-        packages = {
-          inherit
-            django-app
-            django-static
-            django-manage
-            svelte-app
-            ;
-        };
-
-        devShells = {
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          pythonSet = pythonSets.${system}.overrideScope editableOverlay;
+          # workspace.deps.all includes dev/test dependency-groups
+          venv = pythonSet.mkVirtualEnv "${name}-venv" workspace.deps.all;
+        in
+        {
           default = pkgs.mkShell {
             inherit name;
             packages = [
-              django-manage
-              django-app
+              (pkgs.writeScriptBin "npm" ''echo "use pnpm"'')
+              (pkgs.writeScriptBin "npx" ''echo "use pnpm dlx"'')
+              venv
+              pkgs.pnpm
               pkgs.uv
               pkgs.nodejs
             ];
-            env = django-env // svelte-env;
+            env = {
+              UV_NO_SYNC = "1";
+              UV_PYTHON = pythonSet.python.interpreter;
+              UV_PYTHON_DOWNLOADS = "never";
+            };
             shellHook = ''
-              export PYTHONPATH="$PYTHONPATH:$(pwd)/backend/src"
+              unset PYTHONPATH
+              export BACKEND_ROOT=$(git rev-parse --show-toplevel)/backend
+              set -a
+              [ -f backend/.env ] && source backend/.env
+              [ -f client/.env ] && source client/.env
+              set +a
               echo "flake: ${version}"
               echo "nixpkgs: ${nixpkgs.shortRev}"
             '';
           };
-        };
-      }
-    );
+        }
+      );
+    };
 }
