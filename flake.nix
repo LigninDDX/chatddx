@@ -28,13 +28,13 @@
       pyproject-build-systems,
     }:
     let
-      inherit (nixpkgs) lib;
       name = "chatddx";
+      inherit (nixpkgs) lib;
+      pyprojectToml = fromTOML (builtins.readFile ./backend/pyproject.toml);
+      djangoApp = builtins.replaceStrings [ "-" ] [ "_" ] pyprojectToml.project.name;
       version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
-      apiRoot = ./backend;
-      webRoot = ./client;
       forAllSystems = lib.genAttrs lib.systems.flakeExposed;
-      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = apiRoot; };
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./backend; };
       overlay = workspace.mkPyprojectOverlay {
         sourcePreference = "wheel";
       };
@@ -59,16 +59,18 @@
       );
     in
     {
+      inherit workspace pythonSets;
+
       packages = forAllSystems (
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          src = webRoot;
         in
         rec {
           svelte-app = pkgs.stdenv.mkDerivation {
             pname = "${name}-client";
-            inherit src version;
+            inherit version;
+            src = ./client;
 
             nativeBuildInputs = with pkgs; [
               nodejs
@@ -79,7 +81,7 @@
 
             pnpmDeps = pkgs.fetchPnpmDeps {
               pname = name;
-              inherit src version;
+              src = ./client;
               fetcherVersion = 2;
               hash = "sha256-gQPPm/ymE1nuXQdFqRtQIgR7ON3EFV0c7De+F34dRKc=";
             };
@@ -100,21 +102,21 @@
           };
 
           # workspace.deps.default excludes dev/test dependency-groups
-          django-app = pythonSets.${system}.mkVirtualEnv "${name}-django-app" workspace.deps.default;
+          django-app = pythonSets.${system}.mkVirtualEnv "${name}-django-${version}" workspace.deps.default;
 
           django-manage = pkgs.writeShellApplication {
-            name = "${name}-django-manage";
+            name = "${name}-django-manage-${version}";
             # manage is also a stand-alone script
-            text = builtins.readFile (apiRoot + /src/chatddx_backend/bin/manage);
+            text = builtins.readFile ./backend/src/${djangoApp}/bin/manage;
           };
 
           django-static = pkgs.stdenv.mkDerivation {
             pname = "${name}-django-static";
             inherit version;
-            src = apiRoot;
+            src = ./backend;
             buildPhase = ''
               export STATIC_ROOT=$out
-              export DJANGO_SETTINGS_MODULE=${name}_backend.settings
+              export DJANGO_SETTINGS_MODULE=${djangoApp}.settings
               ${django-app}/bin/django-admin collectstatic --no-input
             '';
             installPhase = ":";
