@@ -34,19 +34,16 @@ test = [
   "pytest-django>=4.9.0",
 ]
 typing = [
-  "django-stubs[compatible-mypy]>=5.1.1",
-  "mypy>=1.13.0",
+  "django-types>=0.23.0",
+  "pyright>=1.1.408",
 ]
 
 [build-system]
 requires = ["uv_build>=0.9.0,<0.10.0"]
 build-backend = "uv_build"
 
-[tool.ruff]
-extend-exclude = ["tests", "alembic"]
-
-[tool.isort]
-skip = ["alembic"]
+[tool.django-stubs]
+django_settings_module = "chatddx_backend.settings"
 
 [tool.pyright]
 include = ["src"]
@@ -58,15 +55,5 @@ reportPrivateUsage = "information"
 typeCheckingMode = "standard"
 reportAttributeAccessIssue = false
 
-[tool.pytest.ini_options]
-django_find_project = true
-DJANGO_SETTINGS_MODULE = "test.settings"
-python_files = ["tests.py", "test_*.py", "*_tests.py"]
-addopts = "--ds=tests.settings"
-
-[tool.mypy]
-exclude = ["manage.py"]
-plugins = ["mypy_django_plugin.main"]
-
-[tool.django-stubs]
-django_settings_module = "chatddx_backend.settings"
+[tool.ruff]
+extend-exclude = ["tests"]
