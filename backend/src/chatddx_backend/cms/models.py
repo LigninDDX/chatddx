@@ -1,7 +1,7 @@
 from django.db import models
-from django.utils.translation import gettext_lazy as _
-from django.forms.models import model_to_dict 
+from django.forms.models import model_to_dict
 import markdown2
+
 
 class AssistantPage(models.Model):
     class Meta:
@@ -19,6 +19,7 @@ class AssistantPage(models.Model):
     disclaimerClose = models.CharField(max_length=255)
     disclaimerText = models.TextField()
     copyButton = models.CharField(max_length=255)
+
     def __str__(self):
         return str(self.title)
 
@@ -27,4 +28,3 @@ class AssistantPage(models.Model):
         data["disclaimerText"] = markdown2.markdown(data["disclaimerText"])
         data["usageText"] = markdown2.markdown(data["usageText"])
         return data
-

@@ -10,7 +10,7 @@ from django.utils.translation import gettext_lazy as _
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATE_DIR = Path(getenv("STATE_DIR", BASE_DIR))
 
-DEBUG = getenv("DEBUG", "True").lower() in ["true", "1", "yes"]
+DEBUG = getenv("DEBUG", "false").lower() in ["true", "1", "yes"]
 SCHEME = getenv("SCHEME", "http")
 
 if DEBUG:
@@ -73,7 +73,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "chatddx_backend.wsgi.application"
 
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -86,7 +85,7 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "unix:///run/redis-alex/redis.sock?db=0",
+        "LOCATION": getenv("REDIS_CACHE"),
     }
 }
 
