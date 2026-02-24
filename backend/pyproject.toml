@@ -12,9 +12,10 @@ dependencies = [
   "django-unfold>=0.78.1",
   "flower>=2.0.1",
   "gunicorn>=25.0.1",
+  "jsonschema>=4.26.0",
   "markdown2>=2.5.4",
   "openai>=2.16.0",
-  "psycopg2-binary>=2.9.11",
+  "psycopg[binary]>=3.3.2",
   "pydantic-ai>=1.55.0",
   "redis>=7.1.0",
 ]
@@ -26,10 +27,12 @@ dev = [
   { include-group = "typing" },
 ]
 lint = [
+  "isort>=8.0.0",
   "ruff>=0.15.0",
 ]
 test = [
   "pytest>=9.0.2",
+  "pytest-asyncio>=1.3.0",
   "pytest-cov>=7.0.0",
   "pytest-django>=4.11.1",
 ]
@@ -50,6 +53,3 @@ include = ["src"]
 ignore = ["**/migrations/*"]
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false
-
-[tool.ruff]
-extend-exclude = ["tests"]
