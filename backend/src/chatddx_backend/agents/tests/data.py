@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from chatddx_backend.agents.models import Agent, Config, Connection, Schema
+from chatddx_backend.agents.models import Agent, Config, Connection, Schema, Tool
 
 current_dir = Path(__file__).parent
 
@@ -29,6 +29,7 @@ class TestDataSet(BaseModel):
     schemas: dict[str, Schema]
     agents: dict[str, Agent]
     prompts: dict[str, str]
+    tools: dict[str, Tool]
 
 
 def update_set_a():
@@ -39,8 +40,6 @@ def update_set_a():
 
 
 def create_set_a():
-    endpoint = "http://pelle.km:12009/v1"
-    provider = Connection.Provider.VLLM
 
     data = TestDataSet(
         connections={},
@@ -48,16 +47,13 @@ def create_set_a():
         schemas={},
         agents={},
         prompts={},
+        tools={},
     )
 
     data.connections["qwen3_8b"] = Connection.objects.create(
         model=LLModel.QWEN3_8B,
-        provider=provider,
-        endpoint=endpoint,
-    )
-
-    data.configs["passthru"] = Config.objects.create(
-        name="passthru",
+        provider=Connection.Provider.VLLM,
+        endpoint="http://pelle.km:12009/v1",
     )
 
     data.configs["deterministic"] = Config.objects.create(
@@ -67,6 +63,22 @@ def create_set_a():
         seed=0,
     )
 
+    data.configs["no_thinking"] = Config.objects.create(
+        name="no_thinking",
+        seed=0,
+        provider_params={
+            "extra_body": {
+                "chat_template_kwargs": {
+                    "enable_thinking": False,
+                },
+            }
+        },
+    )
+
+    data.schemas["bool"] = Schema.objects.create(
+        name="bool",
+        definition={"type": "bool"},
+    )
     with open(current_dir / "type_check.json") as f:
         data.schemas["type_check"] = Schema.objects.create(
             name="type_check",
@@ -79,19 +91,102 @@ def create_set_a():
             definition=json.load(f),
         )
 
-    data.agents["deterministic_type_check"] = Agent.objects.create(
-        name="deterministic type check",
+    data.tools["dice"] = Tool.objects.create(
+        name="dice",
+        type=Tool.ToolType.FUNCTION,
+    )
+
+    data.tools["get_player_name"] = Tool.objects.create(
+        name="get_player_name",
+        type=Tool.ToolType.FUNCTION,
+    )
+
+    data.tools["is_prime"] = Tool.objects.create(
+        name="is_prime",
+        type=Tool.ToolType.FUNCTION,
+    )
+
+    data.agents["test_structure_tool"] = Agent.objects.create(
+        name="test_structure_tool",
         connection=data.connections["qwen3_8b"],
         validation_strategy=Agent.ValidationStrategy.INFORM,
+        coercion_strategy=Agent.CoercionStrategy.TOOL,
         config=data.configs["deterministic"],
         schema=data.schemas["type_check"],
     )
 
-    data.agents["ddx_management"] = Agent.objects.create(
-        name="ddx management",
+    data.agents["test_structure_prompted"] = Agent.objects.create(
+        name="test_structure_prompted",
         connection=data.connections["qwen3_8b"],
         validation_strategy=Agent.ValidationStrategy.INFORM,
-        config=data.configs["passthru"],
+        coercion_strategy=Agent.CoercionStrategy.PROMPTED,
+        config=data.configs["deterministic"],
+        schema=data.schemas["type_check"],
+    )
+
+    data.agents["test_structure_native"] = Agent.objects.create(
+        name="test_structure_native",
+        connection=data.connections["qwen3_8b"],
+        validation_strategy=Agent.ValidationStrategy.INFORM,
+        coercion_strategy=Agent.CoercionStrategy.NATIVE,
+        config=data.configs["deterministic"],
+        schema=data.schemas["type_check"],
+    )
+
+    data.agents["test_free_text_no_thinking"] = Agent.objects.create(
+        name="test_free_text_no_thinking",
+        connection=data.connections["qwen3_8b"],
+        config=data.configs["no_thinking"],
+    )
+
+    data.agents["test_tools"] = Agent.objects.create(
+        name="test_tools",
+        connection=data.connections["qwen3_8b"],
+        config=data.configs["no_thinking"],
+        instructions=(
+            "You're a dice game, you should roll the die and see if the number "
+            "you get back matches the user's guess. If so, tell them they're a winner. "
+            "use the get_player_name tool to address the user"
+        ),
+    )
+    data.agents["test_tools"].tools.set(
+        [
+            data.tools["dice"],
+            data.tools["get_player_name"],
+        ]
+    )
+
+    data.agents["test_tools"] = Agent.objects.prefetch_related(
+        "tools",
+        "connection",
+        "config",
+    ).get(pk=data.agents["test_tools"].pk)
+
+    data.agents["test_tools_prime"] = Agent.objects.create(
+        name="test_tools_prime",
+        connection=data.connections["qwen3_8b"],
+        use_tools=True,
+        config=data.configs["no_thinking"],
+        instructions=("use the is_prime tool to determine if user's number is a prime"),
+        schema=data.schemas["bool"],
+    )
+    data.agents["test_tools_prime"].tools.set(
+        [
+            data.tools["is_prime"],
+        ]
+    )
+
+    data.agents["test_tools_prime"] = Agent.objects.prefetch_related(
+        "tools",
+        "connection",
+        "config",
+        "schema",
+    ).get(pk=data.agents["test_tools_prime"].pk)
+
+    data.agents["ddx_management"] = Agent.objects.create(
+        name="ddx_management",
+        connection=data.connections["qwen3_8b"],
+        use_tools=True,
         schema=data.schemas["ddx_management"],
     )
 

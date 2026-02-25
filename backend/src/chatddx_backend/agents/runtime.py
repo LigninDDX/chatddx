@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, get_args
 
 import jsonschema
 from pydantic_ai import Agent as PydanticAgent
@@ -10,68 +9,34 @@ from pydantic_ai import (
     RunContext,
     StructuredDict,
 )
+from pydantic_ai import Tool as PydanticTool
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from chatddx_backend.agents.models import Agent
+from chatddx_backend.agents import tools
+from chatddx_backend.agents.models import Agent, Tool
+from chatddx_backend.agents.types import AgentDeps
+
+OutputType = bool | int | str | float | list | dict[str, Any]
 
 
-def filter_none(**kwargs) -> dict:
-    return {k: v for k, v in kwargs.items() if v is not None}
+async def validate_output(ctx: RunContext[AgentDeps], output: OutputType) -> OutputType:
 
+    if ctx.partial_output or ctx.deps.schema is None:
+        return output
 
-@dataclass
-class AgentResult:
-    output: dict[str, Any]
-    validation_error: str | None = None
-
-
-@dataclass(frozen=True)
-class AgentDeps:
-    output_type: dict[str, Any] | None
-    validation_strategy: Agent.ValidationStrategy
-
-
-@dataclass
-class StreamChunk:
-    text: str
-
-
-@dataclass
-class StreamComplete:
-    output: dict
-
-
-@dataclass
-class StreamValidationError:
-    output: dict
-    error: str
-
-
-StreamEvent = StreamChunk | StreamComplete | StreamValidationError
-
-
-class ValidationInformError(Exception):
-    def __init__(self, message: str, output: dict[str, Any]):
-        super().__init__(message)
-        self.output = output
-
-
-async def validate_output(
-    ctx: RunContext[AgentDeps], output: dict[str, Any]
-) -> dict[str, Any]:
-
-    if ctx.deps.output_type is None or ctx.partial_output:
+    if not isinstance(output, dict):
         return output
 
     try:
-        jsonschema.validate(instance=output, schema=ctx.deps.output_type)
+        jsonschema.validate(instance=output, schema=ctx.deps.schema)
         return output
     except jsonschema.ValidationError as e:
         if ctx.deps.validation_strategy == Agent.ValidationStrategy.RETRY:
             raise ModelRetry(e.message) from e
         if ctx.deps.validation_strategy == Agent.ValidationStrategy.INFORM:
-            raise ValidationInformError(e.message, output) from e
+            return output | {"__error__": e.message}
         if ctx.deps.validation_strategy == Agent.ValidationStrategy.CRASH:
             raise RuntimeError(f"Validation failed: {e.message}") from e
 
@@ -80,78 +45,125 @@ async def validate_output(
     )
 
 
-def build_pydantic_agent(agent):
+def build_model(agent):
     if agent.connection is None:
         raise ValueError("No connection defined for this agent.")
-    if agent.config is None:
-        raise ValueError("No config defined for this agent.")
-    if agent.output_type is None:
-        raise ValueError("No output type defined for this agent.")
 
-    pa = PydanticAgent(
-        OpenAIChatModel(
-            model_name=agent.connection.model,
-            provider=OpenAIProvider(base_url=agent.connection.endpoint),
-            # profile=ModelProfile(
-            #     default_structured_output_mode="prompted",
-            #     ignore_streamed_leading_whitespace=True,
-            # ),
-        ),
+    model_kwargs: dict[str, Any] = {}
+    profile_kwargs: dict[str, Any] = {}
+
+    if agent.coercion_strategy == "native":
+        profile_kwargs["supports_json_schema_output"] = True
+
+    if agent.coercion_strategy == "prompted":
+        profile_kwargs["ignore_streamed_leading_whitespace"] = True
+
+    if agent.coercion_strategy in get_args(StructuredOutputMode):
+        profile_kwargs["default_structured_output_mode"] = agent.coercion_strategy
+        model_kwargs["profile"] = ModelProfile(**profile_kwargs)
+
+    model_kwargs["model_name"] = agent.connection.model
+    model_kwargs["provider"] = OpenAIProvider(base_url=agent.connection.endpoint)
+
+    return OpenAIChatModel(**model_kwargs)
+
+
+def build_settings(agent):
+    if agent.config is None:
+        return None
+
+    settings_kwargs: dict[str, Any] = {}
+    if agent.config.seed is not None:
+        settings_kwargs["seed"] = agent.config.seed
+
+    if agent.config.temperature is not None:
+        settings_kwargs["temperature"] = agent.config.temperature
+
+    if agent.config.provider_params is not None:
+        settings_kwargs.update(agent.config.provider_params)
+
+    return ModelSettings(**settings_kwargs)
+
+
+def build_tools(agent):
+    return [
+        PydanticTool(
+            getattr(tools, tool.name),
+            takes_ctx=True,
+        )
+        for tool in agent.tools.all()
+        if tool.type == Tool.ToolType.FUNCTION
+    ]
+
+
+def build_pydantic_agent(agent):
+
+    model = build_model(agent)
+    model_settings = build_settings(agent)
+
+    tools = []
+    if agent.use_tools:
+        tools = build_tools(agent)
+
+    if agent.schema is None:
+        output_type = str
+        schema = None
+    else:
+        schema = agent.schema.definition
+        match agent.schema.definition.get("type"):
+            case "bool":
+                output_type = bool
+            case "integer":
+                output_type = int
+            case "number":
+                output_type = float
+            case "array":
+                output_type = list
+            case "object":
+                output_type = StructuredDict(agent.schema.definition)
+            case _:
+                invalid_type = agent.schema.definition.get("type")
+                raise ValueError(f"Unexpected schema type '{invalid_type}'")
+
+    pydantic_agent = PydanticAgent(
+        model,
         name=agent.name,
         instructions=agent.instructions,
+        tools=tools,
         deps_type=AgentDeps,
-        output_type=StructuredDict(agent.output_type),
-        model_settings=ModelSettings(
-            **filter_none(
-                seed=agent.config.seed,
-                temperature=agent.config.temperature,
-            )
-        ),
+        output_type=output_type,
+        model_settings=model_settings,
     )
-    pa.output_validator(validate_output)
 
-    return pa
+    if agent.validation_strategy != Agent.ValidationStrategy.NONE:
+        pydantic_agent.output_validator(validate_output)
 
-
-def build_prompt_deps(agent):
-    return AgentDeps(
-        output_type=agent.output_type,
+    agent_deps = AgentDeps(
+        schema=schema,
         validation_strategy=Agent.ValidationStrategy(agent.validation_strategy),
     )
 
+    return pydantic_agent, agent_deps
+
 
 async def run_stream(agent: Agent, prompt: str):
-    pa: PydanticAgent[AgentDeps, dict[str, Any]] = build_pydantic_agent(agent)
-    deps: AgentDeps = build_prompt_deps(agent)
+    pa, deps = build_pydantic_agent(agent)
 
     async with pa.run_stream(prompt, deps=deps) as result:
         async for chunk in result.stream_output(debounce_by=0.1):
             yield chunk
 
 
-async def run_async(agent: Agent, prompt: str) -> AgentResult:
-    pa = build_pydantic_agent(agent)
-    deps = build_prompt_deps(agent)
-
-    try:
-        r = await pa.run(prompt, deps=deps)
-    except ValidationInformError as e:
-        result = AgentResult(output=e.output, validation_error=str(e))
-    else:
-        result = AgentResult(output=r.output)
-
+async def run_async(agent: Agent, prompt: str):
+    pa, deps = build_pydantic_agent(agent)
+    result = await pa.run(
+        prompt,
+        deps=deps,
+    )
     return result
 
 
 def run_sync(agent, prompt):
-    pa = build_pydantic_agent(agent)
-    deps = build_prompt_deps(agent)
-
-    try:
-        r = pa.run_sync(prompt, deps=deps)
-    except ValidationInformError as e:
-        result = AgentResult(output=e.output, validation_error=str(e))
-    else:
-        result = AgentResult(output=r.output)
-
+    pa, deps = build_pydantic_agent(agent)
+    result = pa.run_sync(prompt, deps=deps)
     return result

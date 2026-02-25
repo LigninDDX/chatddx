@@ -10,6 +10,7 @@ from django.db.models import (
     CASCADE,
     PROTECT,
     SET_DEFAULT,
+    BooleanField,
     CharField,
     DateTimeField,
     FloatField,
@@ -186,6 +187,9 @@ class Tool(Model):
         help_text="The type of tool.",
     )
     parameters = JSONField(
+        default=None,
+        null=True,
+        blank=True,
         help_text=(
             "JSON Schema describing the tool's parameters.\n"
             'Example: {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}'
@@ -215,17 +219,18 @@ class Schema(Model):
 
 class Agent(Model):
     class ValidationStrategy(TextChoices):
+        NONE = "none"
         RETRY = "retry"
         INFORM = "inform"
         CRASH = "crash"
 
+    class CoercionStrategy(TextChoices):
+        PROMPTED = "prompted"
+        TOOL = "tool"
+        NATIVE = "native"
+
     name = CharField(max_length=255, unique=True)
     instructions = TextField()
-    validation_strategy = CharField(
-        max_length=255,
-        default=ValidationStrategy.INFORM,
-        choices=ValidationStrategy.choices,
-    )
     connection = ForeignKey(
         Connection,
         related_name="agents",
@@ -254,24 +259,21 @@ class Agent(Model):
         Tool,
         blank=True,
     )
-    tool_choice = JSONField(
-        default=None,
-        null=True,
-        blank=True,
+    use_tools = BooleanField(
+        default=False,
     )
-
-    @property
-    def output_type(self):
-
-        if self.schema is None:
-            return None
-
-        schema = jsonref.replace_refs(self.schema.definition, proxies=False)
-
-        if not isinstance(schema, dict):
-            raise TypeError(f"Expected dict from jsonref, got {type(schema)}")
-
-        return dict(schema)
+    validation_strategy = CharField(
+        max_length=255,
+        default=ValidationStrategy.INFORM,
+        choices=ValidationStrategy.choices,
+    )
+    coercion_strategy = CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True,
+        choices=CoercionStrategy.choices,
+    )
 
     @override
     def __str__(self):

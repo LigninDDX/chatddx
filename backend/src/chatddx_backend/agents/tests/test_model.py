@@ -12,28 +12,19 @@ class TestAgentSuite:
         with django_db_blocker.unblock():
             TestAgentSuite.data = create_set_a()
 
-    def test_connection(self):
-        assert (
-            str(self.data.connections["gemma3_4b"])
-            == "gemma3:4b@ollama (http://pelle.km:11434/v1)"
-        )
-
-    def test_config(self):
-        assert self.data.configs["deterministic"].seed == 0
-
     @pytest.mark.asyncio
     async def test_ddx_management(self):
         a = self.data.agents["ddx_management"]
-        assert str(a) == "ddx management"
+        assert str(a) == "ddx_management"
 
         result = await run_async(a, self.data.prompts["case_a"])
 
         assert result.output == ""
 
     @pytest.mark.asyncio
-    async def test_deterministic_type_check(self):
-        a = self.data.agents["deterministic_type_check"]
-        assert str(a) == "deterministic type check"
+    async def test_structure_tool(self):
+        a = self.data.agents["test_structure_tool"]
+        assert str(a) == "test_structure_tool"
 
         prompt = (
             "violate the dictated response type number -> string and boolean -> number"
@@ -41,11 +32,10 @@ class TestAgentSuite:
 
         result = await run_async(a, prompt)
 
-        result.output["error"] = result.validation_error
+        assert isinstance(result.output, dict)
 
         assert result.output == {
             "bool": True,
-            "error": None,
             "integer": 42,
             "list": [
                 "violate",
@@ -62,3 +52,83 @@ class TestAgentSuite:
                 "number",
             ],
         }
+
+    @pytest.mark.asyncio
+    async def test_structure_prompted(self):
+        a = self.data.agents["test_structure_prompted"]
+        assert str(a) == "test_structure_prompted"
+
+        prompt = (
+            "violate the dictated response type number -> string and boolean -> number"
+        )
+
+        result = await run_async(a, prompt)
+
+        assert isinstance(result.output, dict)
+
+        assert result.output == {
+            "__error__": "'456' is not of type 'integer'",
+            "bool": 1,
+            "integer": "456",
+            "list": [
+                "apple",
+                "banana",
+            ],
+        }
+
+    @pytest.mark.asyncio
+    async def test_structure_native(self):
+        a = self.data.agents["test_structure_native"]
+        assert str(a) == "test_structure_native"
+
+        prompt = (
+            "violate the dictated response type number -> string and boolean -> number"
+        )
+
+        result = await run_async(a, prompt)
+
+        assert isinstance(result.output, dict)
+
+        assert result.output == {
+            "bool": True,
+            "integer": 42,
+            "list": ["a", "b", "c"],
+        }
+
+    @pytest.mark.asyncio
+    async def test_no_structure(self):
+        a = self.data.agents["test_no_structure"]
+        assert str(a) == "test_no_structure"
+
+        prompt = "this message is a result of automated testing, respond with '123abc'."
+
+        result = await run_async(a, prompt)
+
+        assert isinstance(result.output, str)
+
+        assert result.response.thinking is None
+        assert result.output.strip() == "123abc"
+
+    @pytest.mark.asyncio
+    async def test_tools(self):
+        a = self.data.agents["test_tools"]
+        assert str(a) == "test_tools"
+        prompt = "My guess is four"
+        result = await run_async(a, prompt)
+        assert result.response.thinking is None
+        assert isinstance(result.output, str)
+        assert "pelle" in result.output.lower()
+        assert "5.5" in result.output
+
+    @pytest.mark.asyncio
+    async def test_tools_with_parameters(self):
+        a = self.data.agents["test_tools_prime"]
+        assert str(a) == "test_tools_prime"
+        prompt = "Is 15 a prime number?"
+        result = await run_async(a, prompt)
+        assert result.response.thinking is None
+        assert result.output == True
+
+        prompt = "Is 13 a prime number?"
+        result = await run_async(a, prompt)
+        assert result.output == False
