@@ -1,18 +1,16 @@
 # src/chatddx_backend/agents/models.py
 from __future__ import annotations
 
-import hashlib
-import json
 import uuid
-from typing import Any, Self, override
+from typing import Any, Iterable, Self, Tuple, override
 
 import jsonref
 import jsonschema
 from django.conf import settings
+from django.contrib.postgres.fields.array import ArrayField
 from django.core.exceptions import ValidationError
-from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import transaction
+from django.db import DatabaseError, connection
 from django.db.models import (
     CASCADE,
     SET_DEFAULT,
@@ -24,7 +22,6 @@ from django.db.models import (
     Index,
     IntegerField,
     JSONField,
-    ManyToManyField,
     Model,
     PositiveIntegerField,
     TextChoices,
@@ -34,6 +31,10 @@ from django.db.models import (
     manager,
 )
 from django.utils import timezone
+
+from chatddx_backend.agents.utils import camel_to_snake
+
+DjangoChoices = Iterable[Tuple[Any, str]]
 
 
 def validate_json_schema(value: dict[str, Any] | None):
@@ -49,6 +50,25 @@ def validate_json_schema(value: dict[str, Any] | None):
         raise ValidationError(f"Invalid JSON Reference: {e.message}")
 
 
+class RelatedArrayField(ArrayField):  # type: ignore[type-arg]
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        return super().__new__(cls)  # type: ignore[call-overload]
+
+    def __init__(
+        self,
+        *args: Any,
+        related_model: type[TrailModel],
+        **kwargs: Any,
+    ) -> None:
+        self.related_model: type[TrailModel] = related_model
+        super().__init__(*args, **kwargs)
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        kwargs["related_model"] = self.related_model
+        return name, path, args, kwargs
+
+
 class TrailModel(Model):
     name = CharField(
         max_length=255,
@@ -58,7 +78,6 @@ class TrailModel(Model):
     fingerprint = CharField(
         max_length=64,
         db_index=True,
-        unique=True,
         help_text="Fingerprint for this configuration",
     )
     created_at = DateTimeField(
@@ -72,6 +91,7 @@ class TrailModel(Model):
         abstract = True
         ordering = ["-updated_at"]
         get_latest_by = "updated_at"
+        unique_together = (("name", "fingerprint"),)
         indexes = [
             Index(
                 fields=[
@@ -82,57 +102,97 @@ class TrailModel(Model):
         ]
 
     @classmethod
-    def upsert_state(cls, **kwargs: Any) -> Self:
-        m2m_field_names = {f.name for f in cls._meta.many_to_many}
+    def record_name(cls) -> str:
+        return camel_to_snake(cls.__name__)
 
+    @classmethod
+    def upsert(cls, **kwargs: Any) -> Self:
         concrete_data = {}
-        m2m_data: dict[str, list[int]] = {}
 
         for key, value in kwargs.items():
-            if key in m2m_field_names:
-                m2m_data[key] = value or []
-            else:
-                concrete_data[key] = value
+            concrete_data[key] = value
 
-        instance = cls(**concrete_data)
+        return cls.objects.get(
+            pk=cls(**concrete_data).resolve(),
+        )
 
-        instance.fingerprint = instance._generate_fingerprint(m2m_data)
+    def resolve(self) -> Self:
+        ignore_fields = {"id", "name", "created_at", "updated_at", "fingerprint"}
+
+        db_fields: list[str] = []
+        db_values: list[Any] = []
+
+        hash_values: list[Any] = []
+        jsonb_args: list[str] = []
 
         now = timezone.now()
-        instance.updated_at = now
-        instance.created_at = now
-
-        with transaction.atomic():
-            cls.objects.bulk_create(
-                [instance],
-                update_conflicts=True,
-                unique_fields=["fingerprint"],
-                update_fields=["updated_at"],
-            )
-
-            saved_instance = cls.objects.get(fingerprint=instance.fingerprint)
-
-            if saved_instance.created_at == saved_instance.updated_at:
-                for m2m_name, items in m2m_data.items():
-                    getattr(saved_instance, m2m_name).set(items)
-
-        return saved_instance
-
-    def _generate_fingerprint(self, m2m_data: dict[str, list[Any]]) -> str:
-        payload = {}
-        ignore_fields = {"id", "created_at", "updated_at", "fingerprint"}
+        self.updated_at = now
+        self.created_at = now
 
         for field in self._meta.concrete_fields:
+            if field.primary_key:
+                continue
+
+            value = field.get_db_prep_save(getattr(self, field.attname), connection)
+
             if field.name not in ignore_fields:
-                value = getattr(self, field.attname)
-                payload[field.name] = value
+                hash_values.append(value)
+                jsonb_args.append(f"'{field.column}'")
 
-        for key, items in m2m_data.items():
-            pks = [item.pk if hasattr(item, "pk") else item for item in items]
-            payload[key] = sorted(pks)
+                if isinstance(field, DecimalField):
+                    jsonb_args.append(
+                        f"%s::numeric({field.max_digits}, {field.decimal_places})"
+                    )
+                else:
+                    jsonb_args.append("%s")
 
-        serialized = json.dumps(payload, sort_keys=True, cls=DjangoJSONEncoder)
-        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+            if field.name != "fingerprint":
+                db_fields.append(field.column)
+                db_values.append(value)
+
+        qn = connection.ops.quote_name
+        table_name = qn(self._meta.db_table)
+
+        jsonb_expr = f"jsonb_build_object({', '.join(jsonb_args)})"
+
+        fingerprint_expr = f"encode(sha256(CAST({jsonb_expr} AS text)::bytea), 'hex')"
+
+        all_insert_cols = db_fields + ["fingerprint"]
+        field_names = ", ".join(qn(f) for f in all_insert_cols)
+
+        placeholders_list = ["%s"] * len(db_fields)
+        placeholders_list.append(fingerprint_expr)
+        placeholders = ", ".join(placeholders_list)
+
+        final_values = db_values + hash_values
+
+        conflict_target = qn("name") + ", " + qn("fingerprint")
+        update_col = qn("updated_at")
+
+        sql = f"""
+            INSERT INTO {table_name} ({field_names})
+            VALUES ({placeholders})
+            ON CONFLICT ({conflict_target})
+            DO UPDATE SET {update_col} = EXCLUDED.{update_col}
+            RETURNING id, fingerprint, (xmax = 0) AS is_created;
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(sql, final_values)
+            result = cursor.fetchone()
+
+            if not result:
+                raise DatabaseError("Upsert failed: No rows returned from Postgres.")
+
+        pk, fingerprint, is_created = result
+        self.pk = pk
+        self.fingerprint = fingerprint
+
+        return pk
+
+    @override
+    def __str__(self):
+        return self.name
 
 
 class Connection(TrailModel):
@@ -143,30 +203,18 @@ class Connection(TrailModel):
         OLLAMA = "ollama"
         VLLM = "vllm"
 
-    name = CharField(
-        max_length=255,
-        unique=True,
-        help_text="Unique identifier for this connection.",
-    )
     provider = CharField(max_length=255, choices=Provider.choices)
     model = CharField(max_length=255)
-    endpoint = URLField(max_length=255)
-
-    @override
-    def __str__(self):
-        return f"{self.model}@{self.provider} ({self.endpoint})"
+    endpoint = URLField(max_length=2048)
 
 
-class Config(TrailModel):
-    name = CharField(
-        max_length=255,
-        unique=True,
-        help_text="Unique identifier for this configuration.",
-    )
+class SamplingParams(TrailModel):
     temperature = DecimalField(
         default=None,
         null=True,
         blank=True,
+        decimal_places=2,
+        max_digits=3,
         validators=[
             MinValueValidator(0),
             MaxValueValidator(2),
@@ -180,6 +228,8 @@ class Config(TrailModel):
         default=None,
         null=True,
         blank=True,
+        decimal_places=2,
+        max_digits=3,
         validators=[
             MinValueValidator(0),
             MaxValueValidator(1),
@@ -224,6 +274,8 @@ class Config(TrailModel):
         default=None,
         null=True,
         blank=True,
+        decimal_places=2,
+        max_digits=3,
         help_text=(
             "Penalty for using tokens that have already appeared, encouraging "
             "the model to introduce new topics (typically -2.0 to 2.0)."
@@ -233,12 +285,34 @@ class Config(TrailModel):
         default=None,
         null=True,
         blank=True,
+        decimal_places=2,
+        max_digits=3,
         help_text=(
             "Penalty based on how often tokens appear, reducing repetition "
             "(typically -2.0 to 2.0)."
         ),
     )
-    stop_sequences = JSONField[list[str] | None](
+    logit_bias: JSONField[dict[str, float]] = JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Adjusts likelihood of specific tokens appearing in the output.\n"
+            "Examples: {'50256': -100} (suppress token), "
+            "{'12345': 10, '67890': 5} (boost tokens)"
+        ),
+    )
+    provider_params: JSONField[dict[str, Any]] = JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Provider-specific parameters not covered by standard fields.\n"
+            'Examples: {"response_format": {"type": "json_object"}}, '
+            '{"anthropic_version": "2023-06-01", "thinking": {"type": "enabled"}}'
+        ),
+    )
+    # None = don't touch
+    # [] = actively clear stop sequences upstream
+    stop_sequences: JSONField[list[str] | None] = JSONField(
         default=None,
         null=True,
         blank=True,
@@ -247,30 +321,13 @@ class Config(TrailModel):
             'Examples: ["\\n\\n", "END"], ["\\"\\"\\""]'
         ),
     )
-    logit_bias = JSONField[dict[str, float] | None](
-        default=None,
-        null=True,
-        blank=True,
-        help_text=(
-            "Adjusts likelihood of specific tokens appearing in the output.\n"
-            "Examples: {'50256': -100} (suppress token), "
-            "{'12345': 10, '67890': 5} (boost tokens)"
-        ),
-    )
-    provider_params = JSONField[dict[str, Any] | None](
-        default=None,
-        null=True,
-        blank=True,
-        help_text=(
-            "Provider-specific parameters not covered by standard fields.\n"
-            'Examples: {"response_format": {"type": "json_object"}}, '
-            '{"anthropic_version": "2023-06-01", "thinking": {"type": "enabled"}}'
-        ),
-    )
 
-    @override
-    def __str__(self):
-        return self.name
+
+class Schema(TrailModel):
+    definition: JSONField[dict[str, Any]] = JSONField(
+        validators=[validate_json_schema],
+        help_text="A valid JSON Schema defining the expected agent response structure.",
+    )
 
 
 class Tool(TrailModel):
@@ -280,20 +337,15 @@ class Tool(TrailModel):
         FILE_SEARCH = "file_search", "File Search"
         WEB_SEARCH = "web_search", "Web Search"
 
-    name = CharField(
-        max_length=255,
-        unique=True,
-        help_text="Unique identifier for this tool.",
-    )
+    description = TextField()
     type = CharField(
         max_length=50,
         choices=ToolType.choices,
         default=ToolType.FUNCTION,
         help_text="The type of tool.",
     )
-    parameters = JSONField[dict[str, Any]](
-        default=None,
-        null=True,
+    parameters: JSONField[dict[str, Any]] = JSONField(
+        default=dict,
         blank=True,
         help_text=(
             "JSON Schema describing the tool's parameters.\n"
@@ -301,30 +353,22 @@ class Tool(TrailModel):
         ),
     )
 
-    @override
-    def __str__(self):
-        return self.name
 
+class ToolGroup(TrailModel):
+    instructions = TextField()
 
-class Schema(TrailModel):
-    name = CharField(
-        max_length=255,
-        unique=True,
-        help_text="Unique identifier for this schema.",
+    tools = RelatedArrayField(
+        IntegerField(),
+        related_model=Tool,
+        blank=True,
+        default=list,
+        help_text="Snapshot of tool IDs attached to this configuration version.",
     )
-    definition = JSONField[dict[str, Any]](
-        validators=[validate_json_schema],
-        help_text="A valid JSON Schema defining the expected agent response structure.",
-    )
-
-    @override
-    def __str__(self):
-        return self.name
 
 
 class Agent(TrailModel):
     class ValidationStrategy(TextChoices):
-        NONE = "none"
+        NOOP = "noop"
         RETRY = "retry"
         INFORM = "inform"
         CRASH = "crash"
@@ -334,7 +378,6 @@ class Agent(TrailModel):
         TOOL = "tool"
         NATIVE = "native"
 
-    name = CharField(max_length=255, unique=True)
     instructions = TextField()
     connection = ForeignKey(
         Connection,
@@ -344,8 +387,8 @@ class Agent(TrailModel):
         blank=True,
         on_delete=SET_DEFAULT,
     )
-    config = ForeignKey(
-        Config,
+    sampling_params = ForeignKey(
+        SamplingParams,
         related_name="agents",
         default=None,
         null=True,
@@ -360,18 +403,24 @@ class Agent(TrailModel):
         blank=True,
         on_delete=SET_DEFAULT,
     )
-    tools: ManyToManyField[Tool, Tool] = ManyToManyField[Tool, Tool](
-        Tool,
+    tool_group = ForeignKey(
+        ToolGroup,
+        related_name="agents",
+        default=None,
+        null=True,
         blank=True,
+        on_delete=SET_DEFAULT,
     )
     use_tools = BooleanField(
         default=False,
     )
+    # Cannot be None; use ValidationStrategy.NOOP to explicitly disable
     validation_strategy = CharField(
         max_length=255,
         default=ValidationStrategy.INFORM,
         choices=ValidationStrategy.choices,
     )
+    # None = defer to upstream default; bypasses use_tools when set to TOOL.
     coercion_strategy = CharField(
         max_length=255,
         default=None,
@@ -379,10 +428,6 @@ class Agent(TrailModel):
         null=True,
         choices=CoercionStrategy.choices,
     )
-
-    @override
-    def __str__(self):
-        return self.name
 
 
 class Session(Model):
@@ -423,7 +468,7 @@ class Message(Model):
 
     role = CharField(max_length=255, choices=Role.choices)
     run_id = UUIDField(db_index=True)
-    payload = JSONField[dict[str, Any]]()
+    payload: JSONField[dict[str, Any]] = JSONField()
     timestamp = DateTimeField()
 
     session = ForeignKey(
