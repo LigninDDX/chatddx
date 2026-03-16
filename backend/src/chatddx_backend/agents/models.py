@@ -1,20 +1,27 @@
+# src/chatddx_backend/agents/models.py
 from __future__ import annotations
 
-from typing import override
+import hashlib
+import json
+import uuid
+from typing import Any, Self, override
 
 import jsonref
 import jsonschema
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import transaction
 from django.db.models import (
     CASCADE,
-    PROTECT,
     SET_DEFAULT,
     BooleanField,
     CharField,
     DateTimeField,
-    FloatField,
+    DecimalField,
     ForeignKey,
+    Index,
     IntegerField,
     JSONField,
     ManyToManyField,
@@ -23,22 +30,112 @@ from django.db.models import (
     TextChoices,
     TextField,
     URLField,
+    UUIDField,
+    manager,
 )
+from django.utils import timezone
 
 
-def validate_json_schema(value):
+def validate_json_schema(value: dict[str, Any] | None):
     if value is None:
         return
     try:
         jsonschema.Draft7Validator.check_schema(value)
-        jsonref.replace_refs(value)
+
+        jsonref.replace_refs(value)  # type: ignore[no-untyped-call]
     except jsonschema.SchemaError as e:
         raise ValidationError(f"Invalid JSON Schema: {e.message}")
     except jsonref.JsonRefError as e:
         raise ValidationError(f"Invalid JSON Reference: {e.message}")
 
 
-class Connection(Model):
+class TrailModel(Model):
+    name = CharField(
+        max_length=255,
+        db_index=True,
+        help_text="Identifier for this record, last update is considered canon.",
+    )
+    fingerprint = CharField(
+        max_length=64,
+        db_index=True,
+        unique=True,
+        help_text="Fingerprint for this configuration",
+    )
+    created_at = DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ["-updated_at"]
+        get_latest_by = "updated_at"
+        indexes = [
+            Index(
+                fields=[
+                    "name",
+                    "-updated_at",
+                ]
+            ),
+        ]
+
+    @classmethod
+    def upsert_state(cls, **kwargs: Any) -> Self:
+        m2m_field_names = {f.name for f in cls._meta.many_to_many}
+
+        concrete_data = {}
+        m2m_data: dict[str, list[int]] = {}
+
+        for key, value in kwargs.items():
+            if key in m2m_field_names:
+                m2m_data[key] = value or []
+            else:
+                concrete_data[key] = value
+
+        instance = cls(**concrete_data)
+
+        instance.fingerprint = instance._generate_fingerprint(m2m_data)
+
+        now = timezone.now()
+        instance.updated_at = now
+        instance.created_at = now
+
+        with transaction.atomic():
+            cls.objects.bulk_create(
+                [instance],
+                update_conflicts=True,
+                unique_fields=["fingerprint"],
+                update_fields=["updated_at"],
+            )
+
+            saved_instance = cls.objects.get(fingerprint=instance.fingerprint)
+
+            if saved_instance.created_at == saved_instance.updated_at:
+                for m2m_name, items in m2m_data.items():
+                    getattr(saved_instance, m2m_name).set(items)
+
+        return saved_instance
+
+    def _generate_fingerprint(self, m2m_data: dict[str, list[Any]]) -> str:
+        payload = {}
+        ignore_fields = {"id", "created_at", "updated_at", "fingerprint"}
+
+        for field in self._meta.concrete_fields:
+            if field.name not in ignore_fields:
+                value = getattr(self, field.attname)
+                payload[field.name] = value
+
+        for key, items in m2m_data.items():
+            pks = [item.pk if hasattr(item, "pk") else item for item in items]
+            payload[key] = sorted(pks)
+
+        serialized = json.dumps(payload, sort_keys=True, cls=DjangoJSONEncoder)
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+class Connection(TrailModel):
     class Provider(TextChoices):
         OPENAI = "openai"
         ANTHROPIC = "anthropic"
@@ -46,6 +143,11 @@ class Connection(Model):
         OLLAMA = "ollama"
         VLLM = "vllm"
 
+    name = CharField(
+        max_length=255,
+        unique=True,
+        help_text="Unique identifier for this connection.",
+    )
     provider = CharField(max_length=255, choices=Provider.choices)
     model = CharField(max_length=255)
     endpoint = URLField(max_length=255)
@@ -55,13 +157,13 @@ class Connection(Model):
         return f"{self.model}@{self.provider} ({self.endpoint})"
 
 
-class Config(Model):
+class Config(TrailModel):
     name = CharField(
         max_length=255,
         unique=True,
         help_text="Unique identifier for this configuration.",
     )
-    temperature = FloatField(
+    temperature = DecimalField(
         default=None,
         null=True,
         blank=True,
@@ -74,7 +176,7 @@ class Config(Model):
             "lower values make output more deterministic."
         ),
     )
-    top_p = FloatField(
+    top_p = DecimalField(
         default=None,
         null=True,
         blank=True,
@@ -118,7 +220,7 @@ class Config(Model):
         blank=True,
         help_text="Number of response variations to generate for each prompt.",
     )
-    presence_penalty = FloatField(
+    presence_penalty = DecimalField(
         default=None,
         null=True,
         blank=True,
@@ -127,7 +229,7 @@ class Config(Model):
             "the model to introduce new topics (typically -2.0 to 2.0)."
         ),
     )
-    frequency_penalty = FloatField(
+    frequency_penalty = DecimalField(
         default=None,
         null=True,
         blank=True,
@@ -136,16 +238,18 @@ class Config(Model):
             "(typically -2.0 to 2.0)."
         ),
     )
-    stop_sequences = JSONField(
-        default=list,
+    stop_sequences = JSONField[list[str] | None](
+        default=None,
+        null=True,
         blank=True,
         help_text=(
             "List of strings that will stop generation when encountered.\n"
             'Examples: ["\\n\\n", "END"], ["\\"\\"\\""]'
         ),
     )
-    logit_bias = JSONField(
-        default=dict,
+    logit_bias = JSONField[dict[str, float] | None](
+        default=None,
+        null=True,
         blank=True,
         help_text=(
             "Adjusts likelihood of specific tokens appearing in the output.\n"
@@ -153,8 +257,9 @@ class Config(Model):
             "{'12345': 10, '67890': 5} (boost tokens)"
         ),
     )
-    provider_params = JSONField(
-        default=dict,
+    provider_params = JSONField[dict[str, Any] | None](
+        default=None,
+        null=True,
         blank=True,
         help_text=(
             "Provider-specific parameters not covered by standard fields.\n"
@@ -168,7 +273,7 @@ class Config(Model):
         return self.name
 
 
-class Tool(Model):
+class Tool(TrailModel):
     class ToolType(TextChoices):
         FUNCTION = "function", "Function"
         CODE_INTERPRETER = "code_interpreter", "Code Interpreter"
@@ -186,7 +291,7 @@ class Tool(Model):
         default=ToolType.FUNCTION,
         help_text="The type of tool.",
     )
-    parameters = JSONField(
+    parameters = JSONField[dict[str, Any]](
         default=None,
         null=True,
         blank=True,
@@ -201,13 +306,13 @@ class Tool(Model):
         return self.name
 
 
-class Schema(Model):
+class Schema(TrailModel):
     name = CharField(
         max_length=255,
         unique=True,
         help_text="Unique identifier for this schema.",
     )
-    definition = JSONField(
+    definition = JSONField[dict[str, Any]](
         validators=[validate_json_schema],
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
@@ -217,7 +322,7 @@ class Schema(Model):
         return self.name
 
 
-class Agent(Model):
+class Agent(TrailModel):
     class ValidationStrategy(TextChoices):
         NONE = "none"
         RETRY = "retry"
@@ -255,7 +360,7 @@ class Agent(Model):
         blank=True,
         on_delete=SET_DEFAULT,
     )
-    tools = ManyToManyField(
+    tools: ManyToManyField[Tool, Tool] = ManyToManyField[Tool, Tool](
         Tool,
         blank=True,
     )
@@ -281,33 +386,45 @@ class Agent(Model):
 
 
 class Session(Model):
-    title = CharField(max_length=255, unique=True)
-    agent = ForeignKey(Agent, on_delete=PROTECT)
-    started_at = DateTimeField(auto_now_add=True)
+    uuid = UUIDField(default=uuid.uuid4, editable=False)
+    description = TextField()
+    agent = ForeignKey(
+        Agent,
+        default=None,
+        null=True,
+        blank=True,
+        on_delete=SET_DEFAULT,
+    )
+    created_at = DateTimeField(auto_now_add=True)
+    user = ForeignKey(
+        settings.AUTH_USER_MODEL,
+        default=None,
+        null=True,
+        blank=True,
+        on_delete=SET_DEFAULT,
+    )
+
+    messages: manager.RelatedManager[Message]
 
     @override
     def __str__(self):
-        return self.title
+        return self.description
 
 
 class Message(Model):
     class Meta:
-        ordering = ["sequence"]
-        unique_together = [["session", "sequence"]]
+        ordering = ["pk"]
 
     class Role(TextChoices):
         SYSTEM = "system", "System"
         USER = "user", "User"
         ASSISTANT = "assistant", "Assistant"
         TOOL = "tool", "Tool"
-        DEVELOPER = "developer", "Developer"
-        THOUGHT = "thought", "Thought"
-        REASONING = "reasoning", "Reasoning"
 
-    role = CharField(max_length=32, choices=Role.choices)
-    payload = JSONField()
-    created_at = DateTimeField(auto_now_add=True)
-    sequence = PositiveIntegerField()
+    role = CharField(max_length=255, choices=Role.choices)
+    run_id = UUIDField(db_index=True)
+    payload = JSONField[dict[str, Any]]()
+    timestamp = DateTimeField()
 
     session = ForeignKey(
         Session,
@@ -317,4 +434,4 @@ class Message(Model):
 
     @override
     def __str__(self):
-        return self.payload[:100]
+        return str(self.payload)
