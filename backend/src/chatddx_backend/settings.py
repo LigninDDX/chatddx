@@ -24,6 +24,7 @@ else:
         SECRET_KEY = f.read()
 
 INSTALLED_APPS = [
+    "chatddx_backend.agents.apps.AgentsConfig",
     "chatddx_backend.api.apps.ApiConfig",
     "chatddx_backend.cms.apps.CmsConfig",
     "modeltranslation",
@@ -36,8 +37,9 @@ INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
-    "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.postgres",
+    "django.contrib.sessions",
     "django.contrib.staticfiles",
 ]
 
@@ -53,7 +55,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "chatddx_backend.urls"
+# ROOT_URLCONF = "chatddx_backend.urls"
 
 TEMPLATES = [
     {
