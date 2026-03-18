@@ -1,0 +1,13 @@
+[connections.qwen3_8b]
+model = "Qwen/Qwen3-8B-AWQ"
+provider = "VLLM"
+endpoint = "http://pelle.km:12009/v1/"
+
+[tools.is_prime]
+type = "FUNCTION"
+
+[agents.test_tools_prime]
+connection = "qwen3_8b"
+use_tools = true
+instructions = "use the is_prime tool to determine if user's number is a prime"
+tools = ["is_prime"]
