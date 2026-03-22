@@ -1,193 +1,75 @@
 # src/chatddx_backend/agents/runtime.py
-from dataclasses import dataclass
-from typing import Any, Sequence, get_args
+from typing import Any, AsyncGenerator
 
-import jsonschema
-from pydantic_ai import Agent as PydanticAgent
-from pydantic_ai import (
-    ModelMessage,
-    ModelProfile,
-    ModelRetry,
-    ModelSettings,
-    RunContext,
-    StructuredDict,
+from asgiref.sync import sync_to_async
+from pydantic_ai import AgentRunResult
+
+from chatddx_backend.agents.pydantic_ai import (
+    AgentContext,
+    PydanticAgent,
+    build_agent,
 )
-from pydantic_ai import Tool as PydanticTool
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.output import StructuredOutputMode
-from pydantic_ai.providers.openai import OpenAIProvider
+from chatddx_backend.agents.state import (
+    spec_from_data,
+    spec_from_registry,
+)
+from chatddx_backend.agents.utils import OutputType
 
-from chatddx_backend.agents import tools
-from chatddx_backend.agents.models.choices import ToolType, ValidationStrategy
-from chatddx_backend.agents.schema import AgentOut, SamplingParamsOut
-
-OutputType = bool | int | str | float | list[Any] | dict[str, Any]
+registry: dict[str, Any] = {}
 
 
-@dataclass(frozen=True)
-class AgentDeps:
-    output_type: type[OutputType] | None
-    output_schema: dict[str, Any] | None
-    validation_strategy: ValidationStrategy
+def get_agent_sync(
+    config: dict[str, Any] | str,
+) -> tuple[PydanticAgent[AgentContext, OutputType], AgentContext]:
+    match config:
+        case str():
+            agent_spec = spec_from_registry(config, registry)
+        case dict():
+            agent_spec = spec_from_data(config)
+
+    return build_agent(agent_spec)
 
 
-async def validate_output(ctx: RunContext[AgentDeps], output: OutputType) -> OutputType:
-    validation_strategy = ctx.deps.validation_strategy
-    strategies = ValidationStrategy
-
-    if validation_strategy == strategies.NOOP:
-        return output
-
-    if ctx.partial_output:
-        return output
-
-    if not isinstance(output, dict) or ctx.deps.output_schema is None:
-        return output
-
-    try:
-        jsonschema.validate(instance=output, schema=ctx.deps.output_schema)
-        return output
-    except jsonschema.ValidationError as e:
-        match validation_strategy:
-            case strategies.INFORM:
-                return output | {"__error__": e.message}
-            case strategies.RETRY:
-                raise ModelRetry(e.message) from e
-            case strategies.CRASH:
-                raise RuntimeError(f"Validation failed: {e.message}") from e
+get_agent_async = sync_to_async(get_agent_sync, thread_sensitive=True)
 
 
-def build_model(agent: AgentOut):
-    if agent.connection is None:
-        raise ValueError("No connection defined for this agent.")
-
-    model_kwargs: dict[str, Any] = {}
-    profile_kwargs: dict[str, Any] = {}
-
-    if agent.coercion_strategy == "native":
-        profile_kwargs["supports_json_schema_output"] = True
-
-    if agent.coercion_strategy == "prompted":
-        profile_kwargs["ignore_streamed_leading_whitespace"] = True
-
-    if agent.coercion_strategy in get_args(StructuredOutputMode):
-        profile_kwargs["default_structured_output_mode"] = agent.coercion_strategy
-        model_kwargs["profile"] = ModelProfile(**profile_kwargs)
-
-    model_kwargs["model_name"] = agent.connection.model
-    model_kwargs["provider"] = OpenAIProvider(base_url=agent.connection.endpoint)
-
-    return OpenAIChatModel(**model_kwargs)
-
-
-def build_config(sampling_params: SamplingParamsOut):
-    settings_kwargs: dict[str, Any] = {}
-    if sampling_params.seed is not None:
-        settings_kwargs["seed"] = sampling_params.seed
-
-    if sampling_params.temperature is not None:
-        settings_kwargs["temperature"] = sampling_params.temperature
-
-    if sampling_params.provider_params:
-        settings_kwargs.update(sampling_params.provider_params)
-
-    return ModelSettings(**settings_kwargs)
-
-
-def build_tools(agent: AgentOut) -> list[PydanticTool]:
-    if not agent.tool_group:
-        return []
-    return [
-        PydanticTool(
-            getattr(tools, tool.name),
-            takes_ctx=True,
-        )
-        for tool in agent.tool_group.tools
-        if tool.type == ToolType.FUNCTION
-    ]
-
-
-def build_pydantic_agent(
-    agent: AgentOut,
-) -> tuple[PydanticAgent[AgentDeps, OutputType], AgentDeps]:
-
-    model = build_model(agent)
-
-    model_settings = (
-        build_config(agent.sampling_params) if agent.sampling_params else None
-    )
-
-    tools = []
-    if agent.use_tools:
-        tools = build_tools(agent)
-
-    output_type: type[OutputType] = str
-    output_schema: dict[str, Any] | None = None
-
-    if agent.output_type:
-        match agent.output_type.definition.get("type"):
-            case "bool":
-                output_type = bool
-            case "integer":
-                output_type = int
-            case "number":
-                output_type = float
-            case "array":
-                output_type = list
-            case "object":
-                output_type = StructuredDict(agent.output_type.definition)
-                output_schema = agent.output_type.definition
-            case _:
-                invalid_type = agent.output_type.definition.get("type")
-                raise ValueError(f"Unexpected output type '{invalid_type}'")
-
-    pydantic_agent = PydanticAgent[AgentDeps, OutputType](
-        model,
-        name=agent.name,
-        instructions=agent.instructions,
-        tools=tools,
-        deps_type=AgentDeps,
-        output_type=output_type,
-        model_settings=model_settings,
-    )
-
-    pydantic_agent.output_validator(validate_output)
-
-    agent_deps = AgentDeps(
-        output_type=output_type,
-        output_schema=output_schema,
-        validation_strategy=ValidationStrategy(agent.validation_strategy),
-    )
-
-    return pydantic_agent, agent_deps
-
-
-async def run_stream(agent: AgentOut, prompt: str):
-    pa, deps = build_pydantic_agent(agent)
-
-    async with pa.run_stream(prompt, deps=deps) as result:
-        async for chunk in result.stream_output(debounce_by=0.1):
-            yield chunk
-
-
-async def run_async(agent: AgentOut, prompt: str):
-    pa, deps = build_pydantic_agent(agent)
-    result = await pa.run(
+def run_sync(
+    config: dict[str, Any],
+    prompt: str,
+) -> AgentRunResult[OutputType]:
+    agent, agent_context = get_agent_sync(config)
+    result = agent.run_sync(
         prompt,
-        deps=deps,
+        deps=agent_context,
+        message_history=agent_context.message_history,
     )
     return result
 
 
-def run_sync(
-    agent: AgentOut,
-    prompt: str,
-    history: Sequence[ModelMessage],
-):
-    pa, deps = build_pydantic_agent(agent)
-    result = pa.run_sync(
+async def stream_producer(
+    config: dict[str, Any] | str, prompt: str
+) -> AsyncGenerator[OutputType, None]:
+
+    agent, agent_context = await get_agent_async(config)
+
+    async with agent.run_stream(
         prompt,
-        deps=deps,
-        message_history=history,
+        deps=agent_context,
+        message_history=agent_context.message_history,
+    ) as result:
+        async for chunk in result.stream_output(debounce_by=0.1):
+            yield chunk
+
+
+async def run_async_producer(
+    config: dict[str, Any] | str, prompt: str
+) -> AgentRunResult[OutputType]:
+
+    agent, agent_context = await get_agent_async(config)
+
+    result = await agent.run(
+        prompt,
+        deps=agent_context,
+        message_history=agent_context.message_history,
     )
     return result

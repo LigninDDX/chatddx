@@ -1,5 +1,6 @@
 import inspect
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from types import UnionType
 from typing import (
@@ -17,6 +18,7 @@ from typing import (
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+from pydantic_ai import StructuredDict
 
 JSONValue = dict[str, "JSONValue"] | list["JSONValue"] | str | int | float | bool | None
 JSONLoaders = dict[str, Callable[[IO[bytes]], JSONValue]]
@@ -35,9 +37,27 @@ class ListField(Generic[T]):
 
 
 IsOrListOf = SingleField[T] | ListField[T] | None
+OutputType = bool | int | str | Decimal | list[Any] | dict[str, Any]
 
 
 type TypeTree = type | tuple[Any, list["TypeTree"]]
+
+
+def jsonschema_to_type(jsonschema: dict[str, Any]) -> type[OutputType]:
+    match jsonschema.get("type"):
+        case "bool":
+            return bool
+        case "integer":
+            return int
+        case "number":
+            return Decimal
+        case "array":
+            return list
+        case "object":
+            return StructuredDict(jsonschema)
+        case _:
+            invalid_type = jsonschema.get("type")
+            raise ValueError(f"Unexpected output type '{invalid_type}'")
 
 
 def describe_function(
@@ -57,7 +77,6 @@ def describe_function(
 
 
 def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
-    """Recursively merge two dictionaries, update overwrites base."""
     merged = base.copy()
     for k, v in update.items():
         if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):

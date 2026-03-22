@@ -44,7 +44,6 @@ from chatddx_backend.agents.schema import (
 )
 
 from .trail import RelatedArrayField, TrailModel
-from .validators import validate_json_schema
 
 if TYPE_CHECKING:
     TypedJSONField = JSONField[dict[str, Any]]
@@ -209,7 +208,6 @@ class OutputType(TrailModel):
     schema_out = OutputTypeOut
 
     definition = JSONSchemaField(
-        validators=[validate_json_schema],
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
 

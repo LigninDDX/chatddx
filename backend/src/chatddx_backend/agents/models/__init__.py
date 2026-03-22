@@ -8,7 +8,6 @@ from .choices import (
     ValidationStrategy,
 )
 from .trail import TrailModel
-from .validators import validate_json_schema
 
 __all__ = [
     "Agent",
@@ -20,7 +19,6 @@ __all__ = [
     "Message",
     "Session",
     "TrailModel",
-    "validate_json_schema",
     "CoercionStrategy",
     "ValidationStrategy",
     "ProviderType",

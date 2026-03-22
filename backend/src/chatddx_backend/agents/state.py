@@ -1,14 +1,30 @@
 # src/chatddx_backend/agents/state.py
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
-from chatddx_backend.agents.models import TrailModel
+from chatddx_backend.agents.models import Agent, TrailModel
 from chatddx_backend.agents.registry import data_from_registry
-from chatddx_backend.agents.schema import TrailInSchema, TrailOutSchema
+from chatddx_backend.agents.schema import AgentOut, TrailInSchema, TrailOutSchema
 from chatddx_backend.agents.utils import (
     ListField,
     SingleField,
     value_is_or_list_of,
 )
+
+T = TypeVar("T", bound=TrailInSchema)
+S = TypeVar("S", bound=TrailModel)
+
+
+def spec_from_registry(
+    name: str,
+    registry: dict[str, Any],
+) -> AgentOut:
+    return cast(AgentOut, process_from_registry(Agent, name, registry))
+
+
+def spec_from_data(
+    data: dict[str, Any],
+) -> AgentOut:
+    return cast(AgentOut, process_from_data(Agent, data))
 
 
 def process_from_registry(
@@ -37,25 +53,6 @@ def model_from_data(
     return model_from_schema(Model, schema)
 
 
-T = TypeVar("T", bound=TrailInSchema)
-
-
-def schema_from_registry(
-    Schema: type[T],
-    name: str,
-    registry: dict[str, Any],
-) -> T:
-    data = data_from_registry(Schema, name, registry)
-    return schema_from_data(Schema, data)
-
-
-def schema_from_data(
-    Schema: type[T],
-    data: dict[str, Any],
-) -> T:
-    return Schema.model_validate(data)
-
-
 def model_from_schema(
     Model: type[TrailModel],
     data: TrailInSchema,
@@ -77,3 +74,19 @@ def model_from_schema(
                 raise ValueError(f"'{value}' is a relation but lacks related_model")
 
     return Model.apply(**values)
+
+
+def schema_from_registry(
+    Schema: type[T],
+    name: str,
+    registry: dict[str, Any],
+) -> T:
+    data = data_from_registry(Schema, name, registry)
+    return schema_from_data(Schema, data)
+
+
+def schema_from_data(
+    Schema: type[T],
+    data: dict[str, Any],
+) -> T:
+    return Schema.model_validate(data)
