@@ -1,0 +1,30 @@
+extends = ["some.toml", "experiments.toml"]
+
+[agent.agent-1]
+instructions = "hello"
+sampling_params = "sampling_params-1"
+connection = "connection-1"
+output_type = "output_type-1"
+tool_group = "tool_group-1"
+
+[connection.connection-1]
+model = "Test/test-1"
+provider = "vllm"
+endpoint = "http://example.com/v1/"
+
+[output_type.output_type-1]
+definition_path = "../output_types/simple.json"
+
+[sampling_params.sampling_params-1]
+temperature = 0.7
+max_tokens = 150
+stop_sequences = ["\\n\\n", "END"]
+
+[tool.tool-1]
+type = "function"
+description = "Complex parameters"
+parameters_path = "../output_types/simple.json"
+
+[tool_group.tool_group-1]
+instructions = "use these tools"
+tools = ["tool-1"]

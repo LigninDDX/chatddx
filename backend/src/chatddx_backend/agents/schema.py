@@ -99,24 +99,24 @@ class OutputTypeOut(TrailOutSchema):
 class ToolIn(TrailInSchema):
     record_type = "tool"
 
-    description: str
     type: ToolType
-    parameters: dict[str, Any]
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
 
     _validate_definition = field_validator("parameters")(_validate_json_schema)
 
 
 class ToolOut(TrailOutSchema):
-    description: str
     type: ToolType
-    parameters: dict[str, Any]
+    description: str | None
+    parameters: dict[str, Any] | None
 
 
 class ToolGroupIn(TrailInSchema):
     record_type = "tool_group"
 
     instructions: str
-    tools: list[ToolIn] = []
+    tools: list[ToolIn]
 
 
 class ToolGroupOut(TrailOutSchema):

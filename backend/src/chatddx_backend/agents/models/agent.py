@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import json
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import jsonschema
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (
     PROTECT,
@@ -14,6 +16,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     JSONField,
+    Model,
     PositiveIntegerField,
     TextField,
     URLField,
@@ -42,6 +45,22 @@ from chatddx_backend.agents.schema import (
 
 from .trail import RelatedArrayField, TrailModel
 from .validators import validate_json_schema
+
+if TYPE_CHECKING:
+    TypedJSONField = JSONField[dict[str, Any]]
+else:
+    TypedJSONField = JSONField
+
+
+class JSONSchemaField(TypedJSONField):
+    def validate(self, value: Any, model_instance: Model):
+        super().validate(value, model_instance)
+
+        if value is not None:
+            try:
+                jsonschema.Draft202012Validator.check_schema(value)
+            except jsonschema.SchemaError as e:
+                raise ValidationError(f"Invalid JSON Schema definition: {e.message}")
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -189,7 +208,7 @@ class OutputType(TrailModel):
     schema_in = OutputTypeIn
     schema_out = OutputTypeOut
 
-    definition: JSONField[dict[str, Any]] = JSONField(
+    definition = JSONSchemaField(
         validators=[validate_json_schema],
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
@@ -199,15 +218,20 @@ class Tool(TrailModel):
     schema_in = ToolIn
     schema_out = ToolOut
 
-    description = TextField()
     type = CharField(
         max_length=50,
         choices=ToolType.choices,
         default=ToolType.FUNCTION,
         help_text="The type of tool.",
     )
-    parameters: JSONField[dict[str, Any]] = JSONField(
-        default=dict,
+    description = TextField(
+        default=None,
+        null=True,
+        blank=True,
+    )
+    parameters = JSONSchemaField(
+        default=None,
+        null=True,
         blank=True,
         help_text=(
             "JSON Schema describing the tool's parameters.\n"

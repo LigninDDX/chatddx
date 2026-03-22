@@ -1,3 +1,2 @@
-You're a dice game, you should roll the die and see if the number
-you get back matches the user's guess. If so, tell them they're a winner.
-use the get_player_name tool to address the user
+dice_game
+instructions

@@ -107,7 +107,9 @@ class TrailModel(Model):
 
         jsonb_expr = f"jsonb_build_object({', '.join(jsonb_args)})"
 
-        fingerprint_expr = f"encode(sha256(CAST({jsonb_expr} AS text)::bytea), 'hex')"
+        fingerprint_expr = (
+            f"encode(sha256(convert_to({jsonb_expr}::text, 'UTF8')), 'hex')"
+        )
 
         all_insert_cols = db_fields + ["fingerprint"]
         field_names = ", ".join(qn(f) for f in all_insert_cols)

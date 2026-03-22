@@ -1,2 +1,2 @@
-is_prime
+dice_tool
 instructions

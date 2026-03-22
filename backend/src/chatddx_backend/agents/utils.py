@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass
 from pathlib import Path
 from types import UnionType
@@ -11,14 +12,16 @@ from typing import (
     cast,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
+from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-
-T = TypeVar("T")
 
 JSONValue = dict[str, "JSONValue"] | list["JSONValue"] | str | int | float | bool | None
 JSONLoaders = dict[str, Callable[[IO[bytes]], JSONValue]]
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -37,6 +40,22 @@ IsOrListOf = SingleField[T] | ListField[T] | None
 type TypeTree = type | tuple[Any, list["TypeTree"]]
 
 
+def describe_function(
+    func: Callable[..., Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    sig = inspect.signature(func)
+    docstring = inspect.getdoc(func)
+    hints = get_type_hints(func)
+
+    name, _ = next(iter(sig.parameters.items()))
+    model = hints[name]
+
+    if len(sig.parameters.values()) != 1 or not issubclass(model, BaseModel):
+        return None, docstring
+
+    return model.model_json_schema(), docstring
+
+
 def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge two dictionaries, update overwrites base."""
     merged = base.copy()
@@ -46,35 +65,6 @@ def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
         else:
             merged[k] = v
     return merged
-
-
-def type_sig(t: type) -> TypeTree:
-    origin = get_origin(t)
-    args = get_args(t)
-
-    if not origin and not args:
-        return t
-
-    if origin is Union:
-        return (Union, [type_sig(a) for a in args])
-
-    assert origin is not None
-    return (origin, [type_sig(a) for a in args])
-
-
-def sig_to_str(tree: TypeTree) -> str:
-    def shorten(v: Any):
-        return {
-            "UnionType": "U",
-            "NoneType": "None",
-        }.get(str(v), str(v))
-
-    if isinstance(tree, tuple):
-        origin, children = tree
-        child_strs = "_".join(shorten(sig_to_str(c)) for c in children)
-        name = shorten(getattr(origin, "__name__", str(origin)))
-        return f"{name}_{child_strs}"
-    return getattr(tree, "__name__", str(tree))
 
 
 def value_is_or_list_of(t: type[T], value: object) -> IsOrListOf[T]:
@@ -103,7 +93,7 @@ def field_is_or_list_of(t: type[T], field: FieldInfo) -> IsOrListOf[T]:
             return ListField(inner[0])
 
 
-def resolve_paths(obj: JSONValue, loaders: JSONLoaders, root: Path) -> Any:
+def resolve_imports(obj: JSONValue, loaders: JSONLoaders, root: Path) -> Any:
     if isinstance(obj, dict):
         for key in list(obj.keys()):
             value = obj[key]
@@ -114,8 +104,8 @@ def resolve_paths(obj: JSONValue, loaders: JSONLoaders, root: Path) -> Any:
                     obj[new_key] = loaders[path.suffix](linked_file)
                 del obj[key]
             else:
-                resolve_paths(value, loaders, root)
+                resolve_imports(value, loaders, root)
     elif isinstance(obj, list):
         for item in obj:
-            resolve_paths(item, loaders, root)
+            resolve_imports(item, loaders, root)
     return obj
