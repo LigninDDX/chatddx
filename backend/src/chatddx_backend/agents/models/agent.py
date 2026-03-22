@@ -1,11 +1,13 @@
 # src/chatddx_backend/models/agent.py
 from __future__ import annotations
 
+import json
+from decimal import Decimal
 from typing import Any
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (
-    SET_DEFAULT,
+    PROTECT,
     BooleanField,
     CharField,
     DecimalField,
@@ -13,29 +15,60 @@ from django.db.models import (
     IntegerField,
     JSONField,
     PositiveIntegerField,
-    TextChoices,
     TextField,
     URLField,
+)
+
+from chatddx_backend.agents.models.choices import (
+    CoercionStrategy,
+    ProviderType,
+    ToolType,
+    ValidationStrategy,
+)
+from chatddx_backend.agents.schema import (
+    AgentIn,
+    AgentOut,
+    ConnectionIn,
+    ConnectionOut,
+    OutputTypeIn,
+    OutputTypeOut,
+    SamplingParamsIn,
+    SamplingParamsOut,
+    ToolGroupIn,
+    ToolGroupOut,
+    ToolIn,
+    ToolOut,
 )
 
 from .trail import RelatedArrayField, TrailModel
 from .validators import validate_json_schema
 
 
-class Connection(TrailModel):
-    class Provider(TextChoices):
-        OPENAI = "openai"
-        ANTHROPIC = "anthropic"
-        GOOGLE = "google"
-        OLLAMA = "ollama"
-        VLLM = "vllm"
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o: Any):
+        if isinstance(o, Decimal):
+            return str(o)
+        return super().default(o)
 
-    provider = CharField(max_length=255, choices=Provider.choices)
+
+class DecimalDecoder(json.JSONDecoder):
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(parse_float=Decimal, *args, **kwargs)
+
+
+class Connection(TrailModel):
+    schema_in = ConnectionIn
+    schema_out = ConnectionOut
+
+    provider = CharField(max_length=255, choices=ProviderType.choices)
     model = CharField(max_length=255)
     endpoint = URLField(max_length=2048)
 
 
 class SamplingParams(TrailModel):
+    schema_in = SamplingParamsIn
+    schema_out = SamplingParamsOut
+
     temperature = DecimalField(
         default=None,
         null=True,
@@ -119,9 +152,11 @@ class SamplingParams(TrailModel):
             "(typically -2.0 to 2.0)."
         ),
     )
-    logit_bias: JSONField[dict[str, float]] = JSONField(
+    logit_bias: JSONField[dict[str, Decimal]] = JSONField(
         default=dict,
         blank=True,
+        encoder=DecimalEncoder,
+        decoder=DecimalDecoder,
         help_text=(
             "Adjusts likelihood of specific tokens appearing in the output.\n"
             "Examples: {'50256': -100} (suppress token), "
@@ -150,7 +185,10 @@ class SamplingParams(TrailModel):
     )
 
 
-class Schema(TrailModel):
+class OutputType(TrailModel):
+    schema_in = OutputTypeIn
+    schema_out = OutputTypeOut
+
     definition: JSONField[dict[str, Any]] = JSONField(
         validators=[validate_json_schema],
         help_text="A valid JSON Schema defining the expected agent response structure.",
@@ -158,11 +196,8 @@ class Schema(TrailModel):
 
 
 class Tool(TrailModel):
-    class ToolType(TextChoices):
-        FUNCTION = "function", "Function"
-        CODE_INTERPRETER = "code_interpreter", "Code Interpreter"
-        FILE_SEARCH = "file_search", "File Search"
-        WEB_SEARCH = "web_search", "Web Search"
+    schema_in = ToolIn
+    schema_out = ToolOut
 
     description = TextField()
     type = CharField(
@@ -182,6 +217,9 @@ class Tool(TrailModel):
 
 
 class ToolGroup(TrailModel):
+    schema_in = ToolGroupIn
+    schema_out = ToolGroupOut
+
     instructions = TextField()
 
     tools = RelatedArrayField(
@@ -194,16 +232,8 @@ class ToolGroup(TrailModel):
 
 
 class Agent(TrailModel):
-    class ValidationStrategy(TextChoices):
-        NOOP = "noop"
-        RETRY = "retry"
-        INFORM = "inform"
-        CRASH = "crash"
-
-    class CoercionStrategy(TextChoices):
-        PROMPTED = "prompted"
-        TOOL = "tool"
-        NATIVE = "native"
+    schema_in = AgentIn
+    schema_out = AgentOut
 
     instructions = TextField()
     connection = ForeignKey(
@@ -212,7 +242,7 @@ class Agent(TrailModel):
         default=None,
         null=True,
         blank=True,
-        on_delete=SET_DEFAULT,
+        on_delete=PROTECT,
     )
     sampling_params = ForeignKey(
         SamplingParams,
@@ -220,15 +250,15 @@ class Agent(TrailModel):
         default=None,
         null=True,
         blank=True,
-        on_delete=SET_DEFAULT,
+        on_delete=PROTECT,
     )
-    schema = ForeignKey(
-        Schema,
+    output_type = ForeignKey(
+        OutputType,
         related_name="agents",
         default=None,
         null=True,
         blank=True,
-        on_delete=SET_DEFAULT,
+        on_delete=PROTECT,
     )
     tool_group = ForeignKey(
         ToolGroup,
@@ -236,7 +266,7 @@ class Agent(TrailModel):
         default=None,
         null=True,
         blank=True,
-        on_delete=SET_DEFAULT,
+        on_delete=PROTECT,
     )
     use_tools = BooleanField(
         default=False,

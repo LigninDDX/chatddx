@@ -2,363 +2,328 @@
 from copy import deepcopy
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TypeVar, cast
+from pathlib import Path
+from typing import Any, Callable
 
 import pytest
-from deepdiff import DeepDiff
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import IntegrityError, transaction
+from django.db.models import (
+    BooleanField,
+    CharField,
+    DecimalField,
+    IntegerField,
+    JSONField,
+    PositiveIntegerField,
+    TextField,
+    URLField,
+)
 
 from chatddx_backend.agents.models import (
     Agent,
+    CoercionStrategy,
     Connection,
-    RelatedArrayField,
+    OutputType,
+    ProviderType,
     SamplingParams,
-    Schema,
     Tool,
     ToolGroup,
-    TrailManager,
+    ToolType,
     TrailModel,
-    TrailRelation,
-    serialize,
-    serialize_field,
+    ValidationStrategy,
+)
+from chatddx_backend.agents.schema import (
+    ConnectionIn,
+    OutputTypeIn,
+    SamplingParamsIn,
+    ToolGroupIn,
+    ToolIn,
+    TrailInSchema,
+    TrailOutSchema,
+)
+from chatddx_backend.agents.state import (
+    as_model_instance,
+    from_registry,
+    load_registry,
 )
 
+registry: dict[str, Any] = load_registry(Path(__file__).parent / "registry.toml")
 
-@pytest.fixture
-def trail_manager():
-    return TrailManager(
-        library={
-            "connection": {
-                "connection-1": {
-                    "model": "Test/test-1",
-                    "provider": "vllm",
-                    "endpoint": "http://example.com/v1/",
-                },
-                "connection-1'": {
-                    "model": "Test/test-1-prime",
-                    "provider": "vllm",
-                    "endpoint": "http://example.com/v1'/",
-                },
-            },
-            "schema": {
-                "schema-1": {
-                    "definition": {
-                        "type": "object",
-                        "properties": {
-                            "type": "object",
-                            "properties": {
-                                "integer": {"type": "integer"},
-                                "list": {"items": {"type": "string"}, "type": "array"},
-                                "bool": {"type": "boolean"},
-                            },
-                            "required": ["integer", "list", "bool"],
-                        },
-                    },
-                },
-                "schema-1'": {
-                    "definition": {
-                        "type": "object",
-                        "properties": {
-                            "type": "object",
-                            "properties": {
-                                "integer": {"type": "integer"},
-                                "list": {"items": {"type": "string"}, "type": "array"},
-                                "bool": {"type": "boolean"},
-                            },
-                            "required": ["integer", "list", "int"],
-                        },
-                    },
-                },
-            },
-            "sampling_params": {
-                "sampling_params-1": {
-                    "temperature": 0.7,
-                    "max_tokens": 150,
-                    "stop_sequences": ["\\n\\n", "END"],
-                },
-                "sampling_params-1'": {
-                    "temperature": 0.6,
-                    "max_tokens": 100,
-                    "stop_sequences": [],
-                },
-            },
-            "tool": {
-                "tool-1": {
-                    "type": "function",
-                    "description": "Complex parameters",
-                    "parameters": {
-                        "bool": True,
-                        "float": 3.1415,
-                        "dict": {"key": "value"},
-                        "list": [1, 2],
-                    },
-                },
-                "tool-1'": {
-                    "type": "function",
-                    "description": "Trailing space",
-                    "parameters": {
-                        "bool": False,
-                    },
-                },
-            },
-            "tool_group": {
-                "tool_group-1": {
-                    "instructions": "use these tools",
-                    "tools": [
-                        "tool-1",
-                    ],
-                },
-                "tool_group-1'": {
-                    "instructions": "use these tools prime",
-                    "tools": [
-                        "tool-1'",
-                    ],
-                },
-            },
-            "agent": {
-                "agent-1": {
-                    "instructions": "hello",
-                    "sampling_params": "sampling_params-1",
-                    "connection": "connection-1",
-                    "schema": "schema-1",
-                    "tool_group": "tool_group-1",
-                }
-            },
-        }
+models = (
+    Connection,
+    SamplingParams,
+    ToolGroup,
+    Tool,
+    OutputType,
+    Agent,
+)
+
+fields = [(Model, field) for Model in models for field in Model.schema_in.model_fields]
+
+
+def _test_ToolGroup(value: ToolGroupIn):
+    altered_value = value.model_copy(update={"instructions": value.instructions + "'"})
+    return deepcopy(value), altered_value
+
+
+def _test_optional_ToolGroup(value: ToolGroupIn):
+    tool_group = ToolGroupIn(
+        name="new tool group",
+        instructions="no tools",
+        tools=[],
+    )
+    return _test_ToolGroup(value) if value else (value, tool_group)
+
+
+def _test_OutputType(value: OutputTypeIn):
+    altered_value = value.model_copy(update={"definition": value.definition | {"k": 1}})
+    return deepcopy(value), altered_value
+
+
+def _test_optional_OutputType(value: OutputTypeIn):
+    output_type = OutputTypeIn(
+        name="new output type",
+        definition={},
+    )
+    return _test_OutputType(value) if value else (value, output_type)
+
+
+def _test_SamplingParams(value: SamplingParamsIn):
+    altered_value = value.model_copy(
+        update={"temperature": (value.temperature or Decimal("0")) + Decimal("0.1")}
     )
 
-
-JSONLike = (
-    str
-    | int
-    | float
-    | Decimal
-    | datetime
-    | list["JSONLike"]
-    | dict[str, "JSONLike"]
-    | TrailModel
-)
-T = TypeVar("T", bound=JSONLike)
+    return deepcopy(value), altered_value
 
 
-def make_tiny_change(value: T) -> T:
-    match value:
-        case str():
-            return cast(T, value + "'")
-        case bool():
-            return cast(T, not value)
-        case int():
-            return cast(T, value + 1)
-        case float():
-            return cast(T, value + 0.1)
-        case Decimal():
-            return cast(T, value + Decimal("0.1"))
-        case datetime():
-            return value + timedelta(1)
-        case dict():
-            if value:
-                some_key, some_value = next(iter(value.items()))
-                return cast(T, value | {some_key: make_tiny_change(some_value)})
-            else:
-                return value
-        case list():
-            return cast(T, [make_tiny_change(value[0])] + value[1:] if value else [])
-        case TrailModel():
-            value.pk = None
-            value.name += "'"
-            return value
+def _test_optional_SamplingParams(value: SamplingParamsIn):
+    sampling_params = SamplingParamsIn(
+        name="new sampling params",
+        temperature=Decimal("1"),
+    )
+    return _test_SamplingParams(value) if sampling_params else (value, sampling_params)
 
 
-fields = [
-    (Connection, "model"),
-    (Connection, "endpoint"),
-    (Connection, "provider"),
-    (SamplingParams, "temperature"),
-    (SamplingParams, "stop_sequences"),
-    (Tool, "description"),
-    (Tool, "parameters"),
-    (ToolGroup, "instructions"),
-    (ToolGroup, "tools"),
-    (Schema, "definition"),
-    (Agent, "instructions"),
-    (Agent, "connection"),
-    (Agent, "schema"),
-    (Agent, "sampling_params"),
-    (Agent, "tool_group"),
-]
+def _test_Connection(value: ConnectionIn):
+    altered_value = value.model_copy(update={"endpoint": value.endpoint + "'"})
+    return deepcopy(value), altered_value
+
+
+def _test_optional_Connection(value: ConnectionIn):
+    connection = ConnectionIn(
+        name="new connection",
+        model="qwen",
+        provider=ProviderType.VLLM,
+        endpoint="/",
+    )
+    return _test_Connection(value) if value else (value, connection)
+
+
+def _test_tools(value: list[ToolIn]):
+    altered_value = [
+        value[0].model_copy(update={"description": value[0].description + "'"})
+    ] + value[1:]
+
+    return deepcopy(value), altered_value
+
+
+def _test_optional_tools(value: list[ToolIn] | None):
+    tools = list(_test_optional_tool(None))
+    return _test_tools(value) if value else (value, tools)
+
+
+def _test_tool(value: ToolIn):
+    altered_value = value.model_copy(update={"description": value.description + "'"})
+    return deepcopy(value), altered_value
+
+
+def _test_optional_tool(value: ToolIn | None):
+    tool = ToolIn(
+        name="new tool",
+        description="a new tool",
+        type=ToolType.FUNCTION,
+        parameters={},
+    )
+    return _test_tool(value) if value else (value, tool)
+
+
+def _test_provider_type(value: str):
+    return value, ProviderType.OLLAMA
+
+
+def _test_tool_type(value: str):
+    return value, ToolType.WEB_SEARCH
+
+
+def _test_validation_strategy(value: str):
+    return value, ValidationStrategy.CRASH
+
+
+def _test_optional_coercion_strategy(value: str):
+    return value, CoercionStrategy.PROMPTED
+
+
+def _test_dict_str_decimal(value: dict[str, Decimal]):
+    return deepcopy(value), value | {"k": Decimal("0.1")}
+
+
+def _test_dict_str_any(value: dict[str, Any]):
+    return deepcopy(value), value | {"k": "'"}
+
+
+def _test_optional_dict_str_any(value: dict[str, Any] | None):
+    return _test_dict_str_any(value) if value else (value, {"k": "'"})
+
+
+def _test_list_str(value: list[str]):
+    return deepcopy(value), value + ["'"]
+
+
+def _test_optional_list_str(value: list[str] | None):
+    return _test_list_str(value) if value else (value, ["'"])
+
+
+def _test_int(value: int):
+    return value, value + 1
+
+
+def _test_optional_int(value: int | None):
+    return _test_int(value) if value else (value, 1)
+
+
+def _test_decimal(value: Decimal):
+    return value, value + Decimal("0.1")
+
+
+def _test_optional_decimal(value: Decimal | None):
+    return _test_decimal(value) if value else (value, Decimal("0.1"))
+
+
+def _test_str(value: str):
+    return value, value + "'"
+
+
+def _test_optional_str(value: str):
+    return _test_str(value) if value else (value, "'")
+
+
+def _test_bool(value: bool):
+    return value, not value
+
+
+def expect_update(
+    SchemaIn: type[TrailInSchema],
+    schema_out: TrailOutSchema,
+    altered_schema_out: TrailOutSchema,
+    field_name: str,
+):
+    schema_in = SchemaIn.model_validate(schema_out.model_dump())
+    altered_schema_in = SchemaIn.model_validate(altered_schema_out.model_dump())
+
+    assert getattr(schema_in, field_name) == getattr(altered_schema_in, field_name)
+
+    assert schema_out.name == altered_schema_out.name
+    assert schema_out.fingerprint == altered_schema_out.fingerprint
+
+    assert (
+        schema_out.created_at == schema_out.updated_at == altered_schema_out.created_at
+    )
+    assert schema_out.created_at < altered_schema_out.updated_at
+
+
+def expect_create(
+    SchemaIn: type[TrailInSchema],
+    schema_out: TrailOutSchema,
+    test_schema_out: TrailOutSchema,
+    field_name: str,
+):
+    schema_in = SchemaIn.model_validate(schema_out.model_dump())
+    test_schema_in = SchemaIn.model_validate(test_schema_out.model_dump())
+
+    assert getattr(schema_in, field_name) != getattr(test_schema_in, field_name)
+
+    if field_name == "name":
+        assert schema_out.fingerprint == test_schema_out.fingerprint
+    else:
+        assert schema_out.name == test_schema_out.name
+        assert schema_out.fingerprint != test_schema_out.fingerprint
+
+    assert schema_out.created_at == schema_out.updated_at
+    assert test_schema_out.created_at == test_schema_out.updated_at
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("Model, field_name", fields)
-@pytest.mark.parametrize("library_set", [(1)])
-class TestTrail:
-    @pytest.mark.parametrize("target_type", [(int), (str), (dict), (TrailModel)])
-    def test_upsert_identical(
+class TestFieldTypes:
+    field_types: dict[Any, Callable[[Any], tuple[Any, Any]]] = {
+        (BooleanField, bool): _test_bool,
+        (CharField, str): _test_str,
+        (CharField, str | None): _test_optional_str,
+        (CharField, ProviderType): _test_provider_type,
+        (CharField, ToolType): _test_tool_type,
+        (CharField, ValidationStrategy): _test_validation_strategy,
+        (CharField, CoercionStrategy | None): _test_optional_coercion_strategy,
+        (Connection, ConnectionIn): _test_Connection,
+        (Connection, ConnectionIn | None): _test_optional_Connection,
+        (DecimalField, Decimal): _test_decimal,
+        (DecimalField, Decimal | None): _test_optional_decimal,
+        (IntegerField, int): _test_int,
+        (IntegerField, int | None): _test_optional_int,
+        (JSONField, dict[str, Decimal]): _test_dict_str_decimal,
+        (JSONField, dict[str, Any] | None): _test_optional_dict_str_any,
+        (JSONField, dict[str, Any]): _test_dict_str_any,
+        (JSONField, list[str] | None): _test_optional_list_str,
+        (OutputType, OutputTypeIn): _test_OutputType,
+        (OutputType, OutputTypeIn | None): _test_optional_OutputType,
+        (PositiveIntegerField, int): _test_int,
+        (PositiveIntegerField, int | None): _test_optional_int,
+        (SamplingParams, SamplingParamsIn): _test_SamplingParams,
+        (SamplingParams, SamplingParamsIn | None): _test_optional_SamplingParams,
+        (TextField, str): _test_str,
+        (Tool, list[ToolIn]): _test_tools,
+        (Tool, list[ToolIn] | None): _test_optional_tools,
+        (ToolGroup, ToolGroupIn): _test_ToolGroup,
+        (ToolGroup, ToolGroupIn | None): _test_optional_ToolGroup,
+        (URLField, str): _test_str,
+    }
+
+    @pytest.mark.time_machine(datetime(1970, 1, 1), tick=False)
+    def test_field_types(
         self,
-        trail_manager: TrailManager,
+        time_machine: Any,
+        subtests: pytest.Subtests,
         Model: type[TrailModel],
         field_name: str,
-        library_set: int,
-        target_type: type[TrailRelation],
     ):
-        record = f"{Model.record_name()}-{library_set}"
-        instance0 = trail_manager.get_instance(Model, record)
-        field = instance0._meta.get_field(field_name)
+        field = Model._meta.get_field(field_name)
 
-        value = serialize_field(
-            instance0,
-            field,
-            target_type,
-        )
+        SchemaIn: type[TrailInSchema] = Model.schema_in
+        SchemaOut: type[TrailOutSchema] = Model.schema_out
 
-        library_value = trail_manager.deref(Model, record)[field.name]
+        db_type = field.related_model if field.related_model else field.__class__
+        api_type = SchemaIn.model_fields[field_name].annotation
+        test_key = (db_type, api_type)
 
-        instance1 = trail_manager.get_instance(
-            Model,
-            record,
-            **serialize(instance0, target_type) | {field.name: value},
-        )
-
-        if isinstance(field, RelatedArrayField):
-            assert isinstance(value[0], target_type)
-            match value[0]:
-                case dict() | TrailModel():
-                    if isinstance(value[0], TrailModel):
-                        value = [serialize(v, dict) for v in value]
-
-                    diff = DeepDiff(
-                        value,
-                        library_value,
-                        ignore_order=True,
-                        ignore_numeric_type_changes=True,
-                        exclude_regex_paths=[
-                            r".*\['(id|fingerprint|created_at|updated_at)'\]"
-                        ],
-                    )
-                    assert not diff
-                case str():
-                    assert value == [v["name"] for v in library_value]
-                case _:
-                    pytest.skip(f"not testing {type(value[0])}")
-
-        elif field.many_to_one or field.one_to_one:
-            assert isinstance(value, target_type)
-            match value:
-                case dict() | TrailModel():
-                    if isinstance(value, TrailModel):
-                        value = serialize(value, dict)
-
-                    diff = DeepDiff(
-                        value,
-                        library_value,
-                        ignore_numeric_type_changes=True,
-                        exclude_obj_callback=lambda o, p: not o,
-                        exclude_regex_paths=[
-                            r".*\['(id|fingerprint|created_at|updated_at)'\]",
-                        ],
-                        exclude_paths={
-                            "root['id']",
-                            "root['fingerprint']",
-                            "root['created_at']",
-                            "root['updated_at']",
-                        },
-                    )
-                    assert not diff
-                case str():
-                    assert value == library_value["name"]
-                case _:
-                    pytest.skip(f"not testing {type(value)}")
-
-        else:
-            assert value == library_value
-
-        assert instance0.name == instance1.name
-        assert instance0.fingerprint == instance1.fingerprint
-
-        assert instance0.created_at == instance0.updated_at == instance1.created_at
-        assert instance1.updated_at > instance1.created_at
-
-    @pytest.mark.parametrize("target_type", [(TrailModel), (str), (int), (dict)])
-    def test_upsert_identical_touched(
-        self,
-        trail_manager: TrailManager,
-        Model: type[TrailModel],
-        field_name: str,
-        library_set: int,
-        target_type: type[TrailRelation],
-    ):
-        record = f"{Model.record_name()}-{library_set}"
-        instance0 = trail_manager.get_instance(Model, record)
-        field = instance0._meta.get_field(field_name)
-
-        value = deepcopy(
-            serialize_field(
-                instance0,
-                field,
-                target_type,
+        if test_key not in self.field_types:
+            pytest.fail(
+                f"No test defined for type combination {test_key} on {field_name}"
             )
+
+        record = f"{SchemaIn.record_type}-1"
+        schema_out = from_registry(Model, record, registry)
+        schema_in = SchemaIn.model_validate(schema_out.model_dump())
+
+        value, altered_value = self.field_types[test_key](
+            getattr(schema_in, field_name)
         )
 
-        instance1 = trail_manager.get_instance(
-            Model,
-            record,
-            **serialize(instance0, target_type) | {field.name: value},
-        )
-
-        assert getattr(instance0, field.name) == getattr(instance1, field.name)
-
-        assert instance0.name == instance1.name
-        assert instance0.fingerprint == instance1.fingerprint
-
-        assert instance0.created_at == instance0.updated_at == instance1.created_at
-        assert instance1.updated_at > instance1.created_at
-
-    @pytest.mark.parametrize("target_type", [(TrailModel), (str), (int), (dict)])
-    def test_upsert_variation(
-        self,
-        trail_manager: TrailManager,
-        Model: type[TrailModel],
-        field_name: str,
-        library_set: int,
-        target_type: type[TrailRelation],
-    ):
-        record = f"{Model.record_name()}-{library_set}"
-        instance0 = trail_manager.get_instance(Model, record)
-        field = instance0._meta.get_field(field_name)
-
-        value = make_tiny_change(
-            serialize_field(
-                instance0,
-                field,
-                target_type,
-            )
-        )
-
-        def get_instance():
-            with transaction.atomic():
-                instance1 = trail_manager.get_instance(
-                    Model,
-                    record,
-                    **serialize(instance0, target_type) | {field.name: value},
-                )
-                assert getattr(instance1, field.name) or True
-            return instance1
-
-        if (instance0._meta.get_field(field.name).related_model) and target_type in (
-            int,
-            dict,
+        for value, expect_fn, msg in (
+            (value, expect_update, f"apply identical value ({test_key})"),
+            (altered_value, expect_create, "apply altered value"),
+            (value, expect_update, "apply identical value again"),
         ):
-            with pytest.raises((IntegrityError, ObjectDoesNotExist)):
-                get_instance()
+            time_machine.shift(timedelta(days=1))
+            test_schema_in = schema_in.model_copy(update={field_name: value})
+            test_instance = as_model_instance(Model, test_schema_in)
+            test_schema_out = SchemaOut.model_validate(test_instance)
 
-            return
-
-        instance1 = get_instance()
-        assert getattr(instance0, field.name) != getattr(instance1, field.name)
-
-        assert instance0.name == instance1.name
-        assert instance0.fingerprint != instance1.fingerprint
-
-        assert instance0.created_at == instance0.updated_at
-        assert instance1.created_at == instance1.updated_at
+            with subtests.test(msg=msg):
+                expect_fn(SchemaIn, schema_out, test_schema_out, field_name)

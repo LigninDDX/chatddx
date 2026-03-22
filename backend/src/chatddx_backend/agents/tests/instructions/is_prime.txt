@@ -1,0 +1,1 @@
+use the is_prime tool to determine if user's number is a prime

@@ -1,3 +1,5 @@
+# src/chatddx_backend/agents/runtime.py
+from dataclasses import dataclass
 from typing import Any, Sequence, get_args
 
 import jsonschema
@@ -16,27 +18,34 @@ from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from chatddx_backend.agents import tools
-from chatddx_backend.agents.models import Agent, SamplingParams, Tool
-from chatddx_backend.agents.types import AgentDeps
+from chatddx_backend.agents.models.choices import ToolType, ValidationStrategy
+from chatddx_backend.agents.schema import AgentOut, SamplingParamsOut
 
 OutputType = bool | int | str | float | list[Any] | dict[str, Any]
 
 
+@dataclass(frozen=True)
+class AgentDeps:
+    output_type: type[OutputType] | None
+    output_schema: dict[str, Any] | None
+    validation_strategy: ValidationStrategy
+
+
 async def validate_output(ctx: RunContext[AgentDeps], output: OutputType) -> OutputType:
     validation_strategy = ctx.deps.validation_strategy
-    strategies = Agent.ValidationStrategy
+    strategies = ValidationStrategy
 
     if validation_strategy == strategies.NOOP:
         return output
 
-    if ctx.partial_output or ctx.deps.schema is None:
+    if ctx.partial_output:
         return output
 
-    if not isinstance(output, dict):
+    if not isinstance(output, dict) or ctx.deps.output_schema is None:
         return output
 
     try:
-        jsonschema.validate(instance=output, schema=ctx.deps.schema)
+        jsonschema.validate(instance=output, schema=ctx.deps.output_schema)
         return output
     except jsonschema.ValidationError as e:
         match validation_strategy:
@@ -48,7 +57,7 @@ async def validate_output(ctx: RunContext[AgentDeps], output: OutputType) -> Out
                 raise RuntimeError(f"Validation failed: {e.message}") from e
 
 
-def build_model(agent: Agent):
+def build_model(agent: AgentOut):
     if agent.connection is None:
         raise ValueError("No connection defined for this agent.")
 
@@ -71,7 +80,7 @@ def build_model(agent: Agent):
     return OpenAIChatModel(**model_kwargs)
 
 
-def build_config(sampling_params: SamplingParams):
+def build_config(sampling_params: SamplingParamsOut):
     settings_kwargs: dict[str, Any] = {}
     if sampling_params.seed is not None:
         settings_kwargs["seed"] = sampling_params.seed
@@ -85,19 +94,21 @@ def build_config(sampling_params: SamplingParams):
     return ModelSettings(**settings_kwargs)
 
 
-def build_tools(agent: Agent):
+def build_tools(agent: AgentOut) -> list[PydanticTool]:
+    if not agent.tool_group:
+        return []
     return [
         PydanticTool(
             getattr(tools, tool.name),
             takes_ctx=True,
         )
-        for tool in agent.tools.all()
-        if tool.type == Tool.ToolType.FUNCTION.value
+        for tool in agent.tool_group.tools
+        if tool.type == ToolType.FUNCTION
     ]
 
 
 def build_pydantic_agent(
-    agent: Agent,
+    agent: AgentOut,
 ) -> tuple[PydanticAgent[AgentDeps, OutputType], AgentDeps]:
 
     model = build_model(agent)
@@ -110,12 +121,11 @@ def build_pydantic_agent(
     if agent.use_tools:
         tools = build_tools(agent)
 
-    if agent.schema is None:
-        output_type = str
-        schema = None
-    else:
-        schema = agent.schema.definition
-        match agent.schema.definition.get("type"):
+    output_type: type[OutputType] = str
+    output_schema: dict[str, Any] | None = None
+
+    if agent.output_type:
+        match agent.output_type.definition.get("type"):
             case "bool":
                 output_type = bool
             case "integer":
@@ -125,10 +135,11 @@ def build_pydantic_agent(
             case "array":
                 output_type = list
             case "object":
-                output_type = StructuredDict(agent.schema.definition)
+                output_type = StructuredDict(agent.output_type.definition)
+                output_schema = agent.output_type.definition
             case _:
-                invalid_type = agent.schema.definition.get("type")
-                raise ValueError(f"Unexpected schema type '{invalid_type}'")
+                invalid_type = agent.output_type.definition.get("type")
+                raise ValueError(f"Unexpected output type '{invalid_type}'")
 
     pydantic_agent = PydanticAgent[AgentDeps, OutputType](
         model,
@@ -143,14 +154,15 @@ def build_pydantic_agent(
     pydantic_agent.output_validator(validate_output)
 
     agent_deps = AgentDeps(
-        schema=schema,
-        validation_strategy=Agent.ValidationStrategy(agent.validation_strategy),
+        output_type=output_type,
+        output_schema=output_schema,
+        validation_strategy=ValidationStrategy(agent.validation_strategy),
     )
 
     return pydantic_agent, agent_deps
 
 
-async def run_stream(agent: Agent, prompt: str):
+async def run_stream(agent: AgentOut, prompt: str):
     pa, deps = build_pydantic_agent(agent)
 
     async with pa.run_stream(prompt, deps=deps) as result:
@@ -158,7 +170,7 @@ async def run_stream(agent: Agent, prompt: str):
             yield chunk
 
 
-async def run_async(agent: Agent, prompt: str):
+async def run_async(agent: AgentOut, prompt: str):
     pa, deps = build_pydantic_agent(agent)
     result = await pa.run(
         prompt,
@@ -168,7 +180,7 @@ async def run_async(agent: Agent, prompt: str):
 
 
 def run_sync(
-    agent: Agent,
+    agent: AgentOut,
     prompt: str,
     history: Sequence[ModelMessage],
 ):

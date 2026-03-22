@@ -13,11 +13,12 @@ from django.db.models import (
     ForeignKey,
     JSONField,
     Model,
-    TextChoices,
     TextField,
     UUIDField,
     manager,
 )
+
+from chatddx_backend.agents.models.choices import Role
 
 from .agent import Agent
 
@@ -51,12 +52,6 @@ class Session(Model):
 class Message(Model):
     class Meta:
         ordering = ["pk"]
-
-    class Role(TextChoices):
-        SYSTEM = "system", "System"
-        USER = "user", "User"
-        ASSISTANT = "assistant", "Assistant"
-        TOOL = "tool", "Tool"
 
     role = CharField(max_length=255, choices=Role.choices)
     run_id = UUIDField(db_index=True)

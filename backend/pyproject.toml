@@ -10,6 +10,7 @@ dependencies = [
   "dj-user-login-history>=1.0.6",
   "django-celery-results>=2.6.0",
   "django-modeltranslation>=0.19.19",
+  "django-ninja>=1.6.2",
   "django-unfold>=0.78.1",
   "flower>=2.0.1",
   "gunicorn>=25.0.1",
@@ -19,6 +20,7 @@ dependencies = [
   "psycopg[binary]>=3.3.2",
   "pydantic-ai>=1.55.0",
   "redis>=7.1.0",
+  "time-machine>=3.2.0",
   "tomli>=2.4.0",
 ]
 
