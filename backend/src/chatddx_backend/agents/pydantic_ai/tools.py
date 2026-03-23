@@ -1,6 +1,6 @@
 from pydantic_ai import RunContext
 
-from chatddx_backend.agents.pydantic_ai import AgentContext
+from chatddx_backend.agents.pydantic_ai.context import AgentContext
 
 
 def dice(ctx: RunContext[AgentContext]) -> str:

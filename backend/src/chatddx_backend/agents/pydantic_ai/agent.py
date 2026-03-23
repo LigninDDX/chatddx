@@ -1,11 +1,9 @@
 # src/chatddx_backend/agents/pydantic_ai.py
-from dataclasses import dataclass
-from typing import Any, Sequence, get_args
+from typing import Any, get_args
 
 import jsonschema
 from pydantic_ai import Agent as PydanticAgent
 from pydantic_ai import (
-    ModelMessage,
     ModelProfile,
     ModelRetry,
     ModelSettings,
@@ -16,19 +14,14 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from chatddx_backend.agents import tools
 from chatddx_backend.agents.models.choices import ToolType, ValidationStrategy
+from chatddx_backend.agents.pydantic_ai import tools
+from chatddx_backend.agents.pydantic_ai.context import (
+    AgentContext,
+    OutputType,
+    jsonschema_to_type,
+)
 from chatddx_backend.agents.schema import AgentSpec, SamplingParamsSpec, ToolGroupSpec
-from chatddx_backend.agents.utils import OutputType, jsonschema_to_type
-
-
-@dataclass(frozen=True)
-class AgentContext:
-    spec: AgentSpec
-    output_type: type[OutputType] | None
-    output_schema: dict[str, Any] | None
-    validation_strategy: ValidationStrategy
-    message_history: Sequence[ModelMessage] | None = None
 
 
 def build_agent(

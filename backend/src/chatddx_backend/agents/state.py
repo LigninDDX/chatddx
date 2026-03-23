@@ -1,69 +1,110 @@
 # src/chatddx_backend/agents/state.py
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 from chatddx_backend.agents.models import Agent, TrailModel
-from chatddx_backend.agents.registry import data_from_registry
-from chatddx_backend.agents.schema import AgentSpec, TrailSchema, TrailSpec
+from chatddx_backend.agents.registry import parse_registry
+from chatddx_backend.agents.schema import AgentSchema, AgentSpec, TrailSchema, TrailSpec
 from chatddx_backend.agents.utils import (
     ListField,
     SingleField,
     value_is_or_list_of,
 )
 
-T = TypeVar("T", bound=TrailSchema)
-S = TypeVar("S", bound=TrailModel)
+SchemaT = TypeVar("SchemaT", bound=TrailSchema)
+SpecT = TypeVar("SpecT", bound=TrailSpec)
+ModelT = TypeVar("ModelT", bound=TrailModel)
+
+
+# Composed convenience functions
 
 
 def agent_spec_from_registry(
     name: str,
     registry: dict[str, Any],
 ) -> AgentSpec:
-    return cast(AgentSpec, spec_from_registry(Agent, name, registry))
+    return spec_from_registry(Agent, AgentSpec, name, registry)
+
+
+def agent_data_from_registry(
+    name: str,
+    registry: dict[str, Any],
+) -> dict[str, Any]:
+    return data_from_registry(AgentSchema, name, registry)
 
 
 def agent_spec_from_data(
     data: dict[str, Any],
 ) -> AgentSpec:
-    return cast(AgentSpec, spec_from_data(Agent, data))
+    return spec_from_data(Agent, AgentSpec, data)
 
 
 def spec_from_registry(
     Model: type[TrailModel],
+    Spec: type[SpecT],
     name: str,
     registry: dict[str, Any],
-) -> TrailSpec:
+) -> SpecT:
     data = data_from_registry(Model.Schema, name, registry)
-    return spec_from_data(Model, data)
+    return spec_from_data(Model, Spec, data)
 
 
 def spec_from_data(
     Model: type[TrailModel],
+    Spec: type[SpecT],
     data: dict[str, Any],
-) -> TrailSpec:
+) -> SpecT:
     model = model_from_data(Model, data)
-    return Model.Spec.model_validate(model)
+    return Spec.model_validate(model)
 
 
 def spec_from_schema(
     Model: type[TrailModel],
+    Spec: type[SpecT],
     schema: TrailSchema,
-) -> TrailSpec:
+) -> SpecT:
     model = model_from_schema(Model, schema)
-    return Model.Spec.model_validate(model)
+    return Spec.model_validate(model)
 
 
 def model_from_data(
-    Model: type[TrailModel],
+    Model: type[ModelT],
     data: dict[str, Any],
-) -> TrailModel:
+) -> ModelT:
     schema = schema_from_data(Model.Schema, data)
     return model_from_schema(Model, schema)
 
 
+def schema_from_registry(
+    Schema: type[SchemaT],
+    name: str,
+    registry: dict[str, Any],
+) -> SchemaT:
+    data = data_from_registry(Schema, name, registry)
+    return schema_from_data(Schema, data)
+
+
+# Atomic pipeline steps
+
+
+def data_from_registry(
+    Schema: type[TrailSchema],
+    name: str,
+    registry: dict[str, Any],
+) -> dict[str, Any]:
+    return parse_registry(Schema, name, registry)
+
+
+def schema_from_data(
+    Schema: type[SchemaT],
+    data: dict[str, Any],
+) -> SchemaT:
+    return Schema.model_validate(data)
+
+
 def model_from_schema(
-    Model: type[TrailModel],
+    Model: type[ModelT],
     schema: TrailSchema,
-) -> TrailModel:
+) -> ModelT:
     values = {}
 
     for key, value in schema:
@@ -83,24 +124,15 @@ def model_from_schema(
     return Model.apply(**values)
 
 
-def schema_from_registry(
-    Schema: type[T],
-    name: str,
-    registry: dict[str, Any],
-) -> T:
-    data = data_from_registry(Schema, name, registry)
-    return schema_from_data(Schema, data)
-
-
-def schema_from_data(
-    Schema: type[T],
-    data: dict[str, Any],
-) -> T:
-    return Schema.model_validate(data)
+def spec_from_model(
+    Spec: type[SpecT],
+    model: TrailModel,
+) -> SpecT:
+    return Spec.model_validate(model)
 
 
 def schema_from_spec(
-    Schema: type[T],
+    Schema: type[SchemaT],
     spec: TrailSpec,
-) -> T:
+) -> SchemaT:
     return Schema.model_validate(spec.model_dump())

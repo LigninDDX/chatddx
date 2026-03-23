@@ -16,17 +16,27 @@ from chatddx_backend.agents.utils import (
 )
 
 
-def data_from_registry(
+class ParseError(Exception):
+    pass
+
+
+def parse_registry(
     Schema: type[TrailSchema],
     name: str,
     registry: dict[str, Any],
 ) -> dict[str, Any]:
-    raw_values = registry[Schema.record_type][name].copy()
+    try:
+        raw_values = registry[Schema.record_type][name].copy()
+    except Exception as e:
+        raise ParseError(
+            f"field '{Schema.record_type}.{name}' does not exist in registry."
+        )
+
     values = {}
 
     if "extends" in raw_values:
         for base_name in raw_values.pop("extends"):
-            base_values = data_from_registry(Schema, base_name, registry)
+            base_values = parse_registry(Schema, base_name, registry)
             values = deep_merge(values, base_values)
 
     values = deep_merge(values, raw_values)
@@ -35,16 +45,36 @@ def data_from_registry(
     for field_name, field_info in Schema.model_fields.items():
         if field_name not in values:
             continue
-        match field_is_or_list_of(TrailSchema, field_info):
-            case SingleField(t):
-                values[field_name] = data_from_registry(t, values[field_name], registry)
-            case ListField(t):
-                values[field_name] = [
-                    data_from_registry(t, item_name, registry)
-                    for item_name in cast(list[str], values[field_name])
-                ]
+
+        relation_type = field_is_or_list_of(TrailSchema, field_info)
+
+        relations: list[str]
+
+        match relation_type:
             case None:
-                pass
+                continue
+            case SingleField(relation_schema):
+                relations = [values[field_name]]
+            case ListField(relation_schema):
+                relations = values[field_name]
+
+        def resolve_relations():
+            for relation in relations:
+                try:
+                    _ = registry[relation_schema.record_type][relation]
+                except Exception as e:
+                    raise ParseError(
+                        f"field '{Schema.record_type}.{field_name}' is a relation to "
+                        f"'{relation_schema.record_type}' but its value '{relation}' is "
+                        "not in registry."
+                    )
+                yield parse_registry(relation_schema, relation, registry)
+
+        match relation_type:
+            case SingleField(relation_schema):
+                (values[field_name],) = resolve_relations()
+            case ListField(relation_schema):
+                values[field_name] = list(resolve_relations())
 
     return values
 

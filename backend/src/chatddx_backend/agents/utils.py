@@ -1,7 +1,6 @@
 # src/chatddx_backend/agents/utils.py
 import inspect
 from dataclasses import dataclass
-from decimal import Decimal
 from pathlib import Path
 from types import UnionType
 from typing import (
@@ -19,7 +18,6 @@ from typing import (
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from pydantic_ai import StructuredDict
 
 JSONValue = dict[str, "JSONValue"] | list["JSONValue"] | str | int | float | bool | None
 JSONLoaders = dict[str, Callable[[IO[bytes]], JSONValue]]
@@ -38,27 +36,11 @@ class ListField(Generic[T]):
 
 
 IsOrListOf = SingleField[T] | ListField[T] | None
-OutputType = bool | int | str | Decimal | list[Any] | dict[str, Any]
 
 
 type TypeTree = type | tuple[Any, list["TypeTree"]]
 
-
-def jsonschema_to_type(jsonschema: dict[str, Any]) -> type[OutputType]:
-    match jsonschema.get("type"):
-        case "bool":
-            return bool
-        case "integer":
-            return int
-        case "number":
-            return Decimal
-        case "array":
-            return list
-        case "object":
-            return StructuredDict(jsonschema)
-        case _:
-            invalid_type = jsonschema.get("type")
-            raise ValueError(f"Unexpected output type '{invalid_type}'")
+# Introspection utilities
 
 
 def describe_function(
@@ -75,16 +57,6 @@ def describe_function(
         return None, docstring
 
     return model.model_json_schema(), docstring
-
-
-def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
-    merged = base.copy()
-    for k, v in update.items():
-        if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
-            merged[k] = deep_merge(merged[k], cast(dict[str, Any], v))
-        else:
-            merged[k] = v
-    return merged
 
 
 def value_is_or_list_of(t: type[T], value: object) -> IsOrListOf[T]:
@@ -111,6 +83,17 @@ def field_is_or_list_of(t: type[T], field: FieldInfo) -> IsOrListOf[T]:
         inner = get_args(ann)
         if inner and isinstance(inner[0], type) and issubclass(inner[0], t):
             return ListField(inner[0])
+
+
+# Data utilities
+def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    merged = base.copy()
+    for k, v in update.items():
+        if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+            merged[k] = deep_merge(merged[k], cast(dict[str, Any], v))
+        else:
+            merged[k] = v
+    return merged
 
 
 def resolve_imports(obj: JSONValue, loaders: JSONLoaders, root: Path) -> Any:

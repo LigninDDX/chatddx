@@ -16,9 +16,10 @@ output_type = "bool"
 
 [agent.ddx-management]
 connection = "qwen3_8b"
+instructions = ""
 use_tools = true
 config = "no-thinking"
-output_type_path = "../output_types/ddx_management.json"
+output_type = "ddx-management"
 
 [agent.tool-coerced]
 coercion_strategy = "tool"
@@ -36,6 +37,9 @@ endpoint = "http://pelle.km:12009/v1/"
 
 [output_type.bool]
 definition = { type = "boolean" }
+
+[output_type.ddx-management]
+definition_path = "../output_types/ddx_management.json"
 
 [sampling_params.deterministic]
 seed = 0
