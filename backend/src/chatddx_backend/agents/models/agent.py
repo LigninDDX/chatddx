@@ -29,18 +29,18 @@ from chatddx_backend.agents.models.choices import (
     ValidationStrategy,
 )
 from chatddx_backend.agents.schema import (
-    AgentIn,
-    AgentOut,
-    ConnectionIn,
-    ConnectionOut,
-    OutputTypeIn,
-    OutputTypeOut,
-    SamplingParamsIn,
-    SamplingParamsOut,
-    ToolGroupIn,
-    ToolGroupOut,
-    ToolIn,
-    ToolOut,
+    AgentSchema,
+    AgentSpec,
+    ConnectionSchema,
+    ConnectionSpec,
+    OutputTypeSchema,
+    OutputTypeSpec,
+    SamplingParamsSchema,
+    SamplingParamsSpec,
+    ToolGroupSchema,
+    ToolGroupSpec,
+    ToolSchema,
+    ToolSpec,
 )
 
 from .trail import RelatedArrayField, TrailModel
@@ -75,8 +75,8 @@ class DecimalDecoder(json.JSONDecoder):
 
 
 class Connection(TrailModel):
-    schema_in = ConnectionIn
-    schema_out = ConnectionOut
+    Schema = ConnectionSchema
+    Spec = ConnectionSpec
 
     provider = CharField(max_length=255, choices=ProviderType.choices)
     model = CharField(max_length=255)
@@ -84,8 +84,8 @@ class Connection(TrailModel):
 
 
 class SamplingParams(TrailModel):
-    schema_in = SamplingParamsIn
-    schema_out = SamplingParamsOut
+    Schema = SamplingParamsSchema
+    Spec = SamplingParamsSpec
 
     temperature = DecimalField(
         default=None,
@@ -204,8 +204,8 @@ class SamplingParams(TrailModel):
 
 
 class OutputType(TrailModel):
-    schema_in = OutputTypeIn
-    schema_out = OutputTypeOut
+    Schema = OutputTypeSchema
+    Spec = OutputTypeSpec
 
     definition = JSONSchemaField(
         help_text="A valid JSON Schema defining the expected agent response structure.",
@@ -213,8 +213,8 @@ class OutputType(TrailModel):
 
 
 class Tool(TrailModel):
-    schema_in = ToolIn
-    schema_out = ToolOut
+    Schema = ToolSchema
+    Spec = ToolSpec
 
     type = CharField(
         max_length=50,
@@ -239,8 +239,8 @@ class Tool(TrailModel):
 
 
 class ToolGroup(TrailModel):
-    schema_in = ToolGroupIn
-    schema_out = ToolGroupOut
+    Schema = ToolGroupSchema
+    Spec = ToolGroupSpec
 
     instructions = TextField()
 
@@ -254,8 +254,8 @@ class ToolGroup(TrailModel):
 
 
 class Agent(TrailModel):
-    schema_in = AgentIn
-    schema_out = AgentOut
+    Schema = AgentSchema
+    Spec = AgentSpec
 
     instructions = TextField()
     connection = ForeignKey(

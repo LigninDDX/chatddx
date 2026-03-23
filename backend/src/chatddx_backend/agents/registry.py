@@ -5,7 +5,7 @@ from typing import IO, Any, cast
 
 import tomli
 
-from chatddx_backend.agents.schema import TrailInSchema
+from chatddx_backend.agents.schema import TrailSchema
 from chatddx_backend.agents.utils import (
     JSONLoaders,
     ListField,
@@ -17,7 +17,7 @@ from chatddx_backend.agents.utils import (
 
 
 def data_from_registry(
-    Schema: type[TrailInSchema],
+    Schema: type[TrailSchema],
     name: str,
     registry: dict[str, Any],
 ) -> dict[str, Any]:
@@ -35,7 +35,7 @@ def data_from_registry(
     for field_name, field_info in Schema.model_fields.items():
         if field_name not in values:
             continue
-        match field_is_or_list_of(TrailInSchema, field_info):
+        match field_is_or_list_of(TrailSchema, field_info):
             case SingleField(t):
                 values[field_name] = data_from_registry(t, values[field_name], registry)
             case ListField(t):

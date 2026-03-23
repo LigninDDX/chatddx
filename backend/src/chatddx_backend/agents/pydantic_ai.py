@@ -18,13 +18,13 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from chatddx_backend.agents import tools
 from chatddx_backend.agents.models.choices import ToolType, ValidationStrategy
-from chatddx_backend.agents.schema import AgentOut, SamplingParamsOut, ToolGroupOut
+from chatddx_backend.agents.schema import AgentSpec, SamplingParamsSpec, ToolGroupSpec
 from chatddx_backend.agents.utils import OutputType, jsonschema_to_type
 
 
 @dataclass(frozen=True)
 class AgentContext:
-    spec: AgentOut
+    spec: AgentSpec
     output_type: type[OutputType] | None
     output_schema: dict[str, Any] | None
     validation_strategy: ValidationStrategy
@@ -32,7 +32,7 @@ class AgentContext:
 
 
 def build_agent(
-    agent_spec: AgentOut,
+    agent_spec: AgentSpec,
 ) -> tuple[PydanticAgent[AgentContext, OutputType], AgentContext]:
 
     output_type: type[OutputType] = str
@@ -74,7 +74,7 @@ def build_agent(
     return pydantic_agent, agent_context
 
 
-def build_model(agent_spec: AgentOut):
+def build_model(agent_spec: AgentSpec):
     if agent_spec.connection is None:
         raise ValueError("No connection defined for this agent.")
 
@@ -97,7 +97,7 @@ def build_model(agent_spec: AgentOut):
     return OpenAIChatModel(**model_kwargs)
 
 
-def build_config(sampling_params_spec: SamplingParamsOut) -> ModelSettings:
+def build_config(sampling_params_spec: SamplingParamsSpec) -> ModelSettings:
     settings_kwargs: dict[str, Any] = {}
     if sampling_params_spec.seed is not None:
         settings_kwargs["seed"] = sampling_params_spec.seed
@@ -111,7 +111,7 @@ def build_config(sampling_params_spec: SamplingParamsOut) -> ModelSettings:
     return ModelSettings(**settings_kwargs)
 
 
-def build_tools(tool_group_spec: ToolGroupOut) -> list[PydanticTool]:
+def build_tools(tool_group_spec: ToolGroupSpec) -> list[PydanticTool]:
     return [
         PydanticTool(
             getattr(tools, tool_spec.name),

@@ -15,7 +15,7 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from chatddx_backend.agents.schema import TrailInSchema, TrailOutSchema
+from chatddx_backend.agents.schema import TrailSchema, TrailSpec
 
 
 class TrailQS(Manager[Any]):
@@ -24,8 +24,8 @@ class TrailQS(Manager[Any]):
 
 
 class TrailModel(Model):
-    schema_in: type[TrailInSchema]
-    schema_out: type[TrailOutSchema]
+    Schema: type[TrailSchema]
+    Spec: type[TrailSpec]
 
     name = CharField(
         max_length=255,
@@ -145,9 +145,9 @@ class TrailModel(Model):
         return self.name
 
 
-class RelatedArrayField(ArrayField):  # type: ignore[type-arg]
+class RelatedArrayField(ArrayField):  # type: ignore
     def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        return super().__new__(cls)  # type: ignore[call-overload]
+        return super().__new__(cls)  # type: ignore
 
     def __init__(
         self,
@@ -160,7 +160,7 @@ class RelatedArrayField(ArrayField):  # type: ignore[type-arg]
 
     def get_db_prep_value(self, value: Any, connection: Any, prepared: Any) -> Any:
         if value is not None:
-            value = [v.id for v in value]
+            value = sorted([v.id for v in value])
         return super().get_db_prep_value(value, connection, prepared)
 
     def from_db_value(self, value: Any, expression: Any, connection: Any) -> Any:

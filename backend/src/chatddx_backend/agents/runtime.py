@@ -10,8 +10,8 @@ from chatddx_backend.agents.pydantic_ai import (
     build_agent,
 )
 from chatddx_backend.agents.state import (
-    spec_from_data,
-    spec_from_registry,
+    agent_spec_from_data,
+    agent_spec_from_registry,
 )
 from chatddx_backend.agents.utils import OutputType
 
@@ -23,9 +23,9 @@ def get_agent_sync(
 ) -> tuple[PydanticAgent[AgentContext, OutputType], AgentContext]:
     match config:
         case str():
-            agent_spec = spec_from_registry(config, registry)
+            agent_spec = agent_spec_from_registry(config, registry)
         case dict():
-            agent_spec = spec_from_data(config)
+            agent_spec = agent_spec_from_data(config)
 
     return build_agent(agent_spec)
 

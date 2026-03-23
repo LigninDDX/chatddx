@@ -25,12 +25,12 @@ def _validate_json_schema(v: Any) -> Any:
     return v
 
 
-class TrailInSchema(Schema):
+class TrailSchema(Schema):
     record_type: ClassVar[str]
     name: str
 
 
-class TrailOutSchema(Schema):
+class TrailSpec(Schema):
     id: int
     name: str
     fingerprint: str
@@ -40,7 +40,7 @@ class TrailOutSchema(Schema):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ConnectionIn(TrailInSchema):
+class ConnectionSchema(TrailSchema):
     record_type = "connection"
 
     provider: ProviderType
@@ -48,13 +48,13 @@ class ConnectionIn(TrailInSchema):
     endpoint: str
 
 
-class ConnectionOut(TrailOutSchema):
+class ConnectionSpec(TrailSpec):
     provider: ProviderType
     model: str
     endpoint: str
 
 
-class SamplingParamsIn(TrailInSchema):
+class SamplingParamsSchema(TrailSchema):
     record_type = "sampling_params"
 
     temperature: Decimal | None = None
@@ -70,7 +70,7 @@ class SamplingParamsIn(TrailInSchema):
     provider_params: dict[str, Any] = Field(default_factory=dict)
 
 
-class SamplingParamsOut(TrailOutSchema):
+class SamplingParamsSpec(TrailSpec):
     temperature: Decimal | None = None
     top_p: Decimal | None = None
     top_k: int | None = None
@@ -84,7 +84,7 @@ class SamplingParamsOut(TrailOutSchema):
     provider_params: dict[str, Any]
 
 
-class OutputTypeIn(TrailInSchema):
+class OutputTypeSchema(TrailSchema):
     record_type = "output_type"
 
     definition: dict[str, Any]
@@ -92,11 +92,11 @@ class OutputTypeIn(TrailInSchema):
     _validate_definition = field_validator("definition")(_validate_json_schema)
 
 
-class OutputTypeOut(TrailOutSchema):
+class OutputTypeSpec(TrailSpec):
     definition: dict[str, Any]
 
 
-class ToolIn(TrailInSchema):
+class ToolSchema(TrailSchema):
     record_type = "tool"
 
     type: ToolType
@@ -106,25 +106,25 @@ class ToolIn(TrailInSchema):
     _validate_definition = field_validator("parameters")(_validate_json_schema)
 
 
-class ToolOut(TrailOutSchema):
+class ToolSpec(TrailSpec):
     type: ToolType
     description: str | None
     parameters: dict[str, Any] | None
 
 
-class ToolGroupIn(TrailInSchema):
+class ToolGroupSchema(TrailSchema):
     record_type = "tool_group"
 
     instructions: str
-    tools: list[ToolIn]
+    tools: list[ToolSchema]
 
 
-class ToolGroupOut(TrailOutSchema):
+class ToolGroupSpec(TrailSpec):
     instructions: str
-    tools: list[ToolOut] = []
+    tools: list[ToolSpec] = []
 
 
-class AgentIn(TrailInSchema):
+class AgentSchema(TrailSchema):
     record_type = "agent"
 
     instructions: str
@@ -132,19 +132,19 @@ class AgentIn(TrailInSchema):
     validation_strategy: ValidationStrategy = ValidationStrategy.INFORM
     coercion_strategy: CoercionStrategy | None = None
 
-    connection: ConnectionIn | None = None
-    sampling_params: SamplingParamsIn | None = None
-    output_type: OutputTypeIn | None = None
-    tool_group: ToolGroupIn | None = None
+    connection: ConnectionSchema | None = None
+    sampling_params: SamplingParamsSchema | None = None
+    output_type: OutputTypeSchema | None = None
+    tool_group: ToolGroupSchema | None = None
 
 
-class AgentOut(TrailOutSchema):
+class AgentSpec(TrailSpec):
     instructions: str
     use_tools: bool
     validation_strategy: ValidationStrategy
     coercion_strategy: CoercionStrategy | None
 
-    connection: ConnectionOut | None = None
-    sampling_params: SamplingParamsOut | None = None
-    output_type: OutputTypeOut | None = None
-    tool_group: ToolGroupOut | None = None
+    connection: ConnectionSpec | None = None
+    sampling_params: SamplingParamsSpec | None = None
+    output_type: OutputTypeSpec | None = None
+    tool_group: ToolGroupSpec | None = None
