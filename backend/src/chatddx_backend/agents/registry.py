@@ -7,8 +7,8 @@ import tomli
 
 from chatddx_backend.agents.schema import TrailSchema
 from chatddx_backend.agents.utils import (
+    ArrayField,
     JSONLoaders,
-    ListField,
     SingleField,
     deep_merge,
     field_is_or_list_of,
@@ -55,7 +55,7 @@ def parse_registry(
                 continue
             case SingleField(relation_schema):
                 relations = [values[field_name]]
-            case ListField(relation_schema):
+            case ArrayField(relation_schema):
                 relations = values[field_name]
 
         def resolve_relations():
@@ -73,7 +73,7 @@ def parse_registry(
         match relation_type:
             case SingleField(relation_schema):
                 (values[field_name],) = resolve_relations()
-            case ListField(relation_schema):
+            case ArrayField(relation_schema):
                 values[field_name] = list(resolve_relations())
 
     return values

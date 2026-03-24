@@ -20,8 +20,8 @@ from chatddx_backend.agents.schema import (
     TrailSpec,
 )
 from chatddx_backend.agents.state import (
+    schema_from_registry,
     schema_from_spec,
-    spec_from_registry,
     spec_from_schema,
 )
 from chatddx_backend.agents.tests.field_types import identity_boundary
@@ -48,10 +48,17 @@ fields = [
 ]
 
 
-@pytest.mark.django_db
+@pytest.fixture(scope="module")
+def django_db_setup(django_test_environment, django_db_blocker):  # type: ignore
+    with django_db_blocker.unblock():  # type: ignore
+        yield
+
+
+@pytest.mark.asyncio
+@pytest.mark.django_db()
 @pytest.mark.parametrize("Model, record, field_name", fields)
 @pytest.mark.time_machine(datetime(1970, 1, 1), tick=False)
-def test_identity_boundary(
+async def test_identity_boundary(
     time_machine: Any,
     subtests: pytest.Subtests,
     Model: type[TrailModel],
@@ -67,7 +74,9 @@ def test_identity_boundary(
     if test_key not in identity_boundary.field_types:
         pytest.fail(f"No test defined for type combination {test_key} on {field_name}")
 
-    spec = spec_from_registry(Model, Model.Spec, record, registry)
+    schema = schema_from_registry(Model.Schema, record, registry)
+    spec = await spec_from_schema(Model, Model.Spec, schema)
+
     schema = schema_from_spec(Model.Schema, spec)
 
     value, altered_value = identity_boundary.field_types[test_key](
@@ -81,7 +90,7 @@ def test_identity_boundary(
     ):
         time_machine.shift(timedelta(days=1))
         test_schema = schema.model_copy(update={field_name: value})
-        test_spec = spec_from_schema(Model, Model.Spec, test_schema)
+        test_spec = await spec_from_schema(Model, Model.Spec, test_schema)
 
         with subtests.test(msg=msg):
             expect_fn(Model.Schema, spec, test_spec, field_name)

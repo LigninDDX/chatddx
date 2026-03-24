@@ -1,5 +1,5 @@
 """
-Django 5.0.1
+Django 6.0.2
 """
 
 from os import environ, getenv

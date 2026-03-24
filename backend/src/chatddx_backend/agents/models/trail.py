@@ -1,21 +1,29 @@
 # src/chatddx_backend/agents/models/trail.py
 from __future__ import annotations
 
-from typing import Any, Self, override
+from typing import TYPE_CHECKING, Any, Self, override
 
+from asgiref.sync import sync_to_async
 from django.contrib.postgres.fields.array import ArrayField
 from django.db import DatabaseError, connection
 from django.db.models import (
     CharField,
     DateTimeField,
     DecimalField,
+    ForeignKey,
     Index,
     Manager,
     Model,
+    OneToOneField,
 )
 from django.utils import timezone
 
 from chatddx_backend.agents.schema import TrailSchema, TrailSpec
+
+if TYPE_CHECKING:
+    TypedArrayField = ArrayField[list[int]]
+else:
+    TypedArrayField = ArrayField
 
 
 class TrailQS(Manager[Any]):
@@ -62,13 +70,7 @@ class TrailModel(Model):
             ),
         ]
 
-    @classmethod
-    def apply(cls, **kwargs: Any) -> Self:
-        return cls.objects.get(
-            pk=cls(**kwargs)._apply(),
-        )
-
-    def _apply(self) -> int:
+    async def apply(self) -> int:
         ignore_fields = {"id", "name", "created_at", "updated_at", "fingerprint"}
 
         db_fields: list[str] = []
@@ -131,24 +133,38 @@ class TrailModel(Model):
             RETURNING id, fingerprint, created_at, (xmax = 0) AS is_created;
         """
 
-        with connection.cursor() as cursor:
-            cursor.execute(sql, final_values)
-            result = cursor.fetchone()
+        def _execute_cursor():
+            with connection.cursor() as cursor:
+                cursor.execute(sql, final_values)
+                result = cursor.fetchone()
+                if not result:
+                    raise DatabaseError(
+                        "Upsert failed: No rows returned from Postgres."
+                    )
+                return result[0]
 
-            if not result:
-                raise DatabaseError("Upsert failed: No rows returned from Postgres.")
-
-        return result[0]
+        return await sync_to_async(_execute_cursor)()
 
     @override
     def __str__(self):
         return self.name
 
 
-class RelatedArrayField(ArrayField):  # type: ignore
-    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        return super().__new__(cls)  # type: ignore
+async def resolve_related_array_fields(instance: TrailModel):
+    for field in instance._meta.concrete_fields:
+        if isinstance(field, RelatedArrayField):
+            value = getattr(instance, field.name)
+            queryset = field.related_model.objects.filter(pk__in=value)
+            resolved_value = [obj async for obj in queryset]
+            setattr(instance, field.name, resolved_value)
 
+        elif isinstance(field, (ForeignKey, OneToOneField)):
+            related_instance = getattr(instance, field.name, None)
+            if related_instance is not None:
+                await resolve_related_array_fields(related_instance)
+
+
+class RelatedArrayField(TypedArrayField):
     def __init__(
         self,
         *args: Any,
@@ -157,16 +173,6 @@ class RelatedArrayField(ArrayField):  # type: ignore
     ) -> None:
         self.related_model: type[TrailModel] = related_model
         super().__init__(*args, **kwargs)
-
-    def get_db_prep_value(self, value: Any, connection: Any, prepared: Any) -> Any:
-        if value is not None:
-            value = sorted([v.id for v in value])
-        return super().get_db_prep_value(value, connection, prepared)
-
-    def from_db_value(self, value: Any, expression: Any, connection: Any) -> Any:
-        if value is None:
-            return value
-        return self.related_model.objects.filter(pk__in=value)
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()

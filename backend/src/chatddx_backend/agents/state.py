@@ -1,11 +1,15 @@
 # src/chatddx_backend/agents/state.py
+import asyncio
 from typing import Any, TypeVar
 
+from django.db.models import ForeignKey
+
 from chatddx_backend.agents.models import Agent, TrailModel
+from chatddx_backend.agents.models.trail import resolve_related_array_fields
 from chatddx_backend.agents.registry import parse_registry
 from chatddx_backend.agents.schema import AgentSchema, AgentSpec, TrailSchema, TrailSpec
 from chatddx_backend.agents.utils import (
-    ListField,
+    ArrayField,
     SingleField,
     value_is_or_list_of,
 )
@@ -15,14 +19,14 @@ SpecT = TypeVar("SpecT", bound=TrailSpec)
 ModelT = TypeVar("ModelT", bound=TrailModel)
 
 
-# Composed convenience functions
+# Agent specific convenience functions
 
 
-def agent_spec_from_registry(
+async def agent_spec_from_registry(
     name: str,
     registry: dict[str, Any],
 ) -> AgentSpec:
-    return spec_from_registry(Agent, AgentSpec, name, registry)
+    return await spec_from_registry(Agent, AgentSpec, name, registry)
 
 
 def agent_data_from_registry(
@@ -32,46 +36,62 @@ def agent_data_from_registry(
     return data_from_registry(AgentSchema, name, registry)
 
 
-def agent_spec_from_data(
+async def agent_spec_from_data(
     data: dict[str, Any],
 ) -> AgentSpec:
-    return spec_from_data(Agent, AgentSpec, data)
+    return await spec_from_data(Agent, AgentSpec, data)
 
 
-def spec_from_registry(
+# Composed convenience functions
+
+
+async def spec_from_registry(
     Model: type[TrailModel],
     Spec: type[SpecT],
     name: str,
     registry: dict[str, Any],
 ) -> SpecT:
     data = data_from_registry(Model.Schema, name, registry)
-    return spec_from_data(Model, Spec, data)
+    spec = await spec_from_data(Model, Spec, data)
+    return spec
 
 
-def spec_from_data(
+async def spec_from_data(
     Model: type[TrailModel],
     Spec: type[SpecT],
     data: dict[str, Any],
 ) -> SpecT:
-    model = model_from_data(Model, data)
-    return Spec.model_validate(model)
+    model = await model_from_data(Model, data)
+    spec = spec_from_model(Spec, model)
+    return spec
 
 
-def spec_from_schema(
+async def spec_from_schema(
     Model: type[TrailModel],
     Spec: type[SpecT],
     schema: TrailSchema,
 ) -> SpecT:
-    model = model_from_schema(Model, schema)
-    return Spec.model_validate(model)
+    model = await model_from_schema(Model, schema)
+    spec = spec_from_model(Spec, model)
+    return spec
 
 
-def model_from_data(
+async def model_from_schema(
+    Model: type[ModelT],
+    schema: TrailSchema,
+) -> ModelT:
+    pk = await pk_from_schema(Model, schema)
+    model = await model_from_pk(Model, pk)
+    return model
+
+
+async def model_from_data(
     Model: type[ModelT],
     data: dict[str, Any],
 ) -> ModelT:
     schema = schema_from_data(Model.Schema, data)
-    return model_from_schema(Model, schema)
+    model = await model_from_schema(Model, schema)
+    return model
 
 
 def schema_from_registry(
@@ -80,7 +100,8 @@ def schema_from_registry(
     registry: dict[str, Any],
 ) -> SchemaT:
     data = data_from_registry(Schema, name, registry)
-    return schema_from_data(Schema, data)
+    schema = schema_from_data(Schema, data)
+    return schema
 
 
 # Atomic pipeline steps
@@ -101,10 +122,10 @@ def schema_from_data(
     return Schema.model_validate(data)
 
 
-def model_from_schema(
-    Model: type[ModelT],
+async def pk_from_schema(
+    Model: type[TrailModel],
     schema: TrailSchema,
-) -> ModelT:
+) -> int:
     values = {}
 
     for key, value in schema:
@@ -113,15 +134,31 @@ def model_from_schema(
 
         match value_is_or_list_of(TrailSchema, value):
             case SingleField() if related_model:
-                values[key] = model_from_schema(related_model, value)
-            case ListField() if related_model:
-                values[key] = [model_from_schema(related_model, v) for v in value]
+                values[key + "_id"] = await pk_from_schema(related_model, value)
+
+            # postgres' ArrayField, not M2M
+            case ArrayField() if related_model:
+                tasks = [pk_from_schema(related_model, v) for v in value]
+                values[key] = await asyncio.gather(*tasks)
+
             case None:
                 values[key] = value
+
             case _:
                 raise ValueError(f"'{value}' is a relation but lacks related_model")
 
-    return Model.apply(**values)
+    pk = await Model(**values).apply()
+    return pk
+
+
+async def model_from_pk(
+    Model: type[ModelT],
+    pk: int,
+) -> ModelT:
+    related = [f.name for f in Model._meta.get_fields() if isinstance(f, ForeignKey)]
+    model = await Model.objects.select_related(*related).aget(pk=pk)
+    await resolve_related_array_fields(model)
+    return model
 
 
 def spec_from_model(

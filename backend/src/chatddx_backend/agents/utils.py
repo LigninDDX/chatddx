@@ -31,11 +31,11 @@ class SingleField(Generic[T]):
 
 
 @dataclass
-class ListField(Generic[T]):
+class ArrayField(Generic[T]):
     t: type[T]
 
 
-IsOrListOf = SingleField[T] | ListField[T] | None
+IsOrListOf = SingleField[T] | ArrayField[T] | None
 
 
 type TypeTree = type | tuple[Any, list["TypeTree"]]
@@ -65,7 +65,7 @@ def value_is_or_list_of(t: type[T], value: object) -> IsOrListOf[T]:
 
     if isinstance(value, list):
         if not value or isinstance(value[0], t):
-            return ListField(t)
+            return ArrayField(t)
 
 
 def field_is_or_list_of(t: type[T], field: FieldInfo) -> IsOrListOf[T]:
@@ -82,7 +82,7 @@ def field_is_or_list_of(t: type[T], field: FieldInfo) -> IsOrListOf[T]:
     if origin is list:
         inner = get_args(ann)
         if inner and isinstance(inner[0], type) and issubclass(inner[0], t):
-            return ListField(inner[0])
+            return ArrayField(inner[0])
 
 
 # Data utilities
