@@ -22,28 +22,29 @@ from django.db.models import (
     URLField,
 )
 
-from chatddx_backend.agents.models.choices import (
+from chatddx_backend.agents.models.enums import (
     CoercionStrategy,
     ProviderType,
     ToolType,
     ValidationStrategy,
 )
-from chatddx_backend.agents.schema import (
+from chatddx_backend.agents.schemas import (
     AgentSchema,
-    AgentSpec,
     ConnectionSchema,
-    ConnectionSpec,
     OutputTypeSchema,
-    OutputTypeSpec,
     SamplingParamsSchema,
-    SamplingParamsSpec,
     ToolGroupSchema,
-    ToolGroupSpec,
     ToolSchema,
+)
+from chatddx_backend.agents.specs import (
+    AgentSpec,
+    ConnectionSpec,
+    OutputTypeSpec,
+    SamplingParamsSpec,
+    ToolGroupSpec,
     ToolSpec,
 )
-
-from .trail import RelatedArrayField, TrailModel
+from chatddx_backend.agents.trail import RelatedArrayField, TrailModel
 
 if TYPE_CHECKING:
     TypedJSONField = JSONField[dict[str, Any]]
@@ -244,7 +245,7 @@ class ToolGroup(TrailModel):
 
     instructions = TextField()
 
-    tools = RelatedArrayField(
+    tools = RelatedArrayField(  # type: ignore
         IntegerField(),
         related_model=Tool,
         blank=True,

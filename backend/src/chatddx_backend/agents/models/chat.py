@@ -18,7 +18,7 @@ from django.db.models import (
     manager,
 )
 
-from chatddx_backend.agents.models.choices import Role
+from chatddx_backend.agents.models.enums import Role
 
 from .agent import Agent
 

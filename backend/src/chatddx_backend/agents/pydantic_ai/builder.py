@@ -14,14 +14,14 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from chatddx_backend.agents.models.choices import ToolType, ValidationStrategy
+from chatddx_backend.agents.models.enums import ToolType, ValidationStrategy
 from chatddx_backend.agents.pydantic_ai import tools
 from chatddx_backend.agents.pydantic_ai.context import (
     AgentContext,
     OutputType,
     jsonschema_to_type,
 )
-from chatddx_backend.agents.schema import AgentSpec, SamplingParamsSpec, ToolGroupSpec
+from chatddx_backend.agents.specs import AgentSpec, SamplingParamsSpec, ToolGroupSpec
 
 
 def build_agent(

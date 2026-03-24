@@ -3,11 +3,12 @@ from typing import AsyncGenerator
 
 from pydantic_ai import AgentRunResult
 
-from chatddx_backend.agents.pydantic_ai.agent import (
+from chatddx_backend.agents.specs import AgentSpec
+
+from .builder import (
     OutputType,
     build_agent,
 )
-from chatddx_backend.agents.schema import AgentSpec
 
 
 def run_sync(

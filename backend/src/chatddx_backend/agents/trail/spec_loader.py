@@ -1,97 +1,27 @@
-# src/chatddx_backend/agents/state.py
+# src/chatddx_backend/agents/spec_loader.py
 import asyncio
 from typing import Any, TypeVar
 
 from django.db.models import ForeignKey
 
-from chatddx_backend.agents.models import Agent, TrailModel
-from chatddx_backend.agents.models.trail import resolve_related_array_fields
 from chatddx_backend.agents.registry import parse_registry
-from chatddx_backend.agents.schema import AgentSchema, AgentSpec, TrailSchema, TrailSpec
+from chatddx_backend.agents.trail import (
+    TrailModel,
+    TrailSchema,
+    TrailSpec,
+    resolve_related_array_fields,
+)
 from chatddx_backend.agents.utils import (
-    ArrayField,
-    SingleField,
-    value_is_or_list_of,
+    ListOf,
+    OneOf,
+    classify_value,
 )
 
 SchemaT = TypeVar("SchemaT", bound=TrailSchema)
 SpecT = TypeVar("SpecT", bound=TrailSpec)
 ModelT = TypeVar("ModelT", bound=TrailModel)
 
-
-# Agent specific convenience functions
-
-
-async def agent_spec_from_registry(
-    name: str,
-    registry: dict[str, Any],
-) -> AgentSpec:
-    return await spec_from_registry(Agent, AgentSpec, name, registry)
-
-
-def agent_data_from_registry(
-    name: str,
-    registry: dict[str, Any],
-) -> dict[str, Any]:
-    return data_from_registry(AgentSchema, name, registry)
-
-
-async def agent_spec_from_data(
-    data: dict[str, Any],
-) -> AgentSpec:
-    return await spec_from_data(Agent, AgentSpec, data)
-
-
 # Composed convenience functions
-
-
-async def spec_from_registry(
-    Model: type[TrailModel],
-    Spec: type[SpecT],
-    name: str,
-    registry: dict[str, Any],
-) -> SpecT:
-    data = data_from_registry(Model.Schema, name, registry)
-    spec = await spec_from_data(Model, Spec, data)
-    return spec
-
-
-async def spec_from_data(
-    Model: type[TrailModel],
-    Spec: type[SpecT],
-    data: dict[str, Any],
-) -> SpecT:
-    model = await model_from_data(Model, data)
-    spec = spec_from_model(Spec, model)
-    return spec
-
-
-async def spec_from_schema(
-    Model: type[TrailModel],
-    Spec: type[SpecT],
-    schema: TrailSchema,
-) -> SpecT:
-    model = await model_from_schema(Model, schema)
-    spec = spec_from_model(Spec, model)
-    return spec
-
-
-async def model_from_schema(
-    Model: type[ModelT],
-    schema: TrailSchema,
-) -> ModelT:
-    pk = await pk_from_schema(Model, schema)
-    model = await model_from_pk(Model, pk)
-    return model
-
-
-async def model_from_data(
-    Model: type[ModelT],
-    data: dict[str, Any],
-) -> ModelT:
-    schema = schema_from_data(Model.Schema, data)
-    model = await model_from_schema(Model, schema)
-    return model
 
 
 def schema_from_registry(
@@ -102,6 +32,15 @@ def schema_from_registry(
     data = data_from_registry(Schema, name, registry)
     schema = schema_from_data(Schema, data)
     return schema
+
+
+async def model_from_schema(
+    Model: type[ModelT],
+    schema: TrailSchema,
+) -> ModelT:
+    pk = await pk_from_schema(Model, schema)
+    model = await model_from_pk(Model, pk)
+    return model
 
 
 # Atomic pipeline steps
@@ -131,13 +70,13 @@ async def pk_from_schema(
     for key, value in schema:
         field = Model._meta.get_field(key)
         related_model = getattr(field, "related_model", None)
+        relation_type = classify_value(TrailSchema, value)
 
-        match value_is_or_list_of(TrailSchema, value):
-            case SingleField() if related_model:
+        match relation_type:
+            case OneOf(_) if related_model:
                 values[key + "_id"] = await pk_from_schema(related_model, value)
 
-            # postgres' ArrayField, not M2M
-            case ArrayField() if related_model:
+            case ListOf(_) if related_model:
                 tasks = [pk_from_schema(related_model, v) for v in value]
                 values[key] = await asyncio.gather(*tasks)
 

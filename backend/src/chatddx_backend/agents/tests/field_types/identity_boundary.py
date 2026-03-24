@@ -27,14 +27,14 @@ from chatddx_backend.agents.models import (
 )
 from chatddx_backend.agents.models.agent import JSONSchemaField
 from chatddx_backend.agents.registry import load_registry
-from chatddx_backend.agents.schema import (
+from chatddx_backend.agents.schemas import (
     ConnectionSchema,
     OutputTypeSchema,
     SamplingParamsSchema,
     ToolGroupSchema,
     ToolSchema,
 )
-from chatddx_backend.agents.state import (
+from chatddx_backend.agents.trail import (
     schema_from_registry,
 )
 

@@ -1,13 +1,12 @@
 # src/chatddx_backend/agents/models/__init__.py
 from .agent import Agent, Connection, OutputType, SamplingParams, Tool, ToolGroup
 from .chat import Message, Session
-from .choices import (
+from .enums import (
     CoercionStrategy,
     ProviderType,
     ToolType,
     ValidationStrategy,
 )
-from .trail import TrailModel
 
 __all__ = [
     "Agent",
@@ -18,7 +17,6 @@ __all__ = [
     "ToolGroup",
     "Message",
     "Session",
-    "TrailModel",
     "CoercionStrategy",
     "ValidationStrategy",
     "ProviderType",

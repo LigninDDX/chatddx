@@ -1,36 +1,28 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic_ai import ModelMessagesTypeAdapter
 
-from chatddx_backend.agents.config import Config, LazyConfig, spec_from_config_async
 from chatddx_backend.agents.pydantic_ai.runners import run_async, run_sync
 from chatddx_backend.agents.registry import load_registry
-from chatddx_backend.agents.state import agent_data_from_registry
+from chatddx_backend.agents.spec_loader import agent_from_registry
 
-registry: Config = load_registry(
+registry: dict[str, Any] = load_registry(
     Path(__file__).parent / "registry" / "experiments.toml"
 )
 
 
-def config_loader(name: str) -> LazyConfig:
-
-    def _config_loader() -> Config:
-        asdf = agent_data_from_registry(name, registry)
-        raise
-
-    return _config_loader
-
-
 @pytest.mark.asyncio
+@pytest.mark.django_db()
 async def test_ddx_management():
     data_path = Path(__file__).parent / "cases/case_a.txt"
     with open(data_path, "r") as f:
         case_a = f.read()
 
-    agent_spec = await spec_from_config_async(config_loader("ddx-management"))
+    agent_spec = await agent_from_registry("ddx-management", registry)
     result = await run_async(agent_spec, case_a)
 
     assert result.output == ""

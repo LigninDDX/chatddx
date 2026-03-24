@@ -1,19 +1,19 @@
 # src/chatddx_backend/agents/registry.py
 import json
 from pathlib import Path
-from typing import IO, Any, cast
+from typing import IO, Any, Callable, cast
 
 import tomli
 
-from chatddx_backend.agents.schema import TrailSchema
+from chatddx_backend.agents.trail import TrailSchema
 from chatddx_backend.agents.utils import (
-    ArrayField,
-    JSONLoaders,
-    SingleField,
-    deep_merge,
-    field_is_or_list_of,
-    resolve_imports,
+    ListOf,
+    OneOf,
+    classify_field,
 )
+
+JSONValue = dict[str, "JSONValue"] | list["JSONValue"] | str | int | float | bool | None
+JSONLoaders = dict[str, Callable[[IO[bytes]], JSONValue]]
 
 
 class ParseError(Exception):
@@ -27,7 +27,7 @@ def parse_registry(
 ) -> dict[str, Any]:
     try:
         raw_values = registry[Schema.record_type][name].copy()
-    except Exception as e:
+    except Exception:
         raise ParseError(
             f"field '{Schema.record_type}.{name}' does not exist in registry."
         )
@@ -46,23 +46,23 @@ def parse_registry(
         if field_name not in values:
             continue
 
-        relation_type = field_is_or_list_of(TrailSchema, field_info)
+        relation_type = classify_field(TrailSchema, field_info)
 
         relations: list[str]
 
         match relation_type:
             case None:
                 continue
-            case SingleField(relation_schema):
+            case OneOf(relation_schema):
                 relations = [values[field_name]]
-            case ArrayField(relation_schema):
+            case ListOf(relation_schema):
                 relations = values[field_name]
 
         def resolve_relations():
             for relation in relations:
                 try:
                     _ = registry[relation_schema.record_type][relation]
-                except Exception as e:
+                except Exception:
                     raise ParseError(
                         f"field '{Schema.record_type}.{field_name}' is a relation to "
                         f"'{relation_schema.record_type}' but its value '{relation}' is "
@@ -71,9 +71,9 @@ def parse_registry(
                 yield parse_registry(relation_schema, relation, registry)
 
         match relation_type:
-            case SingleField(relation_schema):
+            case OneOf(relation_schema):
                 (values[field_name],) = resolve_relations()
-            case ArrayField(relation_schema):
+            case ListOf(relation_schema):
                 values[field_name] = list(resolve_relations())
 
     return values
@@ -117,3 +117,31 @@ def load_registry(file_path: Path, _seen: set[Path] | None = None) -> Any:
     merged_data = deep_merge(merged_data, data)
 
     return resolve_imports(merged_data, loaders, file_path.parent)
+
+
+def resolve_imports(obj: JSONValue, loaders: JSONLoaders, root: Path) -> Any:
+    if isinstance(obj, dict):
+        for key in list(obj.keys()):
+            value = obj[key]
+            if key.endswith("_path") and isinstance(value, str):
+                new_key = key.replace("_path", "")
+                path = root / value
+                with path.open("rb") as linked_file:
+                    obj[new_key] = loaders[path.suffix](linked_file)
+                del obj[key]
+            else:
+                resolve_imports(value, loaders, root)
+    elif isinstance(obj, list):
+        for item in obj:
+            resolve_imports(item, loaders, root)
+    return obj
+
+
+def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    merged = base.copy()
+    for k, v in update.items():
+        if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+            merged[k] = deep_merge(merged[k], cast(dict[str, Any], v))
+        else:
+            merged[k] = v
+    return merged
