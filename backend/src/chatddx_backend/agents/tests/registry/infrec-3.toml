@@ -1,0 +1,4 @@
+extends = "infrec-1.toml"
+
+[agent.agent-3]
+instructions = "infrec-3"

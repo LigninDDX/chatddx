@@ -1,8 +1,22 @@
 extends = ["some.toml", "experiments.toml"]
 
 [agent.agent-1]
-instructions = "hello"
+instructions = "hello 1"
 sampling_params = "sampling_params-1"
+connection = "connection-1"
+output_type = "output_type-1"
+tool_group = "tool_group-1"
+
+[agent.agent-2]
+instructions = "hello 2"
+sampling_params = ["sampling_params-1", "sampling_params-2"]
+connection = "connection-1"
+output_type = "output_type-1"
+use_tools = true
+
+[agent.agent-3]
+extends = ["agent-1", "agent-2"]
+instructions = "hello 3"
 connection = "connection-1"
 output_type = "output_type-1"
 tool_group = "tool_group-1"
@@ -19,6 +33,11 @@ definition_path = "../output_types/simple.json"
 temperature = 0.7
 max_tokens = 150
 stop_sequences = ["\\n\\n", "END"]
+
+[sampling_params.sampling_params-2]
+max_tokens = 155
+seed = 0
+stop_sequences = ["END"]
 
 [tool.tool-1]
 type = "function"

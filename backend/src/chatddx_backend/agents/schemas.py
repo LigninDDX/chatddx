@@ -1,10 +1,18 @@
 # src/chatddx_backend/agents/schemas.py
+from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import (
+    Annotated,
+    Any,
+    TypeVar,
+)
 
 import jsonschema
-from pydantic import Field, field_validator
+from pydantic import (
+    AfterValidator,
+    Field,
+)
 
 from chatddx_backend.agents.models.enums import (
     CoercionStrategy,
@@ -12,7 +20,10 @@ from chatddx_backend.agents.models.enums import (
     ToolType,
     ValidationStrategy,
 )
+from chatddx_backend.agents.registry import Registry, RegistryRecord
 from chatddx_backend.agents.trail import TrailSchema
+
+TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
 
 
 def _validate_json_schema(v: Any) -> Any:
@@ -24,17 +35,22 @@ def _validate_json_schema(v: Any) -> Any:
     return v
 
 
-class ConnectionSchema(TrailSchema):
-    record_type = "connection"
+class TrailRegistry(Registry):
+    agent: dict[str, AgentSchema] = {}
+    connection: dict[str, ConnectionSchema] = {}
+    sampling_params: dict[str, SamplingParamsSchema] = {}
+    tool_group: dict[str, ToolGroupSchema] = {}
+    tool: dict[str, ToolSchema] = {}
+    output_type: dict[str, OutputTypeSchema] = {}
 
+
+class ConnectionSchema(TrailSchema, RegistryRecord):
     provider: ProviderType
     model: str
     endpoint: str
 
 
-class SamplingParamsSchema(TrailSchema):
-    record_type = "sampling_params"
-
+class SamplingParamsSchema(TrailSchema, RegistryRecord):
     temperature: Decimal | None = None
     top_p: Decimal | None = None
     top_k: int | None = None
@@ -48,36 +64,31 @@ class SamplingParamsSchema(TrailSchema):
     provider_params: dict[str, Any] = Field(default_factory=dict)
 
 
-class OutputTypeSchema(TrailSchema):
-    record_type = "output_type"
+class OutputTypeSchema(TrailSchema, RegistryRecord):
+    definition: Annotated[
+        dict[str, Any],
+        AfterValidator(_validate_json_schema),
+    ]
 
-    definition: dict[str, Any]
 
-    _validate_definition = field_validator("definition")(_validate_json_schema)
-
-
-class ToolSchema(TrailSchema):
-    record_type = "tool"
-
+class ToolSchema(TrailSchema, RegistryRecord):
     type: ToolType
     description: str | None = None
-    parameters: dict[str, Any] | None = None
+    parameters: Annotated[
+        dict[str, Any] | None,
+        AfterValidator(_validate_json_schema),
+    ] = None
 
-    _validate_definition = field_validator("parameters")(_validate_json_schema)
 
-
-class ToolGroupSchema(TrailSchema):
-    record_type = "tool_group"
-
+class ToolGroupSchema(TrailSchema, RegistryRecord):
     instructions: str
     tools: list[ToolSchema]
 
 
-class AgentSchema(TrailSchema):
-    record_type = "agent"
-
+class AgentSchema(TrailSchema, RegistryRecord):
     instructions: str
     use_tools: bool = False
+
     validation_strategy: ValidationStrategy = ValidationStrategy.INFORM
     coercion_strategy: CoercionStrategy | None = None
 

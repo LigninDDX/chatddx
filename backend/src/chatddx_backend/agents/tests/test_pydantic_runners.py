@@ -8,7 +8,7 @@ from pydantic_ai import ModelMessagesTypeAdapter
 
 from chatddx_backend.agents.pydantic_ai.runners import run_async, run_sync
 from chatddx_backend.agents.registry import load_registry
-from chatddx_backend.agents.spec_loader import agent_from_registry
+from chatddx_backend.agents.runtime import agent_spec
 
 registry: dict[str, Any] = load_registry(
     Path(__file__).parent / "registry" / "experiments.toml"
@@ -22,8 +22,8 @@ async def test_ddx_management():
     with open(data_path, "r") as f:
         case_a = f.read()
 
-    agent_spec = await agent_from_registry("ddx-management", registry)
-    result = await run_async(agent_spec, case_a)
+    spec = await agent_spec("ddx-management", registry)
+    result = await run_async(spec, case_a)
 
     assert result.output == ""
 

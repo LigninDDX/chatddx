@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/tests/registry/base.toml
+# src/chatddx_backend/agents/tests/registry/experiments.toml
 
 [agent.dice-game]
 connection = "qwen3_8b"
@@ -14,20 +14,16 @@ config = "no-thinking"
 instructions_path = "../instructions/is_prime.txt"
 output_type = "bool"
 
-[agent.ddx-management]
-connection = "qwen3_8b"
-instructions = ""
-use_tools = true
-config = "no-thinking"
-output_type = "ddx-management"
-
 [agent.tool-coerced]
+partial = true
 coercion_strategy = "tool"
 
 [agent.prompt-coerced]
+partial = true
 coercion_strategy = "prompt"
 
 [agent.natively-coerced]
+partial = true
 coercion_strategy = "native"
 
 [connection.qwen3_8b]

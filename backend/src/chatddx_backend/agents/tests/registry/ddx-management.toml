@@ -1,0 +1,9 @@
+[agent.ddx-management]
+connection = "qwen3_8b"
+instructions = ""
+use_tools = true
+config = "no-thinking"
+output_type = "ddx-management"
+
+[sampling_params.deterministic]
+seed = 0

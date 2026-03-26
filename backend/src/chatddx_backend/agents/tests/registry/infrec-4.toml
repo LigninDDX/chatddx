@@ -1,0 +1,12 @@
+[agent.agent-1]
+extends = "agent-2"
+instructions = "agent 1"
+
+[agent.agent-2]
+extends = "agent-3"
+instructions = "agent 2"
+
+[agent.agent-3]
+extends = "agent-1"
+use_tools = true
+instructions = "agent 3"

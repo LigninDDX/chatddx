@@ -1,3 +1,4 @@
+# src/chatddx_backend/agents/tests/field_types/identity_boundary.py
 from copy import deepcopy
 from decimal import Decimal
 from pathlib import Path
@@ -26,19 +27,19 @@ from chatddx_backend.agents.models import (
     ValidationStrategy,
 )
 from chatddx_backend.agents.models.agent import JSONSchemaField
-from chatddx_backend.agents.registry import load_registry
 from chatddx_backend.agents.schemas import (
     ConnectionSchema,
     OutputTypeSchema,
     SamplingParamsSchema,
     ToolGroupSchema,
     ToolSchema,
+    TrailRegistry,
 )
 from chatddx_backend.agents.trail import (
     schema_from_registry,
 )
 
-registry: dict[str, Any] = load_registry(
+registry: TrailRegistry = TrailRegistry.from_file(
     Path(__file__).parent / "../registry/some.toml"
 )
 

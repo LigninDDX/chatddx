@@ -1,6 +1,8 @@
-# src/chatddx_backend/agents/models/trail.py
+# src/chatddx_backend/agents/trail/models.py
 from __future__ import annotations
 
+import asyncio
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Awaitable, Self, override
 
 from asgiref.sync import sync_to_async
@@ -17,13 +19,27 @@ from django.db.models import (
     OneToOneField,
 )
 from django.utils import timezone
-
-from .schemas import TrailSchema, TrailSpec
+from ninja import Schema as NinjaSchema
+from pydantic import BaseModel, ConfigDict
 
 if TYPE_CHECKING:
     TypedArrayField = ArrayField[list[int]]
 else:
     TypedArrayField = ArrayField
+
+
+class TrailSchema(BaseModel):
+    name: str
+
+
+class TrailSpec(NinjaSchema):
+    id: int
+    name: str
+    fingerprint: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TrailQS(Manager[Any]):
@@ -32,9 +48,6 @@ class TrailQS(Manager[Any]):
 
 
 class TrailModel(Model):
-    Schema: type[TrailSchema]
-    Spec: type[TrailSpec]
-
     name = CharField(
         max_length=255,
         db_index=True,
@@ -131,9 +144,6 @@ class TrailModel(Model):
     @override
     def __str__(self):
         return self.name
-
-
-import asyncio
 
 
 async def resolve_related_array_fields(instance: TrailModel):

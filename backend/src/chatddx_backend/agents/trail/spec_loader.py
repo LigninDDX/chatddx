@@ -1,10 +1,11 @@
-# src/chatddx_backend/agents/spec_loader.py
+# src/chatddx_backend/agents/trail/spec_loader.py
+from __future__ import annotations
+
 import asyncio
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from django.db.models import ForeignKey
 
-from chatddx_backend.agents.registry import parse_registry
 from chatddx_backend.agents.trail import (
     TrailModel,
     TrailSchema,
@@ -14,24 +15,27 @@ from chatddx_backend.agents.trail import (
 from chatddx_backend.agents.utils import (
     ListOf,
     OneOf,
-    classify_value,
+    one_or_list_of,
 )
 
-SchemaT = TypeVar("SchemaT", bound=TrailSchema)
+if TYPE_CHECKING:
+    from chatddx_backend.agents.schemas import TrailRegistry, TrailSchemaT
+
 SpecT = TypeVar("SpecT", bound=TrailSpec)
 ModelT = TypeVar("ModelT", bound=TrailModel)
 
 # Composed convenience functions
 
 
-def schema_from_registry(
-    Schema: type[SchemaT],
+async def spec_from_registry(
+    Spec: type[SpecT],
     name: str,
-    registry: dict[str, Any],
-) -> SchemaT:
-    data = data_from_registry(Schema, name, registry)
-    schema = schema_from_data(Schema, data)
-    return schema
+    registry: TrailRegistry,
+) -> SpecT:
+    schema = schema_from_registry(Spec.Model.Schema, name, registry)
+    model = await model_from_schema(Spec.Model, schema)
+    spec = spec_from_model(Spec, model)
+    return spec
 
 
 async def model_from_schema(
@@ -46,19 +50,12 @@ async def model_from_schema(
 # Atomic pipeline steps
 
 
-def data_from_registry(
-    Schema: type[TrailSchema],
+def schema_from_registry(
+    Schema: type[TrailSchemaT],
     name: str,
-    registry: dict[str, Any],
-) -> dict[str, Any]:
-    return parse_registry(Schema, name, registry)
-
-
-def schema_from_data(
-    Schema: type[SchemaT],
-    data: dict[str, Any],
-) -> SchemaT:
-    return Schema.model_validate(data)
+    registry: TrailRegistry,
+) -> TrailSchemaT:
+    return registry.get(Schema, name)
 
 
 async def pk_from_schema(
@@ -70,14 +67,13 @@ async def pk_from_schema(
     for key, value in schema:
         field = Model._meta.get_field(key)
         related_model = getattr(field, "related_model", None)
-        relation_type = classify_value(TrailSchema, value)
 
-        match relation_type:
-            case OneOf(_) if related_model:
-                values[key + "_id"] = await pk_from_schema(related_model, value)
+        match one_or_list_of(TrailSchema, value):
+            case OneOf(v) if related_model:
+                values[key + "_id"] = await pk_from_schema(related_model, v)
 
-            case ListOf(_) if related_model:
-                tasks = [pk_from_schema(related_model, v) for v in value]
+            case ListOf(vs) if related_model:
+                tasks = [pk_from_schema(related_model, v) for v in vs]
                 values[key] = await asyncio.gather(*tasks)
 
             case None:
@@ -108,7 +104,7 @@ def spec_from_model(
 
 
 def schema_from_spec(
-    Schema: type[SchemaT],
+    Schema: type[TrailSchemaT],
     spec: TrailSpec,
-) -> SchemaT:
+) -> TrailSchemaT:
     return Schema.model_validate(spec.model_dump())

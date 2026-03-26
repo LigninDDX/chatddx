@@ -5,15 +5,16 @@ from typing import Any
 
 import pytest
 
-from chatddx_backend.agents.models import (
-    Agent,
-    Connection,
-    OutputType,
-    SamplingParams,
-    Tool,
-    ToolGroup,
+from chatddx_backend.agents import type_map
+from chatddx_backend.agents.schemas import (
+    AgentSchema,
+    ConnectionSchema,
+    OutputTypeSchema,
+    SamplingParamsSchema,
+    ToolGroupSchema,
+    ToolSchema,
+    TrailRegistry,
 )
-from chatddx_backend.agents.registry import load_registry
 from chatddx_backend.agents.tests.field_types import identity_boundary
 from chatddx_backend.agents.trail import (
     TrailModel,
@@ -25,53 +26,54 @@ from chatddx_backend.agents.trail import (
     spec_from_model,
 )
 
-registry: dict[str, Any] = load_registry(
-    Path(__file__).parent / "registry/test-trail.toml"
+registry: TrailRegistry = TrailRegistry.from_file(
+    Path(__file__).parent / "registry/test-registry.toml"
 )
 
-models = (
-    (Connection, "connection-1"),
-    (SamplingParams, "sampling_params-1"),
-    (ToolGroup, "tool_group-1"),
-    (Tool, "tool-1"),
-    (OutputType, "output_type-1"),
-    (Agent, "agent-1"),
-    (Agent, "dice-game"),
-    (Agent, "test-tools-prime"),
+specs = (
+    (ConnectionSchema, "connection-1"),
+    (SamplingParamsSchema, "sampling_params-1"),
+    (ToolGroupSchema, "tool_group-1"),
+    (ToolSchema, "tool-1"),
+    (OutputTypeSchema, "output_type-1"),
+    (AgentSchema, "agent-1"),
+    (AgentSchema, "dice-game"),
+    (AgentSchema, "test-tools-prime"),
 )
 
 fields = [
-    (Model, record, field)
-    for Model, record in models
-    for field in Model.Schema.model_fields
+    (Schema, record, field) for Schema, record in specs for field in Schema.model_fields
 ]
 
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-@pytest.mark.parametrize("Model, record, field_name", fields)
+@pytest.mark.parametrize("Schema, record, field_name", fields)
 @pytest.mark.time_machine(datetime(1970, 1, 1), tick=False)
 async def test_identity_boundary(
     time_machine: Any,
     subtests: pytest.Subtests,
-    Model: type[TrailModel],
+    Schema: type[TrailSchema],
     record: str,
     field_name: str,
 ):
+    Model = type_map.resolve(Schema, TrailModel)
+    Spec = type_map.resolve(Schema, TrailSpec)
+
     field = Model._meta.get_field(field_name)
 
     db_type = field.related_model if field.related_model else field.__class__
-    api_type = Model.Schema.model_fields[field_name].annotation
+    api_type = Schema.model_fields[field_name].annotation
     test_key = (db_type, api_type)
 
     if test_key not in identity_boundary.field_types:
         pytest.fail(f"No test defined for type combination {test_key} on {field_name}")
 
-    schema = schema_from_registry(Model.Schema, record, registry)
+    schema = schema_from_registry(Schema, record, registry)
     model = await model_from_schema(Model, schema)
-    spec = spec_from_model(Model.Spec, model)
+    spec = spec_from_model(Spec, model)
 
-    schema = schema_from_spec(Model.Schema, spec)
+    schema = schema_from_spec(Schema, spec)
 
     value, altered_value = identity_boundary.field_types[test_key](
         getattr(schema, field_name)
@@ -85,10 +87,10 @@ async def test_identity_boundary(
         time_machine.shift(timedelta(days=1))
         test_schema = schema.model_copy(update={field_name: value})
         test_model = await model_from_schema(Model, test_schema)
-        test_spec = spec_from_model(Model.Spec, test_model)
+        test_spec = spec_from_model(Spec, test_model)
 
         with subtests.test(msg=msg):
-            expect_fn(Model.Schema, spec, test_spec, field_name)
+            expect_fn(Schema, spec, test_spec, field_name)
 
 
 def expect_identical(

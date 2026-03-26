@@ -36,14 +36,6 @@ from chatddx_backend.agents.schemas import (
     ToolGroupSchema,
     ToolSchema,
 )
-from chatddx_backend.agents.specs import (
-    AgentSpec,
-    ConnectionSpec,
-    OutputTypeSpec,
-    SamplingParamsSpec,
-    ToolGroupSpec,
-    ToolSpec,
-)
 from chatddx_backend.agents.trail import RelatedArrayField, TrailModel
 
 if TYPE_CHECKING:
@@ -76,18 +68,12 @@ class DecimalDecoder(json.JSONDecoder):
 
 
 class Connection(TrailModel):
-    Schema = ConnectionSchema
-    Spec = ConnectionSpec
-
     provider = CharField(max_length=255, choices=ProviderType.choices)
     model = CharField(max_length=255)
     endpoint = URLField(max_length=2048)
 
 
 class SamplingParams(TrailModel):
-    Schema = SamplingParamsSchema
-    Spec = SamplingParamsSpec
-
     temperature = DecimalField(
         default=None,
         null=True,
@@ -205,18 +191,12 @@ class SamplingParams(TrailModel):
 
 
 class OutputType(TrailModel):
-    Schema = OutputTypeSchema
-    Spec = OutputTypeSpec
-
     definition = JSONSchemaField(
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
 
 
 class Tool(TrailModel):
-    Schema = ToolSchema
-    Spec = ToolSpec
-
     type = CharField(
         max_length=50,
         choices=ToolType.choices,
@@ -240,9 +220,6 @@ class Tool(TrailModel):
 
 
 class ToolGroup(TrailModel):
-    Schema = ToolGroupSchema
-    Spec = ToolGroupSpec
-
     instructions = TextField()
 
     tools = RelatedArrayField(  # type: ignore
@@ -255,9 +232,6 @@ class ToolGroup(TrailModel):
 
 
 class Agent(TrailModel):
-    Schema = AgentSchema
-    Spec = AgentSpec
-
     instructions = TextField()
     connection = ForeignKey(
         Connection,
