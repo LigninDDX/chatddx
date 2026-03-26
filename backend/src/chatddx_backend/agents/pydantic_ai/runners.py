@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 
 from pydantic_ai import AgentRunResult
 
-from chatddx_backend.agents.specs import AgentSpec
+from chatddx_backend.agents.schemas import AgentSpec
 
 from .builder import (
     OutputType,

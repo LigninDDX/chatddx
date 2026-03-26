@@ -21,7 +21,7 @@ from chatddx_backend.agents.pydantic_ai.context import (
     OutputType,
     jsonschema_to_type,
 )
-from chatddx_backend.agents.specs import AgentSpec, SamplingParamsSpec, ToolGroupSpec
+from chatddx_backend.agents.schemas import AgentSpec, SamplingParamsSpec, ToolGroupSpec
 
 
 def build_agent(
@@ -38,7 +38,7 @@ def build_agent(
     if agent_spec.sampling_params:
         model_settings = build_config(agent_spec.sampling_params)
 
-    if agent_spec.use_tools and agent_spec.tool_group:
+    if agent_spec.tool_group:
         tools = build_tools(agent_spec.tool_group)
 
     if agent_spec.output_type:

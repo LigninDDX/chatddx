@@ -127,7 +127,6 @@ class ToolGroupSpec(ToolGroupBase, TrailSpec):
 
 class AgentBase(BaseModel):
     instructions: str
-    use_tools: bool = False
     validation_strategy: ValidationStrategy = ValidationStrategy.INFORM
     coercion_strategy: CoercionStrategy | None = None
 

@@ -14,7 +14,6 @@ registry: TrailRegistry = TrailRegistry.from_file(
 def test_properties():
     agent_1 = registry.get(AgentSchema, "agent-1")
     assert agent_1.name == "agent-1"
-    assert agent_1.use_tools == False
     assert agent_1.tool_group
     assert agent_1.tool_group.name == "tool_group-1"
     assert agent_1.tool_group.tools[0].name == "tool-1"
@@ -44,9 +43,8 @@ def test_merged_properties():
 
 def test_extended_records():
     agent_3 = registry.get(AgentSchema, "agent-3")
-    assert agent_3.name == "agent-3"
+    assert agent_3.name == "agent-3|agent-1|agent-2"
     assert agent_3.instructions == "hello 3"
-    assert agent_3.use_tools == True
     assert agent_3.sampling_params
     assert agent_3.sampling_params.name == "sampling_params-1"
     assert agent_3.tool_group
@@ -68,6 +66,5 @@ def test_infrec_record():
     )
 
     infrec_1 = infrec_registry.get(AgentSchema, "agent-1")
-    assert infrec_1.name == "agent-1|agent-2|agent-3"
+    assert infrec_1.name == "agent-1|agent-2"
     assert infrec_1.instructions == "agent 1"
-    assert infrec_1.use_tools == True

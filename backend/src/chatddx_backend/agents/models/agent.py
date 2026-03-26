@@ -10,7 +10,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (
     PROTECT,
-    BooleanField,
     CharField,
     DecimalField,
     ForeignKey,
@@ -28,14 +27,6 @@ from chatddx_backend.agents.models.enums import (
     ToolType,
     ValidationStrategy,
 )
-from chatddx_backend.agents.schemas import (
-    AgentSchema,
-    ConnectionSchema,
-    OutputTypeSchema,
-    SamplingParamsSchema,
-    ToolGroupSchema,
-    ToolSchema,
-)
 from chatddx_backend.agents.trail import RelatedArrayField, TrailModel
 
 if TYPE_CHECKING:
@@ -45,6 +36,10 @@ else:
 
 
 class JSONSchemaField(TypedJSONField):
+    # why do we need a custom field for this instead of just validating in the serializer?
+    # This model uses both JSONFields (like provider_params) and JSONSchemaFields (which are literal jsonschemas).
+    # The semantic difference is immediate and also good for test discovery.
+
     def validate(self, value: Any, model_instance: Model):
         super().validate(value, model_instance)
 
@@ -56,6 +51,9 @@ class JSONSchemaField(TypedJSONField):
 
 
 class DecimalEncoder(json.JSONEncoder):
+    # which fields actually need this and why can't we just store them as floats?
+    # Determinism is paramount in this app and hash fingerprints are used to diferentiate config,
+    # floats are finicky and we can't have them floating around.
     def default(self, o: Any):
         if isinstance(o, Decimal):
             return str(o)
@@ -64,12 +62,20 @@ class DecimalEncoder(json.JSONEncoder):
 
 class DecimalDecoder(json.JSONDecoder):
     def __init__(self, *args: Any, **kwargs: Any):
+        # does parse_float=Decimal cause any issues with json interop downstream?
+        # Yes! thanks for pointing that out. Decimals aren't serializable so this decoder
+        # is used when decimals are expected (e.g. logit_bias).
         super().__init__(parse_float=Decimal, *args, **kwargs)
 
 
 class Connection(TrailModel):
+    # what is TrailModel and what does it give us that a regular Model doesn't?
+    # TrailModel provides one and only one method to append to the database: apply()
+    # All other methods are forbidden.
     provider = CharField(max_length=255, choices=ProviderType.choices)
     model = CharField(max_length=255)
+    # TODO: is this our endpoint or theirs? what format is expected here?
+    # Theirs, we're the consuming side on this endpoint.
     endpoint = URLField(max_length=2048)
 
 
@@ -129,6 +135,8 @@ class SamplingParams(TrailModel):
             "identical inputs produces consistent results."
         ),
     )
+    # which response do we actually use? does the caller decide?
+    # TBD
     n = PositiveIntegerField(
         default=None,
         null=True,
@@ -168,6 +176,9 @@ class SamplingParams(TrailModel):
             "{'12345': 10, '67890': 5} (boost tokens)"
         ),
     )
+    # who is responsible for knowing which keys are valid per provider?
+    # do we validate these at all or just pass them through blindly?
+    # Just passing blindly
     provider_params: JSONField[dict[str, Any]] = JSONField(
         default=dict,
         blank=True,
@@ -191,6 +202,9 @@ class SamplingParams(TrailModel):
 
 
 class OutputType(TrailModel):
+    # where does this schema get enforced - at save time, at inference time, both?
+    # what happens when the model response doesn't match this schema?
+    # See CoercionStrategy, it can be prompted, tool-based or FSM and pydantic-ai enforces it.
     definition = JSONSchemaField(
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
@@ -220,14 +234,20 @@ class Tool(TrailModel):
 
 
 class ToolGroup(TrailModel):
+    # are these instructions always prepended to the agent's instructions, or does it replace them?
+    # TBD, possibly flag based
     instructions = TextField()
 
+    # what happens if a Tool is deleted - does this array just hold a stale ID forever?
+    # Tools aren't deleted, but yes.
     tools = RelatedArrayField(  # type: ignore
         IntegerField(),
         related_model=Tool,
         blank=True,
         default=list,
-        help_text="Snapshot of tool IDs attached to this configuration version.",
+        # "snapshot" implies this is copied at some point - when and by what?
+        # Hydrated, not copied, by trail's RelatedArrayField
+        help_text="Snapshot of tool pks attached to this configuration version.",
     )
 
 
@@ -265,16 +285,21 @@ class Agent(TrailModel):
         blank=True,
         on_delete=PROTECT,
     )
-    use_tools = BooleanField(
-        default=False,
-    )
     # Cannot be None; use ValidationStrategy.NOOP to explicitly disable
+    # what does INFORM actually do - log it, return it to the caller, both?
+    # Return to the caller with key __error__ with message, very python.
+    # who defined these strategies and where is that behavior actually implemented?
+    # It's up to the vendor-specific validator to enforce this strategy, a pydantic-ai
+    # validator is implemented.
+
     validation_strategy = CharField(
         max_length=255,
         default=ValidationStrategy.INFORM,
         choices=ValidationStrategy.choices,
     )
-    # None = defer to upstream default; bypasses use_tools when set to TOOL.
+    # None = defer to upstream default.
+    # what is the "upstream default" and where is that defined?
+    # pydantic-ai is upstream, the tool-based strategy is entirely independent of tool_group
     coercion_strategy = CharField(
         max_length=255,
         default=None,

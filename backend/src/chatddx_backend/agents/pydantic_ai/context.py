@@ -5,7 +5,7 @@ from typing import Any, Sequence
 from pydantic_ai import ModelMessage, StructuredDict
 
 from chatddx_backend.agents.models import ValidationStrategy
-from chatddx_backend.agents.specs import AgentSpec
+from chatddx_backend.agents.schemas import AgentSpec
 
 OutputType = bool | int | str | Decimal | list[Any] | dict[str, Any]
 

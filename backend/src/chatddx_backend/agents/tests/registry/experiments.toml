@@ -2,14 +2,12 @@
 
 [agent.dice-game]
 connection = "qwen3_8b"
-use_tools = true
 config = "no-thinking"
 instructions_path = "../instructions/dice_game.txt"
 tool_group = "dice"
 
 [agent.test-tools-prime]
 connection = "qwen3_8b"
-use_tools = true
 config = "no-thinking"
 instructions_path = "../instructions/is_prime.txt"
 output_type = "bool"

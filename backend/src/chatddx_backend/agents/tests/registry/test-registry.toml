@@ -12,7 +12,6 @@ instructions = "hello 2"
 sampling_params = ["sampling_params-1", "sampling_params-2"]
 connection = "connection-1"
 output_type = "output_type-1"
-use_tools = true
 
 [agent.agent-3]
 extends = ["agent-1", "agent-2"]

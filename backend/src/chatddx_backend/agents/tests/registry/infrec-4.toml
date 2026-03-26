@@ -8,5 +8,4 @@ instructions = "agent 2"
 
 [agent.agent-3]
 extends = "agent-1"
-use_tools = true
 instructions = "agent 3"
