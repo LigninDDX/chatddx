@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, TypeVar
+from typing import TypeVar
 
 from django.db.models import ForeignKey
 
@@ -18,24 +18,11 @@ from chatddx_backend.agents.utils import (
     one_or_list_of,
 )
 
-if TYPE_CHECKING:
-    from chatddx_backend.agents.schemas import TrailRegistry, TrailSchemaT
-
-SpecT = TypeVar("SpecT", bound=TrailSpec)
+SchemaT = TypeVar("SchemaT", bound=TrailSchema)
 ModelT = TypeVar("ModelT", bound=TrailModel)
+SpecT = TypeVar("SpecT", bound=TrailSpec)
 
 # Composed convenience functions
-
-
-async def spec_from_registry(
-    Spec: type[SpecT],
-    name: str,
-    registry: TrailRegistry,
-) -> SpecT:
-    schema = schema_from_registry(Spec.Model.Schema, name, registry)
-    model = await model_from_schema(Spec.Model, schema)
-    spec = spec_from_model(Spec, model)
-    return spec
 
 
 async def model_from_schema(
@@ -48,14 +35,6 @@ async def model_from_schema(
 
 
 # Atomic pipeline steps
-
-
-def schema_from_registry(
-    Schema: type[TrailSchemaT],
-    name: str,
-    registry: TrailRegistry,
-) -> TrailSchemaT:
-    return registry.get(Schema, name)
 
 
 async def pk_from_schema(
@@ -104,7 +83,7 @@ def spec_from_model(
 
 
 def schema_from_spec(
-    Schema: type[TrailSchemaT],
+    Schema: type[SchemaT],
     spec: TrailSpec,
-) -> TrailSchemaT:
+) -> SchemaT:
     return Schema.model_validate(spec.model_dump())

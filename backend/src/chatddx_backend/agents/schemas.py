@@ -11,6 +11,7 @@ from typing import (
 import jsonschema
 from pydantic import (
     AfterValidator,
+    BaseModel,
     Field,
 )
 
@@ -21,7 +22,7 @@ from chatddx_backend.agents.models.enums import (
     ValidationStrategy,
 )
 from chatddx_backend.agents.registry import Registry, RegistryRecord
-from chatddx_backend.agents.trail import TrailSchema
+from chatddx_backend.agents.trail import TrailSchema, TrailSpec
 
 TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
 
@@ -44,13 +45,21 @@ class TrailRegistry(Registry):
     output_type: dict[str, OutputTypeSchema] = {}
 
 
-class ConnectionSchema(TrailSchema, RegistryRecord):
+class ConnectionBase(BaseModel):
     provider: ProviderType
     model: str
     endpoint: str
 
 
-class SamplingParamsSchema(TrailSchema, RegistryRecord):
+class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
+    pass
+
+
+class ConnectionSpec(ConnectionBase, TrailSpec):
+    pass
+
+
+class SamplingParamsBase(BaseModel):
     temperature: Decimal | None = None
     top_p: Decimal | None = None
     top_k: int | None = None
@@ -64,14 +73,30 @@ class SamplingParamsSchema(TrailSchema, RegistryRecord):
     provider_params: dict[str, Any] = Field(default_factory=dict)
 
 
-class OutputTypeSchema(TrailSchema, RegistryRecord):
+class SamplingParamsSchema(SamplingParamsBase, TrailSchema, RegistryRecord):
+    pass
+
+
+class SamplingParamsSpec(SamplingParamsBase, TrailSpec):
+    pass
+
+
+class OutputTypeBase(BaseModel):
     definition: Annotated[
         dict[str, Any],
         AfterValidator(_validate_json_schema),
     ]
 
 
-class ToolSchema(TrailSchema, RegistryRecord):
+class OutputTypeSchema(OutputTypeBase, TrailSchema, RegistryRecord):
+    pass
+
+
+class OutputTypeSpec(OutputTypeBase, TrailSpec):
+    pass
+
+
+class ToolBase(BaseModel):
     type: ToolType
     description: str | None = None
     parameters: Annotated[
@@ -80,19 +105,42 @@ class ToolSchema(TrailSchema, RegistryRecord):
     ] = None
 
 
-class ToolGroupSchema(TrailSchema, RegistryRecord):
+class ToolSchema(ToolBase, TrailSchema, RegistryRecord):
+    pass
+
+
+class ToolSpec(ToolBase, TrailSpec):
+    pass
+
+
+class ToolGroupBase(BaseModel):
     instructions: str
+
+
+class ToolGroupSchema(ToolGroupBase, TrailSchema, RegistryRecord):
     tools: list[ToolSchema]
 
 
-class AgentSchema(TrailSchema, RegistryRecord):
+class ToolGroupSpec(ToolGroupBase, TrailSpec):
+    tools: list[ToolSpec] = []
+
+
+class AgentBase(BaseModel):
     instructions: str
     use_tools: bool = False
-
     validation_strategy: ValidationStrategy = ValidationStrategy.INFORM
     coercion_strategy: CoercionStrategy | None = None
 
+
+class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
     connection: ConnectionSchema | None = None
     sampling_params: SamplingParamsSchema | None = None
     output_type: OutputTypeSchema | None = None
     tool_group: ToolGroupSchema | None = None
+
+
+class AgentSpec(AgentBase, TrailSpec):
+    connection: ConnectionSpec | None = None
+    sampling_params: SamplingParamsSpec | None = None
+    output_type: OutputTypeSpec | None = None
+    tool_group: ToolGroupSpec | None = None

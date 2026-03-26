@@ -1,5 +1,5 @@
 # src/chatddx_backend/agents/type_map.py
-from typing import Any, TypeVar, overload
+from typing import Any, overload
 
 from chatddx_backend.agents.models import (
     Agent,
@@ -11,25 +11,22 @@ from chatddx_backend.agents.models import (
 )
 from chatddx_backend.agents.schemas import (
     AgentSchema,
-    ConnectionSchema,
-    OutputTypeSchema,
-    SamplingParamsSchema,
-    ToolGroupSchema,
-    ToolSchema,
-)
-from chatddx_backend.agents.specs import (
     AgentSpec,
+    ConnectionSchema,
     ConnectionSpec,
+    OutputTypeSchema,
     OutputTypeSpec,
+    SamplingParamsSchema,
     SamplingParamsSpec,
+    ToolGroupSchema,
     ToolGroupSpec,
+    ToolSchema,
     ToolSpec,
 )
 from chatddx_backend.agents.trail import TrailModel, TrailSchema, TrailSpec
 
 type TypeMap = tuple[type[TrailSpec], type[TrailModel], type[TrailSchema]]
 
-T = TypeVar("T", TrailSchema, TrailModel, TrailSpec)
 
 type_maps: list[TypeMap] = [
     (ConnectionSpec, Connection, ConnectionSchema),

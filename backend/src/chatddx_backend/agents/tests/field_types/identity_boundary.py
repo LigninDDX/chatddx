@@ -35,9 +35,6 @@ from chatddx_backend.agents.schemas import (
     ToolSchema,
     TrailRegistry,
 )
-from chatddx_backend.agents.trail import (
-    schema_from_registry,
-)
 
 registry: TrailRegistry = TrailRegistry.from_file(
     Path(__file__).parent / "../registry/some.toml"
@@ -51,9 +48,7 @@ def _test_ToolGroup(value: ToolGroupSchema):
 
 def _test_optional_ToolGroup(value: ToolGroupSchema | None):
     altered_value = (
-        schema_from_registry(ToolGroupSchema, "some-tool_group", registry)
-        if value is None
-        else None
+        registry.get(ToolGroupSchema, "some-tool_group") if value is None else None
     )
     return deepcopy(value), altered_value
 
@@ -67,9 +62,7 @@ def _test_OutputType(value: OutputTypeSchema):
 
 def _test_optional_OutputType(value: OutputTypeSchema | None):
     altered_value = (
-        schema_from_registry(OutputTypeSchema, "some-output_type", registry)
-        if value is None
-        else None
+        registry.get(OutputTypeSchema, "some-output_type") if value is None else None
     )
     return deepcopy(value), altered_value
 
@@ -84,7 +77,7 @@ def _test_SamplingParams(value: SamplingParamsSchema):
 
 def _test_optional_SamplingParams(value: SamplingParamsSchema | None):
     altered_value = (
-        schema_from_registry(SamplingParamsSchema, "some-sampling_params", registry)
+        registry.get(SamplingParamsSchema, "some-sampling_params")
         if value is None
         else None
     )
@@ -98,9 +91,7 @@ def _test_Connection(value: ConnectionSchema):
 
 def _test_optional_Connection(value: ConnectionSchema | None):
     altered_value = (
-        schema_from_registry(ConnectionSchema, "some-connection", registry)
-        if value is None
-        else None
+        registry.get(ConnectionSchema, "some-connection") if value is None else None
     )
     return deepcopy(value), altered_value
 
@@ -130,11 +121,7 @@ def _test_tool(value: ToolSchema):
 
 
 def _test_optional_tool(value: ToolSchema | None):
-    altered_value = (
-        schema_from_registry(ToolSchema, "some-tool", registry)
-        if value is None
-        else None
-    )
+    altered_value = registry.get(ToolSchema, "some-tool") if value is None else None
     return deepcopy(value), altered_value
 
 

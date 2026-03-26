@@ -21,7 +21,6 @@ from chatddx_backend.agents.trail import (
     TrailSchema,
     TrailSpec,
     model_from_schema,
-    schema_from_registry,
     schema_from_spec,
     spec_from_model,
 )
@@ -30,7 +29,7 @@ registry: TrailRegistry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/test-registry.toml"
 )
 
-specs = (
+schemas = (
     (ConnectionSchema, "connection-1"),
     (SamplingParamsSchema, "sampling_params-1"),
     (ToolGroupSchema, "tool_group-1"),
@@ -42,7 +41,9 @@ specs = (
 )
 
 fields = [
-    (Schema, record, field) for Schema, record in specs for field in Schema.model_fields
+    (Schema, record, field)
+    for Schema, record in schemas
+    for field in Schema.model_fields
 ]
 
 
@@ -69,7 +70,7 @@ async def test_identity_boundary(
     if test_key not in identity_boundary.field_types:
         pytest.fail(f"No test defined for type combination {test_key} on {field_name}")
 
-    schema = schema_from_registry(Schema, record, registry)
+    schema = registry.get(Schema, record)
     model = await model_from_schema(Model, schema)
     spec = spec_from_model(Spec, model)
 
