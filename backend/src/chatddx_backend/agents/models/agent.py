@@ -77,6 +77,13 @@ class Connection(TrailModel):
     # TODO: is this our endpoint or theirs? what format is expected here?
     # Theirs, we're the consuming side on this endpoint.
     endpoint = URLField(max_length=2048)
+    profile: JSONField[dict[str, Any]] = JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Model-specific profile parameters fed to pydantic-ai's ModelProfile"
+        ),
+    )
 
 
 class SamplingParams(TrailModel):
@@ -256,9 +263,6 @@ class Agent(TrailModel):
     connection = ForeignKey(
         Connection,
         related_name="agents",
-        default=None,
-        null=True,
-        blank=True,
         on_delete=PROTECT,
     )
     sampling_params = ForeignKey(

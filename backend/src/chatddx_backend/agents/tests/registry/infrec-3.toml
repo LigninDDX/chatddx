@@ -1,4 +1,5 @@
-extends = "infrec-1.toml"
+extends = ["infrec-1.toml", "some.toml"]
 
 [agent.agent-3]
 instructions = "infrec-3"
+connection = "some-connection"

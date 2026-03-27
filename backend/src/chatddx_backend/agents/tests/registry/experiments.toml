@@ -46,6 +46,10 @@ model = "Qwen/Qwen3-8B-AWQ"
 provider = "vllm"
 endpoint = "http://pelle.km:12009/v1/"
 
+[connection.qwen3-8b.profile]
+supports_json_schema_output = true
+ignore_streamed_leading_whitespace = true
+
 [output_type.bool]
 definition = { type = "boolean" }
 
@@ -57,9 +61,6 @@ seed = 0
 
 [sampling_params.no-thinking]
 provider_params_path = "../provider_params/disable_thinking.json"
-
-[session.empty]
-description = "empty session"
 
 [tool.is_prime]
 type = "function"

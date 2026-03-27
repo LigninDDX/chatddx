@@ -108,11 +108,11 @@ class ConnectionBase(BaseModel):
 
 
 class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
-    pass
+    profile: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConnectionSpec(ConnectionBase, TrailSpec):
-    pass
+    profile: dict[str, Any] = Field(default_factory=dict)
 
 
 class SamplingParamsBase(BaseModel):
@@ -188,14 +188,14 @@ class AgentBase(BaseModel):
 
 
 class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
-    connection: ConnectionSchema | None = None
+    connection: ConnectionSchema
     sampling_params: SamplingParamsSchema | None = None
     output_type: OutputTypeSchema | None = None
     tool_group: ToolGroupSchema | None = None
 
 
 class AgentSpec(AgentBase, TrailSpec):
-    connection: ConnectionSpec | None = None
+    connection: ConnectionSpec
     sampling_params: SamplingParamsSpec | None = None
     output_type: OutputTypeSpec | None = None
     tool_group: ToolGroupSpec | None = None

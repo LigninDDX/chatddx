@@ -64,18 +64,12 @@ def build_model(agent_spec: AgentSpec):
         raise ValueError("No connection defined for this agent.")
 
     model_kwargs: dict[str, Any] = {}
-    profile_kwargs: dict[str, Any] = {}
-
-    if agent_spec.coercion_strategy == "native":
-        profile_kwargs["supports_json_schema_output"] = True
-
-    if agent_spec.coercion_strategy == "prompted":
-        profile_kwargs["ignore_streamed_leading_whitespace"] = True
+    profile_kwargs: dict[str, Any] = agent_spec.connection.profile.copy()
 
     if agent_spec.coercion_strategy in get_args(StructuredOutputMode):
         profile_kwargs["default_structured_output_mode"] = agent_spec.coercion_strategy
-        model_kwargs["profile"] = ModelProfile(**profile_kwargs)
 
+    model_kwargs["profile"] = ModelProfile(**profile_kwargs)
     model_kwargs["model_name"] = agent_spec.connection.model
     model_kwargs["provider"] = OpenAIProvider(base_url=agent_spec.connection.endpoint)
 

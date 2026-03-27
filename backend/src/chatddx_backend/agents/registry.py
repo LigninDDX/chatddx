@@ -177,16 +177,19 @@ class Registry(BaseModel):
             return base
 
         for record_type in cls.model_fields:
+            if record_type not in base:
+                base[record_type] = {}
+
             if not isinstance(update.get(record_type), dict):
                 continue
 
-            record_update = cast(dict[str, Any], update[record_type])
+            record_update = update.get(record_type, {})
 
             if not isinstance(base.get(record_type, {}), dict):
                 raise ValueError(f"unexpected value in '{base}'")
 
-            for name, values in record_update.items():
-                cast(dict[str, Any], base[record_type]).setdefault(name, values)
+            for name, values in record_update.items():  # type: ignore
+                base[record_type].setdefault(name, values)  # type: ignore
 
         return base
 
