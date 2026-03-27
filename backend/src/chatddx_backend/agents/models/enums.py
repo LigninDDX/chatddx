@@ -1,7 +1,7 @@
 from django.db.models import TextChoices
 
 
-class ProviderType(TextChoices):
+class ProviderChoices(TextChoices):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
@@ -9,27 +9,27 @@ class ProviderType(TextChoices):
     VLLM = "vllm"
 
 
-class ToolType(TextChoices):
+class ToolChoices(TextChoices):
     FUNCTION = "function", "Function"
     CODE_INTERPRETER = "code_interpreter", "Code Interpreter"
     FILE_SEARCH = "file_search", "File Search"
     WEB_SEARCH = "web_search", "Web Search"
 
 
-class ValidationStrategy(TextChoices):
+class ValidationChoices(TextChoices):
     NOOP = "noop"
     RETRY = "retry"
     INFORM = "inform"
     CRASH = "crash"
 
 
-class CoercionStrategy(TextChoices):
+class CoercionChoices(TextChoices):
     PROMPTED = "prompted"
     TOOL = "tool"
     NATIVE = "native"
 
 
-class Role(TextChoices):
+class RoleChoices(TextChoices):
     SYSTEM = "system", "System"
     USER = "user", "User"
     ASSISTANT = "assistant", "Assistant"

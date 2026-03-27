@@ -22,10 +22,10 @@ from django.db.models import (
 )
 
 from chatddx_backend.agents.models.enums import (
-    CoercionStrategy,
-    ProviderType,
-    ToolType,
-    ValidationStrategy,
+    CoercionChoices,
+    ProviderChoices,
+    ToolChoices,
+    ValidationChoices,
 )
 from chatddx_backend.agents.trail import RelatedArrayField, TrailModel
 
@@ -72,7 +72,7 @@ class Connection(TrailModel):
     # what is TrailModel and what does it give us that a regular Model doesn't?
     # TrailModel provides one and only one method to append to the database: apply()
     # All other methods are forbidden.
-    provider = CharField(max_length=255, choices=ProviderType.choices)
+    provider = CharField(max_length=255, choices=ProviderChoices.choices)
     model = CharField(max_length=255)
     # TODO: is this our endpoint or theirs? what format is expected here?
     # Theirs, we're the consuming side on this endpoint.
@@ -213,8 +213,8 @@ class OutputType(TrailModel):
 class Tool(TrailModel):
     type = CharField(
         max_length=50,
-        choices=ToolType.choices,
-        default=ToolType.FUNCTION,
+        choices=ToolChoices.choices,
+        default=ToolChoices.FUNCTION,
         help_text="The type of tool.",
     )
     description = TextField(
@@ -285,7 +285,7 @@ class Agent(TrailModel):
         blank=True,
         on_delete=PROTECT,
     )
-    # Cannot be None; use ValidationStrategy.NOOP to explicitly disable
+    # Cannot be None; use ValidationChoices.NOOP to explicitly disable
     # what does INFORM actually do - log it, return it to the caller, both?
     # Return to the caller with key __error__ with message, very python.
     # who defined these strategies and where is that behavior actually implemented?
@@ -294,8 +294,8 @@ class Agent(TrailModel):
 
     validation_strategy = CharField(
         max_length=255,
-        default=ValidationStrategy.INFORM,
-        choices=ValidationStrategy.choices,
+        default=ValidationChoices.INFORM,
+        choices=ValidationChoices.choices,
     )
     # None = defer to upstream default.
     # what is the "upstream default" and where is that defined?
@@ -305,5 +305,5 @@ class Agent(TrailModel):
         default=None,
         blank=True,
         null=True,
-        choices=CoercionStrategy.choices,
+        choices=CoercionChoices.choices,
     )

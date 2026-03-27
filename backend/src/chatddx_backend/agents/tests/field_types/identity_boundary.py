@@ -16,15 +16,15 @@ from django.db.models import (
 )
 
 from chatddx_backend.agents.models import (
-    CoercionStrategy,
+    CoercionChoices,
     Connection,
     OutputType,
-    ProviderType,
+    ProviderChoices,
     SamplingParams,
     Tool,
+    ToolChoices,
     ToolGroup,
-    ToolType,
-    ValidationStrategy,
+    ValidationChoices,
 )
 from chatddx_backend.agents.models.agent import JSONSchemaField
 from chatddx_backend.agents.schemas import (
@@ -103,7 +103,7 @@ def _test_tools(value: list[ToolSchema]):
     if len(value) == 1:
         _, altered_tool = _test_tool(value[0])
         return value, [altered_tool]
-    return reversed(value), value[1:]
+    return deepcopy(value), value[:1]
 
 
 def _test_optional_tools(value: list[ToolSchema] | None):
@@ -165,23 +165,23 @@ def _test_optional_list_str(value: list[str] | None):
     return deepcopy(value), altered_value
 
 
-def _test_provider_type(value: ProviderType):
-    altered_value = next(v for v in ProviderType if v != value)
+def _test_provider_type(value: ProviderChoices):
+    altered_value = next(v for v in ProviderChoices if v != value)
     return value, altered_value
 
 
-def _test_tool_type(value: ToolType):
-    altered_value = next(v for v in ToolType if v != value)
+def _test_tool_type(value: ToolChoices):
+    altered_value = next(v for v in ToolChoices if v != value)
     return value, altered_value
 
 
-def _test_validation_strategy(value: ValidationStrategy):
-    altered_value = next(v for v in ValidationStrategy if v != value)
+def _test_validation_strategy(value: ValidationChoices):
+    altered_value = next(v for v in ValidationChoices if v != value)
     return value, altered_value
 
 
-def _test_optional_coercion_strategy(value: CoercionStrategy):
-    altered_value = next(v for v in CoercionStrategy if v != value)
+def _test_optional_coercion_strategy(value: CoercionChoices):
+    altered_value = next(v for v in CoercionChoices if v != value)
     return value, altered_value
 
 
@@ -223,10 +223,10 @@ field_types: dict[Any, Callable[[Any], tuple[Any, Any]]] = {
     (BooleanField, bool): _test_bool,
     (CharField, str): _test_str,
     (CharField, str | None): _test_optional_str,
-    (CharField, ProviderType): _test_provider_type,
-    (CharField, ToolType): _test_tool_type,
-    (CharField, ValidationStrategy): _test_validation_strategy,
-    (CharField, CoercionStrategy | None): _test_optional_coercion_strategy,
+    (CharField, ProviderChoices): _test_provider_type,
+    (CharField, ToolChoices): _test_tool_type,
+    (CharField, ValidationChoices): _test_validation_strategy,
+    (CharField, CoercionChoices | None): _test_optional_coercion_strategy,
     (Connection, ConnectionSchema): _test_Connection,
     (Connection, ConnectionSchema | None): _test_optional_Connection,
     (DecimalField, Decimal): _test_decimal,

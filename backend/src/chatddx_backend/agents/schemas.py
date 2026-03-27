@@ -1,25 +1,32 @@
 # src/chatddx_backend/agents/schemas.py
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import (
     Annotated,
     Any,
     TypeVar,
 )
+from uuid import UUID
 
 import jsonschema
+from ninja import Schema as NinjaSchema
 from pydantic import (
     AfterValidator,
+    AliasChoices,
+    AliasPath,
     BaseModel,
     Field,
 )
+from pydantic_ai import ModelMessage
 
 from chatddx_backend.agents.models.enums import (
-    CoercionStrategy,
-    ProviderType,
-    ToolType,
-    ValidationStrategy,
+    CoercionChoices,
+    ProviderChoices,
+    RoleChoices,
+    ToolChoices,
+    ValidationChoices,
 )
 from chatddx_backend.agents.registry import Registry, RegistryRecord
 from chatddx_backend.agents.trail import TrailSchema, TrailSpec
@@ -45,8 +52,57 @@ class TrailRegistry(Registry):
     output_type: dict[str, OutputTypeSchema] = {}
 
 
+class UserBase(BaseModel):
+    pass
+
+
+class UserSchema(UserBase):
+    pass
+
+
+class UserSpec(UserBase, NinjaSchema):
+    id: int = Field(
+        validation_alias=AliasChoices(
+            "id",
+            AliasPath("auth_user", "id"),
+        ),
+    )
+    name: str = Field(
+        validation_alias=AliasChoices(
+            "name",
+            AliasPath("auth_user", "username"),
+        )
+    )
+    default_agent: AgentSpec
+
+
+class SessionBase(BaseModel):
+    uuid: UUID
+    description: str | None
+    created_at: datetime
+
+
+class SessionSchema(SessionBase):
+    user: UserSchema
+    default_agent: AgentSchema
+
+
+class SessionSpec(SessionBase, NinjaSchema):
+    id: int
+    user: UserSpec
+    default_agent: AgentSpec
+    messages: list[MessageSpec]
+
+
+class MessageSpec(NinjaSchema):
+    role: RoleChoices
+    run_id: UUID
+    payload: ModelMessage
+    timestamp: datetime
+
+
 class ConnectionBase(BaseModel):
-    provider: ProviderType
+    provider: ProviderChoices
     model: str
     endpoint: str
 
@@ -97,7 +153,7 @@ class OutputTypeSpec(OutputTypeBase, TrailSpec):
 
 
 class ToolBase(BaseModel):
-    type: ToolType
+    type: ToolChoices
     description: str | None = None
     parameters: Annotated[
         dict[str, Any] | None,
@@ -127,8 +183,8 @@ class ToolGroupSpec(ToolGroupBase, TrailSpec):
 
 class AgentBase(BaseModel):
     instructions: str
-    validation_strategy: ValidationStrategy = ValidationStrategy.INFORM
-    coercion_strategy: CoercionStrategy | None = None
+    validation_strategy: ValidationChoices = ValidationChoices.INFORM
+    coercion_strategy: CoercionChoices | None = None
 
 
 class AgentSchema(AgentBase, TrailSchema, RegistryRecord):

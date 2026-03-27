@@ -36,7 +36,6 @@ schemas = (
     (ToolSchema, "tool-1"),
     (OutputTypeSchema, "output_type-1"),
     (AgentSchema, "agent-1"),
-    (AgentSchema, "dice-game"),
     (AgentSchema, "test-tools-prime"),
 )
 

@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Sequence
+from typing import Any
 
-from pydantic_ai import ModelMessage, StructuredDict
+from pydantic_ai import StructuredDict
 
-from chatddx_backend.agents.models import ValidationStrategy
-from chatddx_backend.agents.schemas import AgentSpec
+from chatddx_backend.agents.schemas import AgentSpec, SessionSpec
 
 OutputType = bool | int | str | Decimal | list[Any] | dict[str, Any]
 
@@ -29,8 +28,6 @@ def jsonschema_to_type(jsonschema: dict[str, Any]) -> type[OutputType]:
 
 @dataclass(frozen=True)
 class AgentContext:
-    spec: AgentSpec
-    output_type: type[OutputType] | None
-    output_schema: dict[str, Any] | None
-    validation_strategy: ValidationStrategy
-    message_history: Sequence[ModelMessage] | None = None
+    agent: AgentSpec
+    output_type: type[OutputType] | None = None
+    session: SessionSpec | None = None

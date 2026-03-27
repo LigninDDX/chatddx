@@ -1,12 +1,13 @@
 # src/chatddx_backend/agents/models/__init__.py
 from .agent import Agent, Connection, OutputType, SamplingParams, Tool, ToolGroup
-from .chat import Message, Session
 from .enums import (
-    CoercionStrategy,
-    ProviderType,
-    ToolType,
-    ValidationStrategy,
+    CoercionChoices,
+    ProviderChoices,
+    RoleChoices,
+    ToolChoices,
+    ValidationChoices,
 )
+from .session import Message, Session
 
 __all__ = [
     "Agent",
@@ -17,8 +18,9 @@ __all__ = [
     "ToolGroup",
     "Message",
     "Session",
-    "CoercionStrategy",
-    "ValidationStrategy",
-    "ProviderType",
-    "ToolType",
+    "CoercionChoices",
+    "ValidationChoices",
+    "ProviderChoices",
+    "ToolChoices",
+    "RoleChoices",
 ]

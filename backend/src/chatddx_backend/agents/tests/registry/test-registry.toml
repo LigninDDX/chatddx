@@ -40,9 +40,20 @@ stop_sequences = ["END"]
 
 [tool.tool-1]
 type = "function"
-description = "Complex parameters"
+parameters_path = "../output_types/simple.json"
+
+[tool.tool-2]
+type = "function"
+parameters_path = "../output_types/simple.json"
+
+[tool.tool-3]
+type = "function"
 parameters_path = "../output_types/simple.json"
 
 [tool_group.tool_group-1]
 instructions = "use these tools"
-tools = ["tool-1"]
+tools = [
+  "tool-1",
+  "tool-2",
+  "tool-3",
+]

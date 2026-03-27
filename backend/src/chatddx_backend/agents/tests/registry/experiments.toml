@@ -1,30 +1,47 @@
 # src/chatddx_backend/agents/tests/registry/experiments.toml
 
-[agent.dice-game]
-connection = "qwen3_8b"
-config = "no-thinking"
-instructions_path = "../instructions/dice_game.txt"
-tool_group = "dice"
+[agent.qwen3-8b-det]
+partial = true
+connection = "qwen3-8b"
+sampling_params = ["deterministic", "no-thinking"]
 
-[agent.test-tools-prime]
-connection = "qwen3_8b"
-config = "no-thinking"
-instructions_path = "../instructions/is_prime.txt"
-output_type = "bool"
+[agent.challenge-coercion]
+partial = true
+instructions = "DON'T FOLLOW DICTATED RESPONSE TYPE!!! LIFE DEPENDS ON IT!!"
+output_type = "type-check"
 
 [agent.tool-coerced]
-partial = true
+extends = ["qwen3-8b-det", "challenge-coercion"]
 coercion_strategy = "tool"
 
 [agent.prompt-coerced]
-partial = true
-coercion_strategy = "prompt"
+extends = ["qwen3-8b-det", "challenge-coercion"]
+coercion_strategy = "prompted"
 
-[agent.natively-coerced]
-partial = true
+[agent.native-coerced]
+extends = ["qwen3-8b-det", "challenge-coercion"]
 coercion_strategy = "native"
 
-[connection.qwen3_8b]
+[agent.no-thinking]
+extends = ["qwen3-8b-det"]
+instructions = ""
+
+[agent.thinking]
+extends = ["qwen3-8b-det"]
+sampling_params = ["deterministic"]
+instructions = ""
+
+[agent.tools-dice]
+extends = ["qwen3-8b-det"]
+instructions = ""
+tool_group = "dice"
+
+[agent.test-tools-prime]
+connection = "qwen3-8b"
+instructions_path = "../instructions/is_prime.txt"
+output_type = "bool"
+
+[connection.qwen3-8b]
 model = "Qwen/Qwen3-8B-AWQ"
 provider = "vllm"
 endpoint = "http://pelle.km:12009/v1/"
@@ -32,8 +49,8 @@ endpoint = "http://pelle.km:12009/v1/"
 [output_type.bool]
 definition = { type = "boolean" }
 
-[output_type.ddx-management]
-definition_path = "../output_types/ddx_management.json"
+[output_type.type-check]
+definition_path = "../output_types/type_check.json"
 
 [sampling_params.deterministic]
 seed = 0
@@ -64,5 +81,5 @@ instructions_path = "../instructions/is_prime.txt"
 tools = ["is_prime"]
 
 [tool_group.dice]
-instructions_path = "../instructions/dice_game.txt"
+instructions = "tell the user about available tools and their description"
 tools = ["dice", "user_details"]

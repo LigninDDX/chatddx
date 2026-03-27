@@ -16,8 +16,6 @@ from pydantic import (
     model_validator,
 )
 
-from chatddx_backend.agents.utils import ListOf, OneOf, one_or_list_of
-
 FileLoaders = dict[str, Callable[[IO[bytes]], JsonValue]]
 
 
@@ -33,43 +31,33 @@ class RegistryRecord(BaseModel):
             return data
 
         record_type = info.context["cls"].get_field_by_type(cls)
+        record = info.context["input"][record_type]
+
         base_data: dict[str, Any] = {}
-        refs: list[str] = []
 
-        if isinstance(data, dict):
-            base_data = cast(dict[str, Any], data.copy())
+        match data:
+            case str():
+                return {"name": data} | record[data]
+            case list():
+                base_data = record[data[0]] | {
+                    "name": data[0],
+                    "extends": data[1:],
+                }
+            case dict():
+                base_data = cast(dict[str, Any], data.copy())
+            case _:
+                raise ParseError(f"bad data {data}")
 
-            if not isinstance(base_data.get("name"), str):
-                raise ParseError(f"dict instances must have 'name'")
+        if not base_data.get("extends"):
+            return base_data
 
-            match one_or_list_of(str, base_data.get("extends")):
-                case OneOf(value):
-                    refs = [value]
-                case ListOf(values):
-                    refs = values
-                case None:
-                    return base_data
+        if isinstance(base_data["extends"], str):
+            base_data["extends"] = [base_data["extends"]]
 
-            base_data["name"] += "|" + "|".join(refs)
-
-        else:
-            match one_or_list_of(str, data):
-                case OneOf(value):
-                    refs = [value]
-                case ListOf(values):
-                    refs = values
-                case None:
-                    raise ParseError(f"bad data {data}")
-
-            base_data["name"] = "|".join(refs)
-
-        for ref in refs:
-            try:
-                ref_value = info.context["input"][record_type][ref]
-            except KeyError:
-                raise ParseError(f"ref missing: {ref}")
-
-            base_data = ref_value | base_data
+        for ext_name in base_data["extends"]:
+            ext_data = record[ext_name]
+            base_data["name"] += "|" + ext_name
+            base_data = ext_data | base_data
 
         return base_data
 

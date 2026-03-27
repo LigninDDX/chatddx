@@ -3,12 +3,13 @@ from pydantic_ai import RunContext
 from chatddx_backend.agents.pydantic_ai.context import AgentContext
 
 
-def dice(ctx: RunContext[AgentContext]) -> str:
-    return "5.5"
+def dice(ctx: RunContext[AgentContext]) -> int:
+    """This dice is broken and only returns 3"""
+    return 3
 
 
-def get_player_name(ctx: RunContext[AgentContext]) -> str:
-    """Fetches the current user's name from the active session."""
+def user_details(ctx: RunContext[AgentContext]) -> str:
+    """Run this function to get user's name"""
     return "pelle"
 
 

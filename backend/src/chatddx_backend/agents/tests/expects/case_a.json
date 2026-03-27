@@ -1,0 +1,53 @@
+{
+  "workup": [
+    {
+      "priority": "STAT",
+      "test_name": "Chest X-ray"
+    },
+    {
+      "priority": "Expedited",
+      "test_name": "CT scan of the chest"
+    },
+    {
+      "priority": "Routine",
+      "test_name": "Sputum culture"
+    },
+    {
+      "priority": "Routine",
+      "test_name": "Pulmonary function tests (PFTs)"
+    }
+  ],
+  "warnings": [
+    "Worsening respiratory symptoms",
+    "Decreased DLCO",
+    "Prolonged expiratory phase with wheezing"
+  ],
+  "disposition": [
+    "Admit to the hospital for further evaluation",
+    "Consult with a pulmonologist"
+  ],
+  "empiric_therapy": [
+    "Bronchodilator therapy (e.g., albuterol)",
+    "Oxygen therapy if needed"
+  ],
+  "possible_diagnoses": [
+    {
+      "urgency": "Urgent",
+      "diagnosis": "Chronic Obstructive Pulmonary Disease (COPD)",
+      "likelyhood": "High",
+      "clinical_rationale": "The patient is a long-term smoker, has a history of progressive dyspnea, and presents with airflow obstruction (FEV1:FVC ratio of 62%, FEV1 of 60% of predicted), along with decreased DLCO and wheezing."
+    },
+    {
+      "urgency": "Emergent",
+      "diagnosis": "Lung cancer",
+      "likelyhood": "Moderate",
+      "clinical_rationale": "The patient is a long-term smoker, and the presence of decreased DLCO and prolonged expiratory phase may raise suspicion of a mass or other lung pathology."
+    },
+    {
+      "urgency": "Stable",
+      "diagnosis": "Asthma",
+      "likelyhood": "Moderate",
+      "clinical_rationale": "The patient has a dry cough and wheezing, but he does not have typical asthma triggers or a history of episodic symptoms."
+    }
+  ]
+}

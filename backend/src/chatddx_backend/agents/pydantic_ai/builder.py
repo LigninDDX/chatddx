@@ -14,7 +14,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from chatddx_backend.agents.models.enums import ToolType, ValidationStrategy
+from chatddx_backend.agents.models.enums import ToolChoices, ValidationChoices
 from chatddx_backend.agents.pydantic_ai import tools
 from chatddx_backend.agents.pydantic_ai.context import (
     AgentContext,
@@ -26,29 +26,28 @@ from chatddx_backend.agents.schemas import AgentSpec, SamplingParamsSpec, ToolGr
 
 def build_agent(
     agent_spec: AgentSpec,
-) -> tuple[PydanticAgent[AgentContext, OutputType], AgentContext]:
+    output_type: type[OutputType],
+) -> PydanticAgent[AgentContext, OutputType]:
 
-    output_type: type[OutputType] = str
-    output_schema: dict[str, Any] | None = None
     tools: list[PydanticTool] = []
     model_settings: ModelSettings | None = None
 
     model: OpenAIChatModel = build_model(agent_spec)
 
+    instructions: str = agent_spec.instructions
+
     if agent_spec.sampling_params:
         model_settings = build_config(agent_spec.sampling_params)
 
     if agent_spec.tool_group:
-        tools = build_tools(agent_spec.tool_group)
-
-    if agent_spec.output_type:
-        output_schema = agent_spec.output_type.definition
-        output_type = jsonschema_to_type(output_schema)
+        tools_instructions, tools = build_tools(agent_spec.tool_group)
+        if tools_instructions:
+            instructions = "\n---\n".join([instructions, tools_instructions])
 
     pydantic_agent = PydanticAgent[AgentContext, OutputType](
         model,
         name=agent_spec.name,
-        instructions=agent_spec.instructions,
+        instructions=instructions,
         tools=tools,
         deps_type=AgentContext,
         output_type=output_type,
@@ -57,14 +56,7 @@ def build_agent(
 
     pydantic_agent.output_validator(validate_output)
 
-    agent_context = AgentContext(
-        spec=agent_spec,
-        output_type=output_type,
-        output_schema=output_schema,
-        validation_strategy=agent_spec.validation_strategy,
-    )
-
-    return pydantic_agent, agent_context
+    return pydantic_agent
 
 
 def build_model(agent_spec: AgentSpec):
@@ -104,22 +96,32 @@ def build_config(sampling_params_spec: SamplingParamsSpec) -> ModelSettings:
     return ModelSettings(**settings_kwargs)
 
 
-def build_tools(tool_group_spec: ToolGroupSpec) -> list[PydanticTool]:
-    return [
+def build_tools(
+    tool_group_spec: ToolGroupSpec,
+) -> tuple[str, list[PydanticTool]]:
+    return tool_group_spec.instructions, [
         PydanticTool(
             getattr(tools, tool_spec.name),
             takes_ctx=True,
         )
         for tool_spec in tool_group_spec.tools
-        if tool_spec.type == ToolType.FUNCTION
+        if tool_spec.type == ToolChoices.FUNCTION
     ]
 
 
+def build_output_type(agent_spec: AgentSpec) -> type[OutputType]:
+    """Helper to consistently extract the raw python type from a spec."""
+    if agent_spec.output_type:
+        return jsonschema_to_type(agent_spec.output_type.definition)
+    return str
+
+
 async def validate_output(
-    ctx: RunContext[AgentContext], output: OutputType
+    ctx: RunContext[AgentContext],
+    output: OutputType,
 ) -> OutputType:
-    validation_strategy = ctx.deps.validation_strategy
-    strategies = ValidationStrategy
+    validation_strategy = ctx.deps.agent.validation_strategy
+    strategies = ValidationChoices
 
     if validation_strategy == strategies.NOOP:
         return output
@@ -127,11 +129,13 @@ async def validate_output(
     if ctx.partial_output:
         return output
 
-    if not isinstance(output, dict) or ctx.deps.output_schema is None:
+    if not (isinstance(output, dict) and ctx.deps.agent.output_type):
         return output
 
     try:
-        jsonschema.validate(instance=output, schema=ctx.deps.output_schema)
+        jsonschema.validate(
+            instance=output, schema=ctx.deps.agent.output_type.definition
+        )
         return output
     except jsonschema.ValidationError as e:
         match validation_strategy:
