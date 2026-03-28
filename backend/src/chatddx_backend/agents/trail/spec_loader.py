@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from django.db.models import ForeignKey
 
@@ -28,8 +28,9 @@ SpecT = TypeVar("SpecT", bound=TrailSpec)
 async def model_from_schema(
     Model: type[ModelT],
     schema: TrailSchema,
+    mutable: bool = False,
 ) -> ModelT:
-    pk = await pk_from_schema(Model, schema)
+    pk = await pk_from_schema(Model, schema, mutable)
     model = await model_from_pk(Model, pk)
     return model
 
@@ -40,28 +41,52 @@ async def model_from_schema(
 async def pk_from_schema(
     Model: type[TrailModel],
     schema: TrailSchema,
+    mutable: bool = False,
 ) -> int:
-    values = {}
+    new_values: dict[str, Any] = {}
 
-    for key, value in schema:
-        field = Model._meta.get_field(key)
+    for field_name, field_value in schema:
+        field = Model._meta.get_field(field_name)
         related_model = getattr(field, "related_model", None)
 
-        match one_or_list_of(TrailSchema, value):
-            case OneOf(v) if related_model:
-                values[key + "_id"] = await pk_from_schema(related_model, v)
+        match one_or_list_of(TrailSchema, field_value):
+            case OneOf(value) if related_model:
+                new_values[field_name + "_id"] = await pk_from_schema(
+                    related_model,
+                    value,
+                    mutable,
+                )
 
-            case ListOf(vs) if related_model:
-                tasks = [pk_from_schema(related_model, v) for v in vs]
-                values[key] = await asyncio.gather(*tasks)
+            case ListOf(values) if related_model:
+                new_values[field_name] = await asyncio.gather(
+                    *[
+                        pk_from_schema(
+                            related_model,
+                            value,
+                            mutable,
+                        )
+                        for value in values
+                    ]
+                )
 
             case None:
-                values[key] = value
+                new_values[field_name] = field_value
 
             case _:
-                raise ValueError(f"'{value}' is a relation but lacks related_model")
+                raise ValueError(
+                    f"'{field_value}' is a relation but lacks related_model"
+                )
 
-    pk = await Model(**values).apply()
+    if mutable:
+        instance, _ = await Model.objects.aupdate_or_create(
+            name=new_values["name"],
+            fingerprint="",
+            defaults=new_values,
+        )
+        pk = instance.pk
+    else:
+        pk = await Model(**new_values).apply()
+
     return pk
 
 

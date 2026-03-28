@@ -28,6 +28,6 @@ async def spec_from_registry(
     return spec
 
 
-async def agent_spec(name: str, registry: TrailRegistry) -> AgentSpec:
+async def get_agent(name: str, registry: TrailRegistry) -> AgentSpec:
     spec = await spec_from_registry(AgentSpec, name, registry)
     return spec

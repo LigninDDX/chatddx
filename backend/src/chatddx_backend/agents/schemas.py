@@ -21,7 +21,7 @@ from pydantic import (
 )
 from pydantic_ai import ModelMessage
 
-from chatddx_backend.agents.models.enums import (
+from chatddx_backend.agents.models.choices import (
     CoercionChoices,
     ProviderChoices,
     RoleChoices,
@@ -95,6 +95,8 @@ class SessionSpec(SessionBase, NinjaSchema):
 
 
 class MessageSpec(NinjaSchema):
+    id: int
+    agent_id: int
     role: RoleChoices
     run_id: UUID
     payload: ModelMessage
@@ -184,18 +186,27 @@ class ToolGroupSpec(ToolGroupBase, TrailSpec):
 class AgentBase(BaseModel):
     instructions: str
     validation_strategy: ValidationChoices = ValidationChoices.INFORM
-    coercion_strategy: CoercionChoices | None = None
+    coercion_strategy: CoercionChoices = CoercionChoices.NATIVE
 
 
 class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
     connection: ConnectionSchema
-    sampling_params: SamplingParamsSchema | None = None
-    output_type: OutputTypeSchema | None = None
-    tool_group: ToolGroupSchema | None = None
+    sampling_params: SamplingParamsSchema = SamplingParamsSchema(
+        name="default",
+    )
+    output_type: OutputTypeSchema = OutputTypeSchema(
+        name="default",
+        definition={},
+    )
+    tool_group: ToolGroupSchema = ToolGroupSchema(
+        name="default",
+        instructions="",
+        tools=[],
+    )
 
 
 class AgentSpec(AgentBase, TrailSpec):
     connection: ConnectionSpec
-    sampling_params: SamplingParamsSpec | None = None
-    output_type: OutputTypeSpec | None = None
-    tool_group: ToolGroupSpec | None = None
+    sampling_params: SamplingParamsSpec
+    output_type: OutputTypeSpec
+    tool_group: ToolGroupSpec

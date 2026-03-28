@@ -1,15 +1,28 @@
-from django.core.management.base import BaseCommand
-from chatddx_backend.agents.tests import data
+import asyncio
+from pathlib import Path
+from typing import Any
+
+from django_typer.management import Typer
+
+from chatddx_backend.agents.models.agent import Agent
+from chatddx_backend.agents.schemas import AgentSchema, TrailRegistry
+from chatddx_backend.agents.trail import model_from_schema
+
+app: Typer[Any, Any] = Typer()
 
 
-class Command(BaseCommand):
-    help = "Writes datasets to database"
+@app.command()
+def main(path: Path):
+    """
+    A basic command that uses Typer
+    """
+    registry = TrailRegistry.from_file(path)
+    for k in registry.agent:
+        agent_schema = registry.get(AgentSchema, k)
+        agent_model = asyncio.run(model_from_schema(Agent, agent_schema))
+        print(f"Immutable record upsert: {agent_model.pk} ({agent_model.fingerprint})")
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "dataset", type=str, help="the name of the dataset to create"
+        mutable_agent_model = asyncio.run(
+            model_from_schema(Agent, agent_schema, mutable=True)
         )
-
-    def handle(self, *args, **options):
-        dataset = options.get("dataset")
-        getattr(data, str(dataset))()
+        print(f"Mutable record upsert: {mutable_agent_model.pk}")

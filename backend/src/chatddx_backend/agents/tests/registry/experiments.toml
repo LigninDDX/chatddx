@@ -36,7 +36,7 @@ extends = ["qwen3-8b-det"]
 instructions = ""
 tool_group = "dice"
 
-[agent.test-tools-prime]
+[agent.tools-prime]
 connection = "qwen3-8b"
 instructions_path = "../instructions/is_prime.txt"
 output_type = "bool"

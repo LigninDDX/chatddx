@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from django.db import ProgrammingError
 
 from chatddx_backend.agents import type_map
+from chatddx_backend.agents.models import Agent
 from chatddx_backend.agents.schemas import (
     AgentSchema,
     ConnectionSchema,
@@ -36,7 +38,7 @@ schemas = (
     (ToolSchema, "tool-1"),
     (OutputTypeSchema, "output_type-1"),
     (AgentSchema, "agent-1"),
-    (AgentSchema, "test-tools-prime"),
+    (AgentSchema, "tools-prime"),
 )
 
 fields = [
@@ -131,3 +133,13 @@ def expect_altered(
 
     assert spec.created_at == spec.updated_at
     assert test_spec.created_at == test_spec.updated_at
+
+
+@pytest.mark.asyncio
+@pytest.mark.django_db()
+async def test_immutability_trigger():
+    agent_schema = registry.get(AgentSchema, "agent-1")
+    agent_model = await model_from_schema(Agent, agent_schema)
+    agent_model.instructions += "a"
+    with pytest.raises(ProgrammingError):
+        await agent_model.asave()

@@ -134,6 +134,15 @@ wheels = [
 ]
 
 [[package]]
+name = "annotated-doc"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/ba/046ceea27344560984e26a590f90bc7f4a75b06701f653222458922b558c/annotated_doc-0.0.4.tar.gz", hash = "sha256:fbcda96e87e9c92ad167c2e53839e57503ecfda18804ea28102353485033faa4", size = 7288, upload-time = "2025-11-10T22:07:42.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl", hash = "sha256:571ac1dc6991c450b25a9c2d84a3705e2ae7a53467b5d111c24fa8baabbed320", size = 5303, upload-time = "2025-11-10T22:07:40.673Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -418,12 +427,12 @@ version = "0.0.0+dev"
 source = { editable = "." }
 dependencies = [
     { name = "celery" },
-    { name = "deepdiff" },
     { name = "dj-user-login-history" },
     { name = "django" },
     { name = "django-celery-results" },
     { name = "django-modeltranslation" },
     { name = "django-ninja" },
+    { name = "django-typer" },
     { name = "django-unfold" },
     { name = "flower" },
     { name = "gunicorn" },
@@ -468,13 +477,13 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "celery", specifier = ">=5.6.2" },
-    { name = "deepdiff", specifier = ">=8.6.1" },
     { name = "dj-user-login-history", specifier = ">=1.0.6" },
     { name = "django", specifier = ">=6.0.2" },
     { name = "django-celery-results", specifier = ">=2.6.0" },
     { name = "django-modeltranslation", specifier = ">=0.19.19" },
     { name = "django-ninja", specifier = ">=1.6.2" },
-    { name = "django-unfold", specifier = ">=0.78.1" },
+    { name = "django-typer", specifier = ">=3.7.0" },
+    { name = "django-unfold", specifier = ">=0.87.0" },
     { name = "flower", specifier = ">=2.0.1" },
     { name = "gunicorn", specifier = ">=25.0.1" },
     { name = "jsonschema", specifier = ">=4.26.0" },
@@ -757,18 +766,6 @@ wheels = [
 ]
 
 [[package]]
-name = "deepdiff"
-version = "8.6.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "orderly-set" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/19/76/36c9aab3d5c19a94091f7c6c6e784efca50d87b124bf026c36e94719f33c/deepdiff-8.6.1.tar.gz", hash = "sha256:ec56d7a769ca80891b5200ec7bd41eec300ced91ebcc7797b41eb2b3f3ff643a", size = 634054, upload-time = "2025-09-03T19:40:41.461Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/e6/efe534ef0952b531b630780e19cabd416e2032697019d5295defc6ef9bd9/deepdiff-8.6.1-py3-none-any.whl", hash = "sha256:ee8708a7f7d37fb273a541fa24ad010ed484192cd0c4ffc0fa0ed5e2d4b9e78b", size = 91378, upload-time = "2025-09-03T19:40:39.679Z" },
-]
-
-[[package]]
 name = "diskcache"
 version = "5.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -852,6 +849,20 @@ wheels = [
 ]
 
 [[package]]
+name = "django-typer"
+version = "3.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "django" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9a/74/98ba98b886e6864ff7360dac0d9539a0b6b216db427010d423803c23ede2/django_typer-3.7.0.tar.gz", hash = "sha256:530b74137d9bd9c97a9e2d8a0a1740f1f70e62629c18f2a2403bd73356f8398f", size = 2975619, upload-time = "2026-03-20T15:29:53.046Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/03/56fede883c9d0932a79925e7c83825833935e23261b56ba3be8b8d4a5f1e/django_typer-3.7.0-py3-none-any.whl", hash = "sha256:f246ba9eff2b1758f826aadb25cc3f9ed5e5be4b12ba2531fb065604545f6ddf", size = 296859, upload-time = "2026-03-20T15:29:51.538Z" },
+]
+
+[[package]]
 name = "django-types"
 version = "0.23.0"
 source = { registry = "https://pypi.org/simple" }
@@ -865,14 +876,14 @@ wheels = [
 
 [[package]]
 name = "django-unfold"
-version = "0.78.1"
+version = "0.87.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/ca/c1148935fd0753fb70ddad19b7b7180dd94eabd267024dd65611a2c4388f/django_unfold-0.78.1.tar.gz", hash = "sha256:1de8537f0037b48e84d72b30229259060140ac84fc30d79eb69b5c9de6c5e51d", size = 1109404, upload-time = "2026-02-03T10:11:08.838Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4a/8e/74d2772b46236f062772c23c527cc2b4c33296a8b8306a4856b7e93830f6/django_unfold-0.87.0.tar.gz", hash = "sha256:011048047eea2e789e087660203ca221243885e0c93dbcb47539ff80dde9b76c", size = 1117584, upload-time = "2026-03-25T15:36:10.063Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/0b/4dd387462f0d7e705c477da8c761303591fccd66f0a6b5d6ba2ddc0f7855/django_unfold-0.78.1-py3-none-any.whl", hash = "sha256:6b557030d3ad6c8275ecacb69260b03a7ed3de972cb2e60ef2dea6d3363d515c", size = 1224742, upload-time = "2026-02-03T10:11:07.057Z" },
+    { url = "https://files.pythonhosted.org/packages/89/8d/76967f4593eec3422378eccf1ae24279a194afb5b1ab2daaece9f00c5e44/django_unfold-0.87.0-py3-none-any.whl", hash = "sha256:7ac7eac54d2a6f9eab98e3a90bf0696996ef1638a13b053226e5a007f895aadb", size = 1239731, upload-time = "2026-03-25T15:36:08.698Z" },
 ]
 
 [[package]]
@@ -2092,15 +2103,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/50/fc/c47bb04a1d8a941a4061307e1eddfa331ed4d0ab13d8a9781e6db256940a/opentelemetry_util_http-0.60b1.tar.gz", hash = "sha256:0d97152ca8c8a41ced7172d29d3622a219317f74ae6bb3027cfbdcf22c3cc0d6", size = 11053, upload-time = "2025-12-11T13:37:25.115Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/16/5c/d3f1733665f7cd582ef0842fb1d2ed0bc1fba10875160593342d22bba375/opentelemetry_util_http-0.60b1-py3-none-any.whl", hash = "sha256:66381ba28550c91bee14dcba8979ace443444af1ed609226634596b4b0faf199", size = 8947, upload-time = "2025-12-11T13:36:37.151Z" },
-]
-
-[[package]]
-name = "orderly-set"
-version = "5.5.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4a/88/39c83c35d5e97cc203e9e77a4f93bf87ec89cf6a22ac4818fdcc65d66584/orderly_set-5.5.0.tar.gz", hash = "sha256:e87185c8e4d8afa64e7f8160ee2c542a475b738bc891dc3f58102e654125e6ce", size = 27414, upload-time = "2025-07-10T20:10:55.885Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/27/fb8d7338b4d551900fa3e580acbe7a0cf655d940e164cb5c00ec31961094/orderly_set-5.5.0-py3-none-any.whl", hash = "sha256:46f0b801948e98f427b412fcabb831677194c05c3b699b80de260374baa0b1e7", size = 13068, upload-time = "2025-07-10T20:10:54.377Z" },
 ]
 
 [[package]]
@@ -3490,17 +3492,17 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.21.1"
+version = "0.23.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "annotated-doc" },
     { name = "click" },
     { name = "rich" },
     { name = "shellingham" },
-    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/36/bf/8825b5929afd84d0dabd606c67cd57b8388cb3ec385f7ef19c5cc2202069/typer-0.21.1.tar.gz", hash = "sha256:ea835607cd752343b6b2b7ce676893e5a0324082268b48f27aa058bdb7d2145d", size = 110371, upload-time = "2026-01-06T11:21:10.989Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/07/b822e1b307d40e263e8253d2384cf98c51aa2368cc7ba9a07e523a1d964b/typer-0.23.1.tar.gz", hash = "sha256:2070374e4d31c83e7b61362fd859aa683576432fd5b026b060ad6b4cd3b86134", size = 120047, upload-time = "2026-02-13T10:04:30.984Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/1d/d9257dd49ff2ca23ea5f132edf1281a0c4f9de8a762b9ae399b670a59235/typer-0.21.1-py3-none-any.whl", hash = "sha256:7985e89081c636b88d172c2ee0cfe33c253160994d47bdfdc302defd7d1f1d01", size = 47381, upload-time = "2026-01-06T11:21:09.824Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/91/9b286ab899c008c2cb05e8be99814807e7fbbd33f0c0c960470826e5ac82/typer-0.23.1-py3-none-any.whl", hash = "sha256:3291ad0d3c701cbf522012faccfbb29352ff16ad262db2139e6b01f15781f14e", size = 56813, upload-time = "2026-02-13T10:04:32.008Z" },
 ]
 
 [[package]]

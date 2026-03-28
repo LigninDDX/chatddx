@@ -69,7 +69,7 @@ def _test_optional_OutputType(value: OutputTypeSchema | None):
 
 def _test_SamplingParams(value: SamplingParamsSchema):
     altered_value = value.model_copy(
-        update={"temperature": _test_optional_decimal(value.temperature)}
+        update={"temperature": _test_optional_decimal(value.temperature)[1]}
     )
 
     return deepcopy(value), altered_value
@@ -180,7 +180,7 @@ def _test_validation_strategy(value: ValidationChoices):
     return value, altered_value
 
 
-def _test_optional_coercion_strategy(value: CoercionChoices):
+def _test_coercion_strategy(value: CoercionChoices):
     altered_value = next(v for v in CoercionChoices if v != value)
     return value, altered_value
 
@@ -226,7 +226,7 @@ field_types: dict[Any, Callable[[Any], tuple[Any, Any]]] = {
     (CharField, ProviderChoices): _test_provider_type,
     (CharField, ToolChoices): _test_tool_type,
     (CharField, ValidationChoices): _test_validation_strategy,
-    (CharField, CoercionChoices | None): _test_optional_coercion_strategy,
+    (CharField, CoercionChoices): _test_coercion_strategy,
     (Connection, ConnectionSchema): _test_Connection,
     (Connection, ConnectionSchema | None): _test_optional_Connection,
     (DecimalField, Decimal): _test_decimal,

@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "modeltranslation",
     "login_history",
     "django_celery_results",
+    "django_typer",
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
@@ -55,7 +56,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# ROOT_URLCONF = "chatddx_backend.urls"
+ROOT_URLCONF = "chatddx_backend.urls"
 
 TEMPLATES = [
     {

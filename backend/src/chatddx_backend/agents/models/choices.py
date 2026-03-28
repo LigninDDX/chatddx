@@ -2,11 +2,11 @@ from django.db.models import TextChoices
 
 
 class ProviderChoices(TextChoices):
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    GOOGLE = "google"
-    OLLAMA = "ollama"
-    VLLM = "vllm"
+    OPENAI = "openai", "OpenAI"
+    ANTHROPIC = "anthropic", "Anthropic"
+    GOOGLE = "google", "Google"
+    OLLAMA = "ollama", "Ollama"
+    VLLM = "vllm", "vLLM"
 
 
 class ToolChoices(TextChoices):
@@ -34,3 +34,8 @@ class RoleChoices(TextChoices):
     USER = "user", "User"
     ASSISTANT = "assistant", "Assistant"
     TOOL = "tool", "Tool"
+
+
+class MessageKindChoices(TextChoices):
+    REQUEST = "request"
+    RESPONSE = "user"

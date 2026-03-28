@@ -54,7 +54,7 @@ class Dispatcher:
         first_arg_name = params[0].name
         item_type = hints.get(first_arg_name)
 
-        if not item_type or item_type is Any:
+        if not item_type:
             raise TypeError(
                 f"Missing type hint for '{first_arg_name}' in {fn.__name__}"
             )
@@ -65,7 +65,7 @@ class Dispatcher:
     async def publish(self, data: Any):
         tasks: list[Awaitable[Any]] = []
         for registered_type, handlers in self._handlers.items():
-            if isinstance(data, registered_type):
+            if registered_type == Any or isinstance(data, registered_type):
                 for handler in handlers:
                     if inspect.iscoroutinefunction(handler):
                         tasks.append(handler(data))

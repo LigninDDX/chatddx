@@ -3,10 +3,11 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from chatddx_backend.agents.models import Session
+from chatddx_backend.agents.models import Message, Session
 from chatddx_backend.agents.models.session import User
 from chatddx_backend.agents.schemas import (
     AgentSpec,
+    MessageSpec,
     SessionSpec,
     UserSpec,
 )
@@ -17,7 +18,7 @@ class AgentSession(BaseModel):
     session: SessionSpec
 
 
-async def start(
+async def start_session(
     user: UserSpec,
     agent: AgentSpec | None = None,
     description: str | None = None,
@@ -31,26 +32,17 @@ async def start(
         description=description,
     )
 
-    return await resume(user, session_model.uuid)
+    return await resume_session(user, session_model.uuid)
 
 
-async def resume(
+async def resume_session(
     user: UserSpec,
     uuid: UUID,
     agent: AgentSpec | None = None,
 ) -> AgentSession:
 
     session_model = (
-        await Session.objects.select_related(
-            "user",
-            "user__auth_user",
-            "user__default_agent",
-            "user__default_agent__connection",
-            "user__default_agent__sampling_params",
-            "default_agent",
-            "default_agent__connection",
-            "default_agent__sampling_params",
-        )
+        await Session.objects.select_related()
         .prefetch_related(
             "messages",
         )
@@ -67,6 +59,22 @@ async def resume(
     return AgentSession(
         agent=resolved_agent,
         session=session,
+    )
+
+
+async def refresh_messages(
+    agent_session: AgentSession,
+) -> None:
+    queryset = Message.objects.select_related().filter(
+        session_id=agent_session.session.id
+    )
+
+    if len(agent_session.session.messages) > 0:
+        queryset = queryset.filter(pk__gt=agent_session.session.messages[-1].id)
+
+    messages = [obj async for obj in queryset]
+    agent_session.session.messages.extend(
+        [MessageSpec.model_validate(m) for m in messages]
     )
 
 

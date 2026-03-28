@@ -18,7 +18,7 @@ from django.db.models import (
     manager,
 )
 
-from chatddx_backend.agents.models.enums import RoleChoices
+from chatddx_backend.agents.models.choices import MessageKindChoices, RoleChoices
 
 from .agent import Agent
 
@@ -56,14 +56,13 @@ class Message(Model):
         ordering = ["pk"]
 
     role = CharField(max_length=255, choices=RoleChoices.choices)
+    kind = CharField(max_length=255, choices=MessageKindChoices.choices)
     run_id = UUIDField(db_index=True)
     payload: JSONField[dict[str, Any]] = JSONField()
     timestamp = DateTimeField()
 
     agent = ForeignKey(
         Agent,
-        null=True,
-        default=None,
         on_delete=PROTECT,
     )
     session = ForeignKey(

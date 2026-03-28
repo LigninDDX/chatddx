@@ -56,6 +56,7 @@ class TrailModel(Model):
     fingerprint = CharField(
         max_length=64,
         db_index=True,
+        editable=False,
         help_text="Fingerprint for this configuration",
     )
     created_at = DateTimeField(
@@ -65,7 +66,7 @@ class TrailModel(Model):
         auto_now=True,
     )
 
-    objects = TrailQS()
+    # objects = TrailQS()
 
     related_model: Self
 

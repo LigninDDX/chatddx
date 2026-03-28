@@ -21,7 +21,7 @@ from django.db.models import (
     URLField,
 )
 
-from chatddx_backend.agents.models.enums import (
+from chatddx_backend.agents.models.choices import (
     CoercionChoices,
     ProviderChoices,
     ToolChoices,
@@ -69,13 +69,8 @@ class DecimalDecoder(json.JSONDecoder):
 
 
 class Connection(TrailModel):
-    # what is TrailModel and what does it give us that a regular Model doesn't?
-    # TrailModel provides one and only one method to append to the database: apply()
-    # All other methods are forbidden.
     provider = CharField(max_length=255, choices=ProviderChoices.choices)
     model = CharField(max_length=255)
-    # TODO: is this our endpoint or theirs? what format is expected here?
-    # Theirs, we're the consuming side on this endpoint.
     endpoint = URLField(max_length=2048)
     profile: JSONField[dict[str, Any]] = JSONField(
         default=dict,
@@ -209,9 +204,6 @@ class SamplingParams(TrailModel):
 
 
 class OutputType(TrailModel):
-    # where does this schema get enforced - at save time, at inference time, both?
-    # what happens when the model response doesn't match this schema?
-    # See CoercionStrategy, it can be prompted, tool-based or FSM and pydantic-ai enforces it.
     definition = JSONSchemaField(
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
@@ -241,19 +233,11 @@ class Tool(TrailModel):
 
 
 class ToolGroup(TrailModel):
-    # are these instructions always prepended to the agent's instructions, or does it replace them?
-    # TBD, possibly flag based
     instructions = TextField()
-
-    # what happens if a Tool is deleted - does this array just hold a stale ID forever?
-    # Tools aren't deleted, but yes.
     tools = RelatedArrayField(  # type: ignore
         IntegerField(),
         related_model=Tool,
-        blank=True,
         default=list,
-        # "snapshot" implies this is copied at some point - when and by what?
-        # Hydrated, not copied, by trail's RelatedArrayField
         help_text="Snapshot of tool pks attached to this configuration version.",
     )
 
@@ -262,52 +246,27 @@ class Agent(TrailModel):
     instructions = TextField()
     connection = ForeignKey(
         Connection,
-        related_name="agents",
         on_delete=PROTECT,
     )
     sampling_params = ForeignKey(
         SamplingParams,
-        related_name="agents",
-        default=None,
-        null=True,
-        blank=True,
         on_delete=PROTECT,
     )
     output_type = ForeignKey(
         OutputType,
-        related_name="agents",
-        default=None,
-        null=True,
-        blank=True,
         on_delete=PROTECT,
     )
     tool_group = ForeignKey(
         ToolGroup,
-        related_name="agents",
-        default=None,
-        null=True,
-        blank=True,
         on_delete=PROTECT,
     )
-    # Cannot be None; use ValidationChoices.NOOP to explicitly disable
-    # what does INFORM actually do - log it, return it to the caller, both?
-    # Return to the caller with key __error__ with message, very python.
-    # who defined these strategies and where is that behavior actually implemented?
-    # It's up to the vendor-specific validator to enforce this strategy, a pydantic-ai
-    # validator is implemented.
-
     validation_strategy = CharField(
         max_length=255,
         default=ValidationChoices.INFORM,
         choices=ValidationChoices.choices,
     )
-    # None = defer to upstream default.
-    # what is the "upstream default" and where is that defined?
-    # pydantic-ai is upstream, the tool-based strategy is entirely independent of tool_group
     coercion_strategy = CharField(
         max_length=255,
-        default=None,
-        blank=True,
-        null=True,
+        default=CoercionChoices.NATIVE,
         choices=CoercionChoices.choices,
     )

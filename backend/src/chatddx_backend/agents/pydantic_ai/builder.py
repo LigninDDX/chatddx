@@ -1,4 +1,5 @@
 # src/chatddx_backend/agents/pydantic_ai.py
+from decimal import Decimal
 from typing import Any, get_args
 
 import jsonschema
@@ -8,18 +9,18 @@ from pydantic_ai import (
     ModelRetry,
     ModelSettings,
     RunContext,
+    StructuredDict,
 )
 from pydantic_ai import Tool as PydanticTool
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from chatddx_backend.agents.models.enums import ToolChoices, ValidationChoices
+from chatddx_backend.agents.models.choices import ToolChoices, ValidationChoices
 from chatddx_backend.agents.pydantic_ai import tools
 from chatddx_backend.agents.pydantic_ai.context import (
     AgentContext,
     OutputType,
-    jsonschema_to_type,
 )
 from chatddx_backend.agents.schemas import AgentSpec, SamplingParamsSpec, ToolGroupSpec
 
@@ -60,9 +61,6 @@ def build_agent(
 
 
 def build_model(agent_spec: AgentSpec):
-    if agent_spec.connection is None:
-        raise ValueError("No connection defined for this agent.")
-
     model_kwargs: dict[str, Any] = {}
     profile_kwargs: dict[str, Any] = agent_spec.connection.profile.copy()
 
@@ -104,20 +102,31 @@ def build_tools(
 
 
 def build_output_type(agent_spec: AgentSpec) -> type[OutputType]:
-    """Helper to consistently extract the raw python type from a spec."""
-    if agent_spec.output_type:
-        return jsonschema_to_type(agent_spec.output_type.definition)
-    return str
+    schema = agent_spec.output_type.definition
+    match schema.get("type"):
+        case "bool":
+            return bool
+        case "integer":
+            return int
+        case "number":
+            return Decimal
+        case "array":
+            return list
+        case "object":
+            return StructuredDict(schema)
+        case None:
+            return str
+        case _ as invalid_type:
+            raise ValueError(f"Unexpected output type '{invalid_type}'")
 
 
 async def validate_output(
     ctx: RunContext[AgentContext],
     output: OutputType,
 ) -> OutputType:
-    validation_strategy = ctx.deps.agent.validation_strategy
-    strategies = ValidationChoices
+    strategy = ctx.deps.agent.validation_strategy
 
-    if validation_strategy == strategies.NOOP:
+    if strategy == ValidationChoices.NOOP:
         return output
 
     if ctx.partial_output:
@@ -132,10 +141,10 @@ async def validate_output(
         )
         return output
     except jsonschema.ValidationError as e:
-        match validation_strategy:
-            case strategies.INFORM:
+        match strategy:
+            case ValidationChoices.INFORM:
                 return output | {"__error__": e.message}
-            case strategies.RETRY:
+            case ValidationChoices.RETRY:
                 raise ModelRetry(e.message) from e
-            case strategies.CRASH:
+            case ValidationChoices.CRASH:
                 raise RuntimeError(f"Validation failed: {e.message}") from e

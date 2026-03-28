@@ -25,9 +25,9 @@ def test_some_properties():
 
 
 def test_extended_registries():
-    agent_1 = registry.get(AgentSchema, "test-tools-prime")
-    assert agent_1.name == "test-tools-prime"
-    assert agent_1.tool_group is None
+    agent_1 = registry.get(AgentSchema, "tools-prime")
+    assert agent_1.name == "tools-prime"
+    assert agent_1.tool_group.name == "default"
 
 
 def test_merged_properties():

@@ -1,7 +1,8 @@
 # src/chatddx_backend/agents/pydantic_ai/runners.py
 from typing import AsyncGenerator
 
-from pydantic_ai import AgentRunResult
+from pydantic_ai import AgentRunResult, ModelResponse
+from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
 
 from chatddx_backend.agents.models import Message, RoleChoices
@@ -41,7 +42,7 @@ async def stream_from_session(
     agent_session: AgentSession,
     prompt: str,
     dispatcher: Dispatcher | None = None,
-) -> AsyncGenerator[OutputType, None]:
+) -> AsyncGenerator[tuple[ModelResponse, bool], None]:
 
     if not dispatcher:
         dispatcher = Dispatcher()
@@ -71,9 +72,9 @@ async def stream_from_session(
         deps=agent_context,
         message_history=[m.payload for m in agent_session.session.messages],
     ) as result:
-        async for chunk in result.stream_output(debounce_by=0.1):
-            await dispatcher.publish(chunk)
+        async for chunk in result.stream_responses(debounce_by=0.1):
             yield chunk
+
         await dispatcher.publish(result)
 
 
@@ -118,7 +119,7 @@ async def run_from_session(
 
 
 def on_result(session_id: int, agent_id: int):
-    async def _on_result(result: AgentRunResult):
+    async def _on_result(result: AgentRunResult | StreamedRunResult):
         messages = result.new_messages()
         messages_to_create: list[Message] = []
 
@@ -132,12 +133,13 @@ def on_result(session_id: int, agent_id: int):
 
             messages_to_create.append(
                 Message(
+                    agent_id=agent_id,
                     session_id=session_id,
+                    kind=msg.kind,
                     run_id=result.run_id,
                     role=role,
                     payload=to_jsonable_python(msg),
                     timestamp=msg.timestamp,
-                    agent_id=agent_id if role == RoleChoices.ASSISTANT else None,
                 )
             )
 

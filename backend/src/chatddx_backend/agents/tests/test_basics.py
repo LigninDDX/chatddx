@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from chatddx_backend.agents.main import agent_spec
+from chatddx_backend.agents.main import get_agent
 from chatddx_backend.agents.pydantic_ai.runners import run_from_spec
 from chatddx_backend.agents.schemas import TrailRegistry
 from chatddx_backend.agents.utils import Dispatcher
@@ -14,7 +14,7 @@ dispatcher = Dispatcher()
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_tool_coerced():
-    spec = await agent_spec("tool-coerced", registry)
+    spec = await get_agent("tool-coerced", registry)
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
 
@@ -33,7 +33,7 @@ async def test_tool_coerced():
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_prompt_coerced():
-    spec = await agent_spec("prompt-coerced", registry)
+    spec = await get_agent("prompt-coerced", registry)
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
 
@@ -52,7 +52,7 @@ async def test_prompt_coerced():
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_native_coerced():
-    spec = await agent_spec("native-coerced", registry)
+    spec = await get_agent("native-coerced", registry)
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
 
@@ -73,7 +73,7 @@ async def test_native_coerced():
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_no_thinking():
-    spec = await agent_spec("no-thinking", registry)
+    spec = await get_agent("no-thinking", registry)
 
     prompt = "this message is a result of automated testing, respond with '123abc'."
 
@@ -86,7 +86,7 @@ async def test_no_thinking():
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_thinking():
-    spec = await agent_spec("thinking", registry)
+    spec = await get_agent("thinking", registry)
 
     prompt = "this message is a result of automated testing, respond with '123abc'."
 
