@@ -14,8 +14,6 @@ import jsonschema
 from ninja import Schema as NinjaSchema
 from pydantic import (
     AfterValidator,
-    AliasChoices,
-    AliasPath,
     BaseModel,
     Field,
 )
@@ -52,28 +50,18 @@ class TrailRegistry(Registry):
     output_type: dict[str, OutputTypeSchema] = {}
 
 
-class UserBase(BaseModel):
+class IdentityBase(BaseModel):
+    user_id: int | None = None
+    guest_id: UUID | None = None
+    secrets: dict[str, Any] = {}
+
+
+class IdentitySchema(IdentityBase):
     pass
 
 
-class UserSchema(UserBase):
-    pass
-
-
-class UserSpec(UserBase, NinjaSchema):
-    id: int = Field(
-        validation_alias=AliasChoices(
-            "id",
-            AliasPath("auth_user", "id"),
-        ),
-    )
-    name: str = Field(
-        validation_alias=AliasChoices(
-            "name",
-            AliasPath("auth_user", "username"),
-        )
-    )
-    default_agent: AgentSpec
+class IdentitySpec(IdentityBase, NinjaSchema):
+    id: int
 
 
 class SessionBase(BaseModel):
@@ -83,13 +71,13 @@ class SessionBase(BaseModel):
 
 
 class SessionSchema(SessionBase):
-    user: UserSchema
+    owner: IdentitySchema = IdentitySchema()
     default_agent: AgentSchema
 
 
 class SessionSpec(SessionBase, NinjaSchema):
     id: int
-    user: UserSpec
+    owner: IdentitySpec
     default_agent: AgentSpec
     messages: list[MessageSpec]
 

@@ -5,10 +5,14 @@ import tomli
 from django.contrib.auth.models import User as AuthUser
 
 from chatddx_backend.agents.main import get_agent
-from chatddx_backend.agents.models.session import User
+from chatddx_backend.agents.models.session import Identity
 from chatddx_backend.agents.pydantic_ai.runners import run_from_session
 from chatddx_backend.agents.schemas import TrailRegistry
-from chatddx_backend.agents.session import get_user, resume_session, start_session
+from chatddx_backend.agents.session import (
+    get_identity,
+    resume_session,
+    start_session,
+)
 
 users_path = Path(__file__).parent / "users/test-users.toml"
 registry = TrailRegistry.from_file(Path(__file__).parent / "registry/experiments.toml")
@@ -28,21 +32,17 @@ async def test_start():
         registry,
     )
 
-    user_model = await User.objects.acreate(
-        auth_user=await AuthUser.objects.acreate_user(
-            username=username,
-        ),
-        default_agent_id=agent.id,
-    )
+    await Identity.objects.acreate(name=username)
 
-    user = await get_user(user_model.auth_user.username)
-    agent_session = await start_session(user)
+    owner = await get_identity(username)
 
-    result = await run_from_session(agent_session, "say 'aaa'")
+    session = await start_session(owner, agent)
+
+    result = await run_from_session(session, "say 'aaa'")
 
     assert result.output == "aaa"
 
-    agent_session = await resume_session(user, agent_session.session.uuid)
+    agent_session = await resume_session(owner, session.uuid)
 
     result = await run_from_session(agent_session, "say it again")
     assert "aaa" in str(result.output)

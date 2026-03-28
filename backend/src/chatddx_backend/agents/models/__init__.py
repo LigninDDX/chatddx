@@ -7,7 +7,7 @@ from .choices import (
     ToolChoices,
     ValidationChoices,
 )
-from .session import Message, Session, User
+from .session import Identity, Message, Session
 
 __all__ = [
     "Agent",
@@ -15,7 +15,7 @@ __all__ = [
     "SamplingParams",
     "OutputType",
     "Tool",
-    "User",
+    "Identity",
     "ToolGroup",
     "Message",
     "Session",

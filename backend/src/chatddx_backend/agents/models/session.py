@@ -17,15 +17,28 @@ from django.db.models import (
     UUIDField,
     manager,
 )
+from encrypted_fields.fields import EncryptedJSONField
 
 from chatddx_backend.agents.models.choices import MessageKindChoices, RoleChoices
 
 from .agent import Agent
 
 
-class User(Model):
-    auth_user = OneToOneField(settings.AUTH_USER_MODEL, on_delete=PROTECT)
-    default_agent = ForeignKey(Agent, on_delete=PROTECT)
+class Identity(Model):
+    name = CharField(max_length=255)
+    secrets = EncryptedJSONField(default=dict)
+    guest_id = UUIDField(
+        default=None,
+        null=True,
+        blank=True,
+    )
+    auth_user = OneToOneField(
+        settings.AUTH_USER_MODEL,
+        default=None,
+        null=True,
+        blank=True,
+        on_delete=PROTECT,
+    )
 
 
 class Session(Model):
@@ -39,8 +52,8 @@ class Session(Model):
         blank=True,
     )
     created_at = DateTimeField(auto_now_add=True)
-    user = ForeignKey(
-        User,
+    owner = ForeignKey(
+        Identity,
         on_delete=PROTECT,
     )
     default_agent = ForeignKey(

@@ -8,20 +8,17 @@ from pydantic_ai import ModelMessage, TextPart, ThinkingPart, UserPromptPart
 from rich.console import Console
 
 from chatddx_backend.agents.main import get_agent
-from chatddx_backend.agents.models import Session
 from chatddx_backend.agents.pydantic_ai.runners import (
     stream_from_session,
 )
-from chatddx_backend.agents.schemas import AgentSpec, TrailRegistry
+from chatddx_backend.agents.schemas import AgentSpec, SessionSpec, TrailRegistry
 from chatddx_backend.agents.session import (
-    AgentSession,
-    get_user,
+    get_identity,
     refresh_messages,
     resume_session,
     start_session,
 )
 from chatddx_backend.agents.trail.cache import trail_cache
-from chatddx_backend.agents.utils import Dispatcher
 
 app: Typer[Any, Any] = Typer()
 console = Console()
@@ -33,51 +30,43 @@ registry = TrailRegistry.from_file(
 
 @app.command()
 def main(
-    user: str,
-    session: str | None = None,
-    agent: str | None = None,
+    owner_name: str,
+    session_name: str | None = None,
+    agent_name: str | None = None,
+    uuid: str | None = None,
 ):
     """
     Start a repl with an agent
     """
-    user_spec = asyncio.run(get_user(user))
 
-    if agent:
-        agent_spec = asyncio.run(get_agent(agent, registry))
+    owner = asyncio.run(get_identity(owner_name))
+    agent = asyncio.run(get_agent(agent_name, registry)) if agent_name else None
+
+    if session_name is None:
+        assert agent
+        session = asyncio.run(start_session(owner, agent))
     else:
-        agent_spec = None
+        assert uuid
+        session = asyncio.run(resume_session(owner, uuid))
 
-    if session is not None:
-        uuid = Session.objects.get(
-            user_id=user_spec.id,
-            uuid__startswith=session,
-        ).uuid
-        agent_session = asyncio.run(resume_session(user_spec, uuid, agent_spec))
-    else:
-        agent_session = asyncio.run(start_session(user_spec, agent_spec))
-
-    run_repl(agent_session)
+    run_repl(session, agent)
 
 
-def run_repl(agent_session: AgentSession):
-    print(f"In session {agent_session.session.uuid}")
-    console.print(agent_session.agent.name, style="#FFFFFF")
+def run_repl(session: SessionSpec, agent: AgentSpec | None):
+    if not agent:
+        agent = session.default_agent
 
-    dispatcher = Dispatcher()
+    print(f"In session {session.uuid}")
+    console.print(agent.name, style="#FFFFFF")
 
-    def on_any(data: Any):
-        pass
-
-    dispatcher.subscribe(on_any)
-
-    for message in agent_session.session.messages:
+    for message in session.messages:
         msg_agent = trail_cache.get_instance(AgentSpec, message.agent_id)
         print_message(message.payload, msg_agent)
 
     async def consume_and_print(user_prompt: str):
-        console.print(agent_session.agent.name, style="#FFFFFF")
+        console.print(agent.name, style="#FFFFFF")
 
-        stream_gen = stream_from_session(agent_session, user_prompt, dispatcher)
+        stream_gen = stream_from_session(session, user_prompt)
 
         thunk = False
         content = ""
@@ -99,7 +88,7 @@ def run_repl(agent_session: AgentSession):
     while True:
         prompt = input("> ")
         asyncio.run(consume_and_print(prompt))
-        asyncio.run(refresh_messages(agent_session))
+        asyncio.run(refresh_messages(session))
 
 
 def print_message(message: ModelMessage, agent: AgentSpec, skip_text: bool = False):

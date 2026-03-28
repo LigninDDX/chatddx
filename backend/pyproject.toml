@@ -8,6 +8,7 @@ dependencies = [
   "celery>=5.6.2",
   "dj-user-login-history>=1.0.6",
   "django-celery-results>=2.6.0",
+  "django-fernet-encrypted-fields>=0.3.1",
   "django-modeltranslation>=0.19.19",
   "django-ninja>=1.6.2",
   "django-typer>=3.7.0",

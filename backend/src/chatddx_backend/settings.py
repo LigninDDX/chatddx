@@ -23,6 +23,8 @@ else:
     with open(environ["SECRET_KEY_FILE"]) as f:
         SECRET_KEY = f.read()
 
+SALT_KEY = "0123456789abcdefghijklmnopqrstuvwxyz"
+
 INSTALLED_APPS = [
     "chatddx_backend.agents.apps.AgentsConfig",
     "chatddx_backend.api.apps.ApiConfig",

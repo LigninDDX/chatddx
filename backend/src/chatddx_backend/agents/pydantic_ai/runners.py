@@ -7,8 +7,7 @@ from pydantic_core import to_jsonable_python
 
 from chatddx_backend.agents.models import Message, RoleChoices
 from chatddx_backend.agents.pydantic_ai.context import AgentContext
-from chatddx_backend.agents.schemas import AgentSpec
-from chatddx_backend.agents.session import AgentSession
+from chatddx_backend.agents.schemas import AgentSpec, SessionSpec
 from chatddx_backend.agents.utils import Dispatcher
 
 from .builder import (
@@ -39,38 +38,42 @@ async def run_from_spec(
 
 
 async def stream_from_session(
-    agent_session: AgentSession,
+    session: SessionSpec,
     prompt: str,
     dispatcher: Dispatcher | None = None,
+    agent_spec: AgentSpec | None = None,
 ) -> AsyncGenerator[tuple[ModelResponse, bool], None]:
 
     if not dispatcher:
         dispatcher = Dispatcher()
 
+    if not agent_spec:
+        agent_spec = session.default_agent
+
     dispatcher.subscribe(
         on_result(
-            agent_session.session.id,
-            agent_session.agent.id,
+            session.id,
+            agent_spec.id,
         )
     )
 
-    output_type = build_output_type(agent_session.agent)
-
-    agent = build_agent(
-        agent_session.agent,
-        output_type,
-    )
+    output_type = build_output_type(agent_spec)
 
     agent_context = AgentContext(
-        agent=agent_session.agent,
+        agent=agent_spec,
         output_type=output_type,
-        session=agent_session.session,
+        session=session,
+    )
+
+    agent = build_agent(
+        agent_spec,
+        output_type,
     )
 
     async with agent.run_stream(
         prompt,
         deps=agent_context,
-        message_history=[m.payload for m in agent_session.session.messages],
+        message_history=[m.payload for m in session.messages],
     ) as result:
         async for chunk in result.stream_responses(debounce_by=0.1):
             yield chunk
@@ -79,38 +82,41 @@ async def stream_from_session(
 
 
 async def run_from_session(
-    agent_session: AgentSession,
+    session: SessionSpec,
     prompt: str,
     dispatcher: Dispatcher | None = None,
+    agent_spec: AgentSpec | None = None,
 ) -> AgentRunResult[OutputType]:
 
     if not dispatcher:
         dispatcher = Dispatcher()
+    if not agent_spec:
+        agent_spec = session.default_agent
 
     dispatcher.subscribe(
         on_result(
-            agent_session.session.id,
-            agent_session.agent.id,
+            session.id,
+            agent_spec.id,
         )
     )
 
-    output_type = build_output_type(agent_session.agent)
+    output_type = build_output_type(agent_spec)
 
     agent = build_agent(
-        agent_session.agent,
+        agent_spec,
         output_type,
     )
 
     agent_context = AgentContext(
-        agent=agent_session.agent,
+        agent=agent_spec,
         output_type=output_type,
-        session=agent_session.session,
+        session=session,
     )
 
     result = await agent.run(
         prompt,
         deps=agent_context,
-        message_history=[m.payload for m in agent_session.session.messages],
+        message_history=[m.payload for m in session.messages],
     )
 
     await dispatcher.publish(result)

@@ -430,6 +430,7 @@ dependencies = [
     { name = "dj-user-login-history" },
     { name = "django" },
     { name = "django-celery-results" },
+    { name = "django-fernet-encrypted-fields" },
     { name = "django-modeltranslation" },
     { name = "django-ninja" },
     { name = "django-typer" },
@@ -480,6 +481,7 @@ requires-dist = [
     { name = "dj-user-login-history", specifier = ">=1.0.6" },
     { name = "django", specifier = ">=6.0.2" },
     { name = "django-celery-results", specifier = ">=2.6.0" },
+    { name = "django-fernet-encrypted-fields", specifier = ">=0.3.1" },
     { name = "django-modeltranslation", specifier = ">=0.19.19" },
     { name = "django-ninja", specifier = ">=1.6.2" },
     { name = "django-typer", specifier = ">=3.7.0" },
@@ -820,6 +822,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/b5/9966c28e31014c228305e09d48b19b35522a8f941fe5af5f81f40dc8fa80/django_celery_results-2.6.0.tar.gz", hash = "sha256:9abcd836ae6b61063779244d8887a88fe80bbfaba143df36d3cb07034671277c", size = 83985, upload-time = "2025-04-10T08:23:52.677Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/da/70f0f3c5364735344c4bc89e53413bcaae95b4fc1de4e98a7a3b9fb70c88/django_celery_results-2.6.0-py3-none-any.whl", hash = "sha256:b9ccdca2695b98c7cbbb8dea742311ba9a92773d71d7b4944a676e69a7df1c73", size = 38351, upload-time = "2025-04-10T08:23:49.965Z" },
+]
+
+[[package]]
+name = "django-fernet-encrypted-fields"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1a/aa/529af3888215b8a660fc3897d6d63eaf1de9aa0699c633ca0ec483d4361c/django_fernet_encrypted_fields-0.3.1.tar.gz", hash = "sha256:5ed328c7f9cc7f2d452bb2e125f3ea2bea3563a259fa943e5a1c626175889a71", size = 5265, upload-time = "2025-11-10T08:39:57.398Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/7f/4e0b7ed8413fa58e7a77017342e8ab0e977d41cfc376ab9180ae75f216ec/django_fernet_encrypted_fields-0.3.1-py3-none-any.whl", hash = "sha256:3bd2abab02556dc6e15a58a61161ee6c5cdf45a50a8a52d9e035009eb54c6442", size = 5484, upload-time = "2025-11-10T08:39:55.866Z" },
 ]
 
 [[package]]
