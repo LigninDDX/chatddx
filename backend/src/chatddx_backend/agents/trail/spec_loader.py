@@ -85,7 +85,7 @@ async def pk_from_schema(
         )
         pk = instance.pk
     else:
-        pk = await Model(**new_values).apply()
+        pk = await Model(**new_values).append()
 
     return pk
 

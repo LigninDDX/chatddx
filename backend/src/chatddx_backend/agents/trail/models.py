@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 from typing import TYPE_CHECKING, Any, Awaitable, Self, override
 
 from asgiref.sync import sync_to_async
@@ -14,37 +13,15 @@ from django.db.models import (
     DecimalField,
     ForeignKey,
     Index,
-    Manager,
     Model,
     OneToOneField,
 )
 from django.utils import timezone
-from ninja import Schema as NinjaSchema
-from pydantic import BaseModel, ConfigDict
 
 if TYPE_CHECKING:
     TypedArrayField = ArrayField[list[int]]
 else:
     TypedArrayField = ArrayField
-
-
-class TrailSchema(BaseModel):
-    name: str
-
-
-class TrailSpec(NinjaSchema):
-    id: int
-    name: str
-    fingerprint: str
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class TrailQS(Manager[Any]):
-    def get_queryset(self):
-        return super().get_queryset().order_by("name", "-updated_at").distinct("name")
 
 
 class TrailModel(Model):
@@ -66,8 +43,6 @@ class TrailModel(Model):
         auto_now=True,
     )
 
-    # objects = TrailQS()
-
     related_model: Self
 
     class Meta:
@@ -84,7 +59,12 @@ class TrailModel(Model):
             ),
         ]
 
-    async def apply(self) -> int:
+    async def append(self) -> int:
+        sql, values = self.prepare_append_sql()
+        result = await self.run_sql(sql, values)
+        return result[0]
+
+    def prepare_append_sql(self) -> tuple[str, list[str]]:
         ignore_fields = {"id", "name", "created_at", "updated_at", "fingerprint"}
 
         db_values: list[Any] = []
@@ -129,7 +109,11 @@ class TrailModel(Model):
             RETURNING id, fingerprint, created_at, (xmax = 0) AS is_created;
         """
 
-        def _fetchone(sql: str, values: list[str]) -> int:
+        return sql, db_values + hash_values
+
+    async def run_sql(self, sql: str, values: list[str]) -> tuple[Any, ...]:
+
+        def _fetchone(sql: str, values: list[str]) -> tuple[Any, ...]:
             with connection.cursor() as cursor:
                 cursor.execute(sql, values)
                 result = cursor.fetchone()
@@ -137,10 +121,9 @@ class TrailModel(Model):
                     raise DatabaseError(
                         "Upsert failed: No rows returned from Postgres."
                     )
-                return result[0]
+            return result
 
-        pk = await sync_to_async(_fetchone)(sql, db_values + hash_values)
-        return pk
+        return await sync_to_async(_fetchone)(sql, values)
 
     @override
     def __str__(self):

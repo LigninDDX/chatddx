@@ -21,12 +21,15 @@ from encrypted_fields.fields import EncryptedJSONField
 
 from chatddx_backend.agents.models.choices import MessageKindChoices, RoleChoices
 
-from .agent import Agent
+from .agent import AgentModel
 
 
-class Identity(Model):
+class IdentityModel(Model):
+    class Meta:
+        db_table = "agents_identity"
+
     name = CharField(max_length=255)
-    secrets = EncryptedJSONField(default=dict)
+    secrets: dict[str, Any] = EncryptedJSONField(default=dict)  # type: ignore[assignment]
     guest_id = UUIDField(
         default=None,
         null=True,
@@ -41,7 +44,10 @@ class Identity(Model):
     )
 
 
-class Session(Model):
+class SessionModel(Model):
+    class Meta:
+        db_table = "agents_session"
+
     uuid = UUIDField(
         default=uuid.uuid4,
         editable=False,
@@ -53,19 +59,20 @@ class Session(Model):
     )
     created_at = DateTimeField(auto_now_add=True)
     owner = ForeignKey(
-        Identity,
+        IdentityModel,
         on_delete=PROTECT,
     )
     default_agent = ForeignKey(
-        Agent,
+        AgentModel,
         on_delete=PROTECT,
     )
 
-    messages: manager.RelatedManager[Message]
+    messages: manager.RelatedManager[MessageModel]
 
 
-class Message(Model):
+class MessageModel(Model):
     class Meta:
+        db_table = "agents_message"
         ordering = ["pk"]
 
     role = CharField(max_length=255, choices=RoleChoices.choices)
@@ -75,11 +82,11 @@ class Message(Model):
     timestamp = DateTimeField()
 
     agent = ForeignKey(
-        Agent,
+        AgentModel,
         on_delete=PROTECT,
     )
     session = ForeignKey(
-        Session,
+        SessionModel,
         related_name="messages",
         on_delete=PROTECT,
     )

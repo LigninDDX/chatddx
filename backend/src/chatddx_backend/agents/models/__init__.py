@@ -1,5 +1,12 @@
 # src/chatddx_backend/agents/models/__init__.py
-from .agent import Agent, Connection, OutputType, SamplingParams, Tool, ToolGroup
+from .agent import (
+    AgentModel,
+    ConnectionModel,
+    OutputTypeModel,
+    SamplingParamsModel,
+    ToolGroupModel,
+    ToolModel,
+)
 from .choices import (
     CoercionChoices,
     ProviderChoices,
@@ -7,18 +14,18 @@ from .choices import (
     ToolChoices,
     ValidationChoices,
 )
-from .session import Identity, Message, Session
+from .session import IdentityModel, MessageModel, SessionModel
 
 __all__ = [
-    "Agent",
-    "Connection",
-    "SamplingParams",
-    "OutputType",
-    "Tool",
-    "Identity",
-    "ToolGroup",
-    "Message",
-    "Session",
+    "AgentModel",
+    "ConnectionModel",
+    "SamplingParamsModel",
+    "OutputTypeModel",
+    "ToolModel",
+    "IdentityModel",
+    "ToolGroupModel",
+    "MessageModel",
+    "SessionModel",
     "CoercionChoices",
     "ValidationChoices",
     "ProviderChoices",

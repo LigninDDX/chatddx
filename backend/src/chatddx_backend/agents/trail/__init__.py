@@ -1,9 +1,11 @@
 from .models import (
     RelatedArrayField,
     TrailModel,
+    resolve_related_array_fields,
+)
+from .schemas import (
     TrailSchema,
     TrailSpec,
-    resolve_related_array_fields,
 )
 from .spec_loader import (
     model_from_schema,

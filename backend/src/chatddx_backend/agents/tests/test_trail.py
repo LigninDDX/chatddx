@@ -7,7 +7,7 @@ import pytest
 from django.db import ProgrammingError
 
 from chatddx_backend.agents import type_map
-from chatddx_backend.agents.models import Agent
+from chatddx_backend.agents.models import AgentModel
 from chatddx_backend.agents.schemas import (
     AgentSchema,
     ConnectionSchema,
@@ -140,7 +140,11 @@ def expect_altered(
 @pytest.mark.django_db()
 async def test_immutability_trigger():
     agent_schema = registry.get(AgentSchema, "agent-1")
-    agent_model = await model_from_schema(Agent, agent_schema)
+    agent_model = await model_from_schema(AgentModel, agent_schema)
+
+    agent_model.updated_at = datetime.now()
+    await agent_model.asave()
+
     agent_model.instructions += "a"
     with pytest.raises(ProgrammingError):
         await agent_model.asave()

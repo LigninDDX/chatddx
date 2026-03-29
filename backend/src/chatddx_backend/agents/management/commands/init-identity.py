@@ -2,7 +2,7 @@ from typing import Any
 
 from django_typer.management import Typer
 
-from chatddx_backend.agents.models import Identity
+from chatddx_backend.agents.models import IdentityModel
 
 app: Typer[Any, Any] = Typer()
 
@@ -12,7 +12,7 @@ def main(name: str):
     """
     Init identity
     """
-    identity, update = Identity.objects.update_or_create(
+    identity, update = IdentityModel.objects.update_or_create(
         name=name,
     )
     if update:

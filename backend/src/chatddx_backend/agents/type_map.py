@@ -2,12 +2,12 @@
 from typing import Any, overload
 
 from chatddx_backend.agents.models import (
-    Agent,
-    Connection,
-    OutputType,
-    SamplingParams,
-    Tool,
-    ToolGroup,
+    AgentModel,
+    ConnectionModel,
+    OutputTypeModel,
+    SamplingParamsModel,
+    ToolGroupModel,
+    ToolModel,
 )
 from chatddx_backend.agents.schemas import (
     AgentSchema,
@@ -29,12 +29,12 @@ type TypeMap = tuple[type[TrailSpec], type[TrailModel], type[TrailSchema]]
 
 
 type_maps: list[TypeMap] = [
-    (ConnectionSpec, Connection, ConnectionSchema),
-    (SamplingParamsSpec, SamplingParams, SamplingParamsSchema),
-    (ToolGroupSpec, ToolGroup, ToolGroupSchema),
-    (ToolSpec, Tool, ToolSchema),
-    (OutputTypeSpec, OutputType, OutputTypeSchema),
-    (AgentSpec, Agent, AgentSchema),
+    (ConnectionSpec, ConnectionModel, ConnectionSchema),
+    (SamplingParamsSpec, SamplingParamsModel, SamplingParamsSchema),
+    (ToolGroupSpec, ToolGroupModel, ToolGroupSchema),
+    (ToolSpec, ToolModel, ToolSchema),
+    (OutputTypeSpec, OutputTypeModel, OutputTypeSchema),
+    (AgentSpec, AgentModel, AgentSchema),
 ]
 
 

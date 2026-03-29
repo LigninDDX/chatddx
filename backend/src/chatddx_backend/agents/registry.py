@@ -77,38 +77,31 @@ class Registry(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def first_pass(cls, data: Any) -> Any:
-        resolved_data: dict[str, Any] = {}
+    def attach_names_and_filter_out_partials(cls, data: Any) -> Any:
+        result: dict[str, Any] = {}
 
         for record_type in cls.model_fields:
             if record_type not in data:
                 continue
 
-            resolved_data[record_type] = {}
+            result[record_type] = {}
 
             for name, values in data[record_type].items():
                 if values.get("partial"):
                     continue
-                resolved_data[record_type][name] = {"name": name} | values
+                result[record_type][name] = {"name": name} | values
 
-        return resolved_data
+        return result
 
     @classmethod
-    def _type_map(cls) -> dict[type[BaseModel], str]:
+    def get_field_by_type(cls, schema_type: type[BaseModel]) -> str:
         if not hasattr(cls, "_cached_type_map"):
             cls._cached_type_map = {
                 get_args(f.annotation)[-1]: name
                 for name, f in cls.model_fields.items()
                 if get_origin(f.annotation)
             }
-        return cls._cached_type_map
-
-    @classmethod
-    def get_field_by_type(cls, schema_type: type[BaseModel]) -> str:
-        field_name = cls._type_map().get(schema_type)
-        if field_name is None:
-            raise KeyError(f"No field holds {schema_type.__name__}")
-        return field_name
+        return cls._cached_type_map[schema_type]
 
     @classmethod
     def from_file(cls, path: Path):

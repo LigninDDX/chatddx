@@ -36,10 +36,6 @@ else:
 
 
 class JSONSchemaField(TypedJSONField):
-    # why do we need a custom field for this instead of just validating in the serializer?
-    # This model uses both JSONFields (like provider_params) and JSONSchemaFields (which are literal jsonschemas).
-    # The semantic difference is immediate and also good for test discovery.
-
     def validate(self, value: Any, model_instance: Model):
         super().validate(value, model_instance)
 
@@ -51,9 +47,6 @@ class JSONSchemaField(TypedJSONField):
 
 
 class DecimalEncoder(json.JSONEncoder):
-    # which fields actually need this and why can't we just store them as floats?
-    # Determinism is paramount in this app and hash fingerprints are used to diferentiate config,
-    # floats are finicky and we can't have them floating around.
     def default(self, o: Any):
         if isinstance(o, Decimal):
             return str(o)
@@ -62,13 +55,13 @@ class DecimalEncoder(json.JSONEncoder):
 
 class DecimalDecoder(json.JSONDecoder):
     def __init__(self, *args: Any, **kwargs: Any):
-        # does parse_float=Decimal cause any issues with json interop downstream?
-        # Yes! thanks for pointing that out. Decimals aren't serializable so this decoder
-        # is used when decimals are expected (e.g. logit_bias).
         super().__init__(parse_float=Decimal, *args, **kwargs)
 
 
-class Connection(TrailModel):
+class ConnectionModel(TrailModel):
+    class Meta(TrailModel.Meta):
+        db_table = "agents_connection"
+
     provider = CharField(max_length=255, choices=ProviderChoices.choices)
     model = CharField(max_length=255)
     endpoint = URLField(max_length=2048)
@@ -81,7 +74,10 @@ class Connection(TrailModel):
     )
 
 
-class SamplingParams(TrailModel):
+class SamplingParamsModel(TrailModel):
+    class Meta(TrailModel.Meta):
+        db_table = "agents_sampling_params"
+
     temperature = DecimalField(
         default=None,
         null=True,
@@ -137,8 +133,6 @@ class SamplingParams(TrailModel):
             "identical inputs produces consistent results."
         ),
     )
-    # which response do we actually use? does the caller decide?
-    # TBD
     n = PositiveIntegerField(
         default=None,
         null=True,
@@ -178,9 +172,6 @@ class SamplingParams(TrailModel):
             "{'12345': 10, '67890': 5} (boost tokens)"
         ),
     )
-    # who is responsible for knowing which keys are valid per provider?
-    # do we validate these at all or just pass them through blindly?
-    # Just passing blindly
     provider_params: JSONField[dict[str, Any]] = JSONField(
         default=dict,
         blank=True,
@@ -190,8 +181,6 @@ class SamplingParams(TrailModel):
             '{"anthropic_version": "2023-06-01", "thinking": {"type": "enabled"}}'
         ),
     )
-    # None = don't touch
-    # [] = actively clear stop sequences upstream
     stop_sequences: JSONField[list[str] | None] = JSONField(
         default=None,
         null=True,
@@ -203,13 +192,19 @@ class SamplingParams(TrailModel):
     )
 
 
-class OutputType(TrailModel):
+class OutputTypeModel(TrailModel):
+    class Meta(TrailModel.Meta):
+        db_table = "agents_output_type"
+
     definition = JSONSchemaField(
         help_text="A valid JSON Schema defining the expected agent response structure.",
     )
 
 
-class Tool(TrailModel):
+class ToolModel(TrailModel):
+    class Meta(TrailModel.Meta):
+        db_table = "agents_tool"
+
     type = CharField(
         max_length=50,
         choices=ToolChoices.choices,
@@ -232,32 +227,38 @@ class Tool(TrailModel):
     )
 
 
-class ToolGroup(TrailModel):
+class ToolGroupModel(TrailModel):
+    class Meta(TrailModel.Meta):
+        db_table = "agents_tool_group"
+
     instructions = TextField()
     tools = RelatedArrayField(  # type: ignore
         IntegerField(),
-        related_model=Tool,
+        related_model=ToolModel,
         default=list,
         help_text="Snapshot of tool pks attached to this configuration version.",
     )
 
 
-class Agent(TrailModel):
+class AgentModel(TrailModel):
+    class Meta(TrailModel.Meta):
+        db_table = "agents_agent"
+
     instructions = TextField()
     connection = ForeignKey(
-        Connection,
+        ConnectionModel,
         on_delete=PROTECT,
     )
     sampling_params = ForeignKey(
-        SamplingParams,
+        SamplingParamsModel,
         on_delete=PROTECT,
     )
     output_type = ForeignKey(
-        OutputType,
+        OutputTypeModel,
         on_delete=PROTECT,
     )
     tool_group = ForeignKey(
-        ToolGroup,
+        ToolGroupModel,
         on_delete=PROTECT,
     )
     validation_strategy = CharField(

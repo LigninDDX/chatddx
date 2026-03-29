@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from chatddx_backend.agents.main import get_agent
-from chatddx_backend.agents.models import Identity
+from chatddx_backend.agents.models import IdentityModel
 from chatddx_backend.agents.pydantic_ai.runners import run_from_session, run_from_spec
 from chatddx_backend.agents.schemas import TrailRegistry
 from chatddx_backend.agents.session import get_identity, resume_session, start_session
@@ -121,7 +121,7 @@ async def test_session():
     username = "alex"
     agent = await get_agent("no-thinking", registry)
 
-    await Identity.objects.acreate(name=username)
+    await IdentityModel.objects.acreate(name=username)
 
     owner = await get_identity(username)
 

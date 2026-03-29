@@ -5,7 +5,7 @@ from pydantic_ai import AgentRunResult, ModelResponse
 from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
 
-from chatddx_backend.agents.models import Message, RoleChoices
+from chatddx_backend.agents.models import MessageModel, RoleChoices
 from chatddx_backend.agents.pydantic_ai.context import AgentContext
 from chatddx_backend.agents.schemas import AgentSpec, SessionSpec
 from chatddx_backend.agents.utils import Dispatcher
@@ -127,7 +127,7 @@ async def run_from_session(
 def on_result(session_id: int, agent_id: int):
     async def _on_result(result: AgentRunResult | StreamedRunResult):
         messages = result.new_messages()
-        messages_to_create: list[Message] = []
+        messages_to_create: list[MessageModel] = []
 
         for msg in messages:
             match msg.kind:
@@ -138,7 +138,7 @@ def on_result(session_id: int, agent_id: int):
                     role = _request_role(kind)
 
             messages_to_create.append(
-                Message(
+                MessageModel(
                     agent_id=agent_id,
                     session_id=session_id,
                     kind=msg.kind,
@@ -150,7 +150,7 @@ def on_result(session_id: int, agent_id: int):
             )
 
         if messages_to_create:
-            await Message.objects.abulk_create(messages_to_create)
+            await MessageModel.objects.abulk_create(messages_to_create)
 
     return _on_result
 

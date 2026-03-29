@@ -1,8 +1,7 @@
 # src/chatddx_backend/agents/session.py
 from uuid import UUID
 
-from chatddx_backend.agents.models import Message, Session
-from chatddx_backend.agents.models.session import Identity
+from chatddx_backend.agents.models import IdentityModel, MessageModel, SessionModel
 from chatddx_backend.agents.schemas import (
     AgentSpec,
     IdentitySpec,
@@ -12,7 +11,7 @@ from chatddx_backend.agents.schemas import (
 
 
 async def get_identity(name: str) -> IdentitySpec:
-    identity = await Identity.objects.aget(name=name)
+    identity = await IdentityModel.objects.aget(name=name)
     return IdentitySpec.model_validate(identity)
 
 
@@ -22,7 +21,7 @@ async def start_session(
     description: str | None = None,
 ) -> SessionSpec:
 
-    session_model = await Session.objects.acreate(
+    session_model = await SessionModel.objects.acreate(
         owner_id=owner.id,
         default_agent_id=agent.id,
         description=description,
@@ -37,7 +36,7 @@ async def resume_session(
 ) -> SessionSpec:
 
     session_model = (
-        await Session.objects.select_related()
+        await SessionModel.objects.select_related()
         .prefetch_related(
             "messages",
         )
@@ -53,7 +52,7 @@ async def resume_session(
 async def refresh_messages(
     session: SessionSpec,
 ) -> None:
-    queryset = Message.objects.select_related().filter(session_id=session.id)
+    queryset = MessageModel.objects.select_related().filter(session_id=session.id)
 
     if len(session.messages) > 0:
         queryset = queryset.filter(pk__gt=session.messages[-1].id)
