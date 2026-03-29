@@ -3,15 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from chatddx_backend.agents.main import agent_spec
-from chatddx_backend.agents.pydantic_ai.runners import run_async
+from chatddx_backend.agents.main import get_agent
+from chatddx_backend.agents.pydantic_ai.runners import run_from_spec
 from chatddx_backend.agents.schemas import TrailRegistry
-from chatddx_backend.agents.utils import Dispatcher
 
 registry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/ddx-management.toml"
 )
-dispatcher = Dispatcher()
 
 
 @pytest.mark.asyncio
@@ -26,8 +24,8 @@ async def test_ddx_management():
     with expects_path.open("r") as f:
         data = json.load(f)
 
-    spec = await agent_spec("ddx-management", registry)
-    result = await run_async(spec, case_a, dispatcher)
+    spec = await get_agent("ddx-management", registry)
+    result = await run_from_spec(spec, case_a)
 
     print(json.dumps(result.output, indent=2))
     assert result.output == data

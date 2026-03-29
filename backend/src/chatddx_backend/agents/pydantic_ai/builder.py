@@ -22,7 +22,13 @@ from chatddx_backend.agents.pydantic_ai.context import (
     AgentContext,
     OutputType,
 )
-from chatddx_backend.agents.schemas import AgentSpec, SamplingParamsSpec, ToolGroupSpec
+from chatddx_backend.agents.schemas import (
+    AgentSpec,
+    SamplingParamsSchema,
+    SamplingParamsSpec,
+    ToolGroupSpec,
+)
+from chatddx_backend.agents.trail import schema_from_spec
 
 
 def build_agent(
@@ -75,17 +81,12 @@ def build_model(agent_spec: AgentSpec):
 
 
 def build_config(sampling_params_spec: SamplingParamsSpec) -> ModelSettings:
-    settings_kwargs: dict[str, Any] = {}
-    if sampling_params_spec.seed is not None:
-        settings_kwargs["seed"] = sampling_params_spec.seed
+    settings = schema_from_spec(SamplingParamsSchema, sampling_params_spec).model_dump(
+        exclude_none=True
+    )
+    provider_params = settings.pop("provider_params")
 
-    if sampling_params_spec.temperature is not None:
-        settings_kwargs["temperature"] = sampling_params_spec.temperature
-
-    if sampling_params_spec.provider_params:
-        settings_kwargs.update(sampling_params_spec.provider_params)
-
-    return ModelSettings(**settings_kwargs)
+    return ModelSettings(settings | provider_params)
 
 
 def build_tools(

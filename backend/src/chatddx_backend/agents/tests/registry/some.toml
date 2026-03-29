@@ -1,3 +1,10 @@
+[agent.some-agent]
+instructions = "some instructions"
+connection = "some-connection"
+sampling_params = "some-sampling_params"
+tool_group = "some-tool_group"
+output_type = "some-output_type"
+
 [connection.some-connection]
 model = "Some/model"
 provider = "vllm"

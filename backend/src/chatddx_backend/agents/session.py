@@ -11,6 +11,11 @@ from chatddx_backend.agents.schemas import (
 )
 
 
+async def get_identity(name: str) -> IdentitySpec:
+    identity = await Identity.objects.aget(name=name)
+    return IdentitySpec.model_validate(identity)
+
+
 async def start_session(
     owner: IdentitySpec,
     agent: AgentSpec,
@@ -54,8 +59,3 @@ async def refresh_messages(
         queryset = queryset.filter(pk__gt=session.messages[-1].id)
 
     session.messages.extend([MessageSpec.model_validate(m) async for m in queryset])
-
-
-async def get_identity(name: str) -> IdentitySpec:
-    instance = await Identity.objects.aget(name=name)
-    return IdentitySpec.model_validate(instance)

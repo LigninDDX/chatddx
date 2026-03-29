@@ -147,12 +147,12 @@ class TrailModel(Model):
         return self.name
 
 
-async def resolve_related_array_fields(instance: TrailModel):
+async def resolve_related_array_fields(model: TrailModel):
     tasks: list[Awaitable[Any]] = []
 
     async def fetch_and_set_array(field: RelatedArrayField, value: Any):
         if not value:
-            setattr(instance, field.name, [])
+            setattr(model, field.name, [])
             return
 
         queryset = field.related_model.objects.filter(pk__in=value)
@@ -162,22 +162,22 @@ async def resolve_related_array_fields(instance: TrailModel):
             *(resolve_related_array_fields(obj) for obj in resolved_value)
         )
 
-        setattr(instance, field.name, resolved_value)
+        setattr(model, field.name, resolved_value)
 
-    for field in instance._meta.concrete_fields:
+    for field in model._meta.concrete_fields:
         if isinstance(field, RelatedArrayField):
-            value = getattr(instance, field.name)
+            value = getattr(model, field.name)
             tasks.append(fetch_and_set_array(field, value))
 
         elif isinstance(field, (ForeignKey, OneToOneField)):
-            related_instance = getattr(instance, field.name, None)
-            if related_instance is not None:
-                tasks.append(resolve_related_array_fields(related_instance))
+            related_model = getattr(model, field.name, None)
+            if related_model is not None:
+                tasks.append(resolve_related_array_fields(related_model))
 
     if tasks:
         await asyncio.gather(*tasks)
 
-    return instance
+    return model
 
 
 class RelatedArrayField(TypedArrayField):

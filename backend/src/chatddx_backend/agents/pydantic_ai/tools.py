@@ -3,9 +3,14 @@ from pydantic_ai import RunContext
 from chatddx_backend.agents.pydantic_ai.context import AgentContext
 
 
-def dice(ctx: RunContext[AgentContext]) -> int:
-    """This dice is broken and only returns 3"""
-    return 3
+def sentinel_string(ctx: RunContext[AgentContext]) -> str:
+    """This is tool returns a string that is hard to know in advance"""
+    return "asdf"
+
+
+def sentinel_op(ctx: RunContext[AgentContext], v1: int, v2: int) -> float:
+    """This tool takes two arguments and performs an operation on them"""
+    return v1 % v2
 
 
 def user_details(ctx: RunContext[AgentContext]) -> str:

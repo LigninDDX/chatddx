@@ -1,4 +1,4 @@
-extends = ["some.toml", "experiments.toml"]
+extends = ["some.toml"]
 
 [agent.agent-1]
 instructions = "hello 1"

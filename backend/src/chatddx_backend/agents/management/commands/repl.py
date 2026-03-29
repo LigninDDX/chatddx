@@ -1,10 +1,18 @@
 # src/chatddx_backend/agents/management/commands/repl.py
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
+import typer
 from django_typer.management import Typer
-from pydantic_ai import ModelMessage, TextPart, ThinkingPart, UserPromptPart
+from pydantic_ai import (
+    ModelMessage,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
 from rich.console import Console
 
 from chatddx_backend.agents.main import get_agent
@@ -30,10 +38,9 @@ registry = TrailRegistry.from_file(
 
 @app.command()
 def main(
-    owner_name: str,
-    session_name: str | None = None,
-    agent_name: str | None = None,
-    uuid: str | None = None,
+    owner_name: str = typer.Argument("name"),
+    session_uuid: Annotated[str | None, typer.Option("--session")] = None,
+    agent_name: Annotated[str | None, typer.Option("--agent")] = None,
 ):
     """
     Start a repl with an agent
@@ -42,31 +49,33 @@ def main(
     owner = asyncio.run(get_identity(owner_name))
     agent = asyncio.run(get_agent(agent_name, registry)) if agent_name else None
 
-    if session_name is None:
+    if session_uuid:
+        session = asyncio.run(resume_session(owner, session_uuid))
+        if not agent:
+            agent = session.default_agent
+    else:
         assert agent
         session = asyncio.run(start_session(owner, agent))
-    else:
-        assert uuid
-        session = asyncio.run(resume_session(owner, uuid))
 
     run_repl(session, agent)
 
 
-def run_repl(session: SessionSpec, agent: AgentSpec | None):
-    if not agent:
-        agent = session.default_agent
-
-    print(f"In session {session.uuid}")
-    console.print(agent.name, style="#FFFFFF")
+def run_repl(session: SessionSpec, agent: AgentSpec):
+    print(f"session id: {session.uuid}")
+    print(f"agent: {agent.name}")
 
     for message in session.messages:
-        msg_agent = trail_cache.get_instance(AgentSpec, message.agent_id)
+        msg_agent = asyncio.run(trail_cache.get_instance(AgentSpec, message.agent_id))
         print_message(message.payload, msg_agent)
 
     async def consume_and_print(user_prompt: str):
         console.print(agent.name, style="#FFFFFF")
 
-        stream_gen = stream_from_session(session, user_prompt)
+        stream_gen = stream_from_session(
+            session,
+            user_prompt,
+            agent_spec=agent,
+        )
 
         thunk = False
         content = ""
@@ -93,9 +102,8 @@ def run_repl(session: SessionSpec, agent: AgentSpec | None):
 
 def print_message(message: ModelMessage, agent: AgentSpec, skip_text: bool = False):
     content: list[tuple[str, str]] = []
+    assert message.timestamp
 
-    # Only print the header if we aren't skipping text.
-    # (If we are skipping text, the REPL loop already printed the header before streaming)
     if not skip_text:
         content.extend(
             [
@@ -110,11 +118,14 @@ def print_message(message: ModelMessage, agent: AgentSpec, skip_text: bool = Fal
             case "response", ThinkingPart():
                 content.append((part.content, "#226688"))
             case "response", TextPart():
-                # Ignore the text part if it was already streamed
                 if not skip_text:
                     content.append((part.content, "#886622"))
             case "request", UserPromptPart():
                 content.append((str(part.content), "#882266"))
+            case "response", ToolCallPart():
+                content.append((str(part), "#662288"))
+            case "request", ToolReturnPart():
+                content.append((str(part), "#662288"))
             case _:
                 raise ValueError(f"unhandled kind-part tuple ({kind}, {type(part)})")
 

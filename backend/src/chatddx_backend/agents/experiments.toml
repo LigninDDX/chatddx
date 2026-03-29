@@ -31,6 +31,11 @@ extends = ["qwen3-8b-det"]
 sampling_params = ["deterministic"]
 instructions = ""
 
+[agent.tools-sentinel]
+extends = ["qwen3-8b-det"]
+instructions = ""
+tool_group = "sentinel"
+
 [agent.tools-dice]
 extends = ["qwen3-8b-det"]
 instructions = ""
@@ -69,13 +74,21 @@ parameters = {}
 
 [tool.dice]
 type = "function"
-description = "roll a die"
 parameters = {}
 
 [tool.user_details]
 type = "function"
-description = "get info about user"
 parameters = {}
+
+[tool.sentinel_string]
+type = "function"
+
+[tool.sentinel_op]
+type = "function"
+
+[tool_group.sentinel]
+instructions = ""
+tools = ["sentinel_string", "sentinel_op"]
 
 [tool_group.prime]
 instructions_path = "../instructions/is_prime.txt"

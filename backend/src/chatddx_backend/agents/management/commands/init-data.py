@@ -14,11 +14,12 @@ app: Typer[Any, Any] = Typer()
 @app.command()
 def main(path: Path):
     """
-    A basic command that uses Typer
+    Copy a registry to database
     """
     registry = TrailRegistry.from_file(path)
-    for k in registry.agent:
-        agent_schema = registry.get(AgentSchema, k)
+
+    for agent in registry.agent:
+        agent_schema = registry.get(AgentSchema, agent)
         agent_model = asyncio.run(model_from_schema(Agent, agent_schema))
         print(f"Immutable record upsert: {agent_model.pk} ({agent_model.fingerprint})")
 

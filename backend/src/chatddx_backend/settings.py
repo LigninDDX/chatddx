@@ -32,7 +32,6 @@ INSTALLED_APPS = [
     "modeltranslation",
     "login_history",
     "django_celery_results",
-    "django_typer",
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",

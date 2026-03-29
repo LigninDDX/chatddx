@@ -3,33 +3,24 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from pydantic_ai import AgentRunResult
 
-from chatddx_backend.agents.main import agent_spec
-from chatddx_backend.agents.pydantic_ai.runners import run_async
+from chatddx_backend.agents.main import get_agent
+from chatddx_backend.agents.pydantic_ai.runners import run_from_spec
 from chatddx_backend.agents.schemas import TrailRegistry
-from chatddx_backend.agents.utils import Dispatcher
 
-registry = TrailRegistry.from_file(Path(__file__).parent / "registry/experiments.toml")
-dispatcher = Dispatcher()
-
-
-def hello(r: AgentRunResult):
-    print(r)
-    raise
-
-
-dispatcher.subscribe(hello)
+registry = TrailRegistry.from_file(
+    Path(__file__).parent / "registry/test-llm-basics.toml"
+)
 
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_message_spec():
-    spec = await agent_spec("no-thinking", registry)
+    spec = await get_agent("no-thinking", registry)
     assert spec.connection
 
     prompt = "hello"
-    result = await run_async(spec, prompt, dispatcher)
+    result = await run_from_spec(spec, prompt)
 
     messages = json.loads(result.new_messages_json())
 
