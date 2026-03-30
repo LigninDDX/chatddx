@@ -8,6 +8,7 @@ from chatddx_backend.agents.schemas import (
     MessageSpec,
     SessionSpec,
 )
+from chatddx_backend.agents.trail import resolve_related_array_fields
 
 
 async def get_identity(name: str) -> IdentitySpec:
@@ -37,14 +38,13 @@ async def resume_session(
 
     session_model = (
         await SessionModel.objects.select_related()
-        .prefetch_related(
-            "messages",
-        )
+        .prefetch_related("messages")
         .aget(
             uuid__startswith=uuid,
             owner_id=owner.id,
         )
     )
+    await resolve_related_array_fields(session_model.default_agent)
 
     return SessionSpec.model_validate(session_model)
 

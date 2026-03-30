@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, TypeVar
 
+from django.db import IntegrityError
 from django.db.models import ForeignKey
 
 from chatddx_backend.agents.trail import (
@@ -77,17 +78,21 @@ async def pk_from_schema(
                     f"'{field_value}' is a relation but lacks related_model"
                 )
 
-    if mutable:
-        instance, _ = await Model.objects.aupdate_or_create(
-            name=new_values["name"],
-            fingerprint="",
-            defaults=new_values,
-        )
-        pk = instance.pk
-    else:
-        pk = await Model(**new_values).append()
+    name = new_values.pop("name")
 
-    return pk
+    try:
+        model, _ = await Model.objects.aget_or_create(
+            name=name,
+            fingerprint=schema.fingerprint,
+            **new_values,
+        )
+    except IntegrityError:
+        model = await Model.objects.aget(
+            name=name,
+            fingerprint=schema.fingerprint,
+        )
+
+    return model.pk
 
 
 async def model_from_pk(

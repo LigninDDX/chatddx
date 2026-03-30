@@ -2,21 +2,17 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Awaitable, Self, override
+from typing import TYPE_CHECKING, Any, Awaitable, override
 
-from asgiref.sync import sync_to_async
 from django.contrib.postgres.fields.array import ArrayField
-from django.db import DatabaseError, connection
 from django.db.models import (
     CharField,
     DateTimeField,
-    DecimalField,
     ForeignKey,
     Index,
     Model,
     OneToOneField,
 )
-from django.utils import timezone
 
 if TYPE_CHECKING:
     TypedArrayField = ArrayField[list[int]]
@@ -36,94 +32,14 @@ class TrailModel(Model):
         editable=False,
         help_text="Fingerprint for this configuration",
     )
-    created_at = DateTimeField(
+    timestamp = DateTimeField(
         auto_now_add=True,
     )
-    updated_at = DateTimeField(
-        auto_now=True,
-    )
-
-    related_model: Self
 
     class Meta:
         abstract = True
-        ordering = ["-updated_at"]
-        get_latest_by = "updated_at"
         unique_together = (("name", "fingerprint"),)
-        indexes = [
-            Index(
-                fields=[
-                    "name",
-                    "-updated_at",
-                ]
-            ),
-        ]
-
-    async def append(self) -> int:
-        sql, values = self.prepare_append_sql()
-        result = await self.run_sql(sql, values)
-        return result[0]
-
-    def prepare_append_sql(self) -> tuple[str, list[str]]:
-        ignore_fields = {"id", "name", "created_at", "updated_at", "fingerprint"}
-
-        db_values: list[Any] = []
-        hash_values: list[Any] = []
-
-        db_fields: list[str] = []
-        jsonb_args: list[str] = []
-
-        self.updated_at = self.created_at = timezone.now()
-
-        for field in self._meta.concrete_fields:
-            if field.primary_key:
-                continue
-
-            value = field.get_db_prep_save(getattr(self, field.attname), connection)
-
-            if field.name not in ignore_fields:
-                hash_values.append(value)
-                jsonb_args.append(f"'{field.column}'")
-
-                if isinstance(field, DecimalField):
-                    jsonb_args.append(
-                        f"%s::numeric({field.max_digits}, {field.decimal_places})"
-                    )
-                else:
-                    jsonb_args.append("%s")
-
-            if field.name != "fingerprint":
-                db_fields.append(field.column)
-                db_values.append(value)
-
-        qn = connection.ops.quote_name
-
-        sql = f"""
-            INSERT INTO {qn(self._meta.db_table)} ({", ".join(qn(f) for f in db_fields + ["fingerprint"])})
-            VALUES (
-            {", ".join(["%s"] * len(db_fields))},
-            encode(sha256(convert_to(jsonb_build_object({", ".join(jsonb_args)})::text, 'UTF8')), 'hex')
-            )
-            ON CONFLICT (name, fingerprint)
-            DO UPDATE SET updated_at = EXCLUDED.updated_at
-            RETURNING id, fingerprint, created_at, (xmax = 0) AS is_created;
-        """
-
-        return sql, db_values + hash_values
-
-    async def run_sql(self, sql: str, values: list[str]) -> tuple[Any, ...]:
-
-        def _fetchone(sql: str, values: list[str]) -> tuple[Any, ...]:
-            with connection.cursor() as cursor:
-                cursor.execute(sql, values)
-                result = cursor.fetchone()
-                if not result:
-                    raise DatabaseError(
-                        "Upsert failed: No rows returned from Postgres."
-                    )
-            return result
-
-        return await sync_to_async(_fetchone)(sql, values)
+        indexes = [Index(fields=["name"])]
 
     @override
     def __str__(self):

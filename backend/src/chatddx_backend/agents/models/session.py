@@ -57,7 +57,7 @@ class SessionModel(Model):
         default=None,
         blank=True,
     )
-    created_at = DateTimeField(auto_now_add=True)
+    timestamp = DateTimeField(auto_now_add=True)
     owner = ForeignKey(
         IdentityModel,
         on_delete=PROTECT,

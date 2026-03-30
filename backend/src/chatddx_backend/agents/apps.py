@@ -1,3 +1,4 @@
+# src/chatddx_backend/agents/apps.py
 # type: ignore
 from pathlib import Path
 
@@ -11,27 +12,45 @@ class AgentsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):
-        post_migrate.connect(setup_immutability_triggers, sender=self)
+        post_migrate.connect(install_trail_triggers, sender=self)
 
 
-def setup_immutability_triggers(sender, **_):
+def install_trail_triggers(sender, **kwargs):
+    from django.db import connections
+
     from .trail import TrailModel
 
-    current_dir = Path(__file__).parent
-    function_sql_path = current_dir / "sql/immutability_function.sql"
-    trigger_sql_path = current_dir / "sql/immutability_trigger.sql"
+    functions_tpl = (Path(__file__).parent / "sql/trail_functions.sql").read_text()
+    triggers_tpl = (Path(__file__).parent / "sql/trail_triggers.sql").read_text()
 
-    shared_function_sql = function_sql_path.read_text()
-    trigger_sql_template = trigger_sql_path.read_text()
-
-    with connection.cursor() as cursor:
-        cursor.execute(shared_function_sql)
+    connection = connections[kwargs.get("using", "default")]
 
     for model in sender.get_models():
         if issubclass(model, TrailModel):
-            table_name = model._meta.db_table
+            context = get_model_context(model)
 
-            trigger_sql = trigger_sql_template.format(table_name=table_name)
+            functions_sql = functions_tpl.format(**context)
+            triggers_sql = triggers_tpl.format(**context)
+
             with connection.cursor() as cursor:
-                cursor.execute(trigger_sql)
-                print(f"Applied immutability trigger to {table_name}")
+                cursor.execute(functions_sql)
+                cursor.execute(triggers_sql)
+                print(f"Applied immutability trigger to {context['table_name']}")
+
+
+def get_model_context(model):
+    table_name = model._meta.db_table
+
+    columns = [
+        f.column
+        for f in model._meta.fields
+        if f.name not in ["id", "trail", "trail_id", "fingerprint"]
+    ]
+    cols_str = ", ".join(f'"{col}"' for col in columns)
+    vals_str = ", ".join(f'NEW."{col}"' for col in columns)
+
+    return {
+        "table_name": table_name,
+        "columns": cols_str,
+        "parameters": vals_str,
+    }

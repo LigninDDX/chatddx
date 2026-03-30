@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import (
     Annotated,
     Any,
@@ -16,8 +16,11 @@ from pydantic import (
     AfterValidator,
     BaseModel,
     Field,
+    GetCoreSchemaHandler,
+    JsonValue,
 )
 from pydantic_ai import ModelMessage
+from pydantic_core import core_schema
 
 from chatddx_backend.agents.models.choices import (
     CoercionChoices,
@@ -30,6 +33,20 @@ from chatddx_backend.agents.registry import Registry, RegistryRecord
 from chatddx_backend.agents.trail import TrailSchema, TrailSpec
 
 TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
+
+PRECISION = Decimal("0.01")
+
+
+class SamplingDecimal(Decimal):
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.no_info_plain_validator_function(cls._validate)
+
+    @classmethod
+    def _validate(cls, v: Any) -> "SamplingDecimal":
+        return cls(Decimal(str(v)).quantize(PRECISION, rounding=ROUND_HALF_UP))
 
 
 def _validate_json_schema(v: Any) -> Any:
@@ -53,7 +70,7 @@ class TrailRegistry(Registry):
 class IdentityBase(BaseModel):
     user_id: int | None = None
     guest_id: UUID | None = None
-    secrets: dict[str, Any] = {}
+    secrets: dict[str, JsonValue] = {}
 
 
 class IdentitySchema(IdentityBase):
@@ -67,7 +84,7 @@ class IdentitySpec(IdentityBase, NinjaSchema):
 class SessionBase(BaseModel):
     uuid: UUID
     description: str | None
-    created_at: datetime
+    timestamp: datetime
 
 
 class SessionSchema(SessionBase):
@@ -98,25 +115,25 @@ class ConnectionBase(BaseModel):
 
 
 class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
-    profile: dict[str, Any] = Field(default_factory=dict)
+    profile: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ConnectionSpec(ConnectionBase, TrailSpec):
-    profile: dict[str, Any] = Field(default_factory=dict)
+    profile: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class SamplingParamsBase(BaseModel):
-    temperature: Decimal | None = None
-    top_p: Decimal | None = None
+    temperature: SamplingDecimal | None = None
+    top_p: SamplingDecimal | None = None
     top_k: int | None = None
     max_tokens: int | None = None
     seed: int | None = None
     n: int | None = None
-    presence_penalty: Decimal | None = None
-    frequency_penalty: Decimal | None = None
+    presence_penalty: SamplingDecimal | None = None
+    frequency_penalty: SamplingDecimal | None = None
     stop_sequences: list[str] | None = None
-    logit_bias: dict[str, Decimal] = Field(default_factory=dict)
-    provider_params: dict[str, Any] = Field(default_factory=dict)
+    logit_bias: dict[str, SamplingDecimal] = Field(default_factory=dict)
+    provider_params: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class SamplingParamsSchema(SamplingParamsBase, TrailSchema, RegistryRecord):
@@ -129,7 +146,7 @@ class SamplingParamsSpec(SamplingParamsBase, TrailSpec):
 
 class OutputTypeBase(BaseModel):
     definition: Annotated[
-        dict[str, Any],
+        dict[str, JsonValue],
         AfterValidator(_validate_json_schema),
     ]
 
@@ -146,7 +163,7 @@ class ToolBase(BaseModel):
     type: ToolChoices
     description: str | None = None
     parameters: Annotated[
-        dict[str, Any] | None,
+        dict[str, JsonValue] | None,
         AfterValidator(_validate_json_schema),
     ] = None
 

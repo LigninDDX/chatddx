@@ -105,13 +105,10 @@ def expect_identical(
     schema = schema_from_spec(Schema, spec)
     test_schema = schema_from_spec(Schema, test_spec)
 
-    assert getattr(schema, field_name) == getattr(test_schema, field_name)
-
     assert spec.name == test_spec.name
+    assert getattr(schema, field_name) == getattr(test_schema, field_name)
     assert spec.fingerprint == test_spec.fingerprint
-
-    assert spec.created_at == spec.updated_at == test_spec.created_at
-    assert spec.created_at < test_spec.updated_at
+    assert spec.timestamp == test_spec.timestamp
 
 
 def expect_altered(
@@ -132,9 +129,6 @@ def expect_altered(
         assert spec.name == test_spec.name
         assert spec.fingerprint != test_spec.fingerprint
 
-    assert spec.created_at == spec.updated_at
-    assert test_spec.created_at == test_spec.updated_at
-
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
@@ -142,9 +136,5 @@ async def test_immutability_trigger():
     agent_schema = registry.get(AgentSchema, "agent-1")
     agent_model = await model_from_schema(AgentModel, agent_schema)
 
-    agent_model.updated_at = datetime.now()
-    await agent_model.asave()
-
-    agent_model.instructions += "a"
     with pytest.raises(ProgrammingError):
         await agent_model.asave()

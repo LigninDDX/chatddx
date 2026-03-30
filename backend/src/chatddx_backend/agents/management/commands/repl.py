@@ -5,6 +5,9 @@ from typing import Annotated, Any
 
 import typer
 from django_typer.management import Typer
+from prompt_toolkit import prompt
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.history import FileHistory
 from pydantic_ai import (
     ModelMessage,
     TextPart,
@@ -32,7 +35,7 @@ app: Typer[Any, Any] = Typer()
 console = Console()
 
 registry = TrailRegistry.from_file(
-    Path(__file__).parent.parent.parent / "tests/registry/experiments.toml"
+    Path(__file__).parent.parent.parent / "data/registry.toml"
 )
 
 
@@ -95,8 +98,12 @@ def run_repl(session: SessionSpec, agent: AgentSpec):
         print()
 
     while True:
-        prompt = input("> ")
-        asyncio.run(consume_and_print(prompt))
+        prompt_ = prompt(
+            "> ",
+            history=FileHistory("history.txt"),
+            auto_suggest=AutoSuggestFromHistory(),
+        )
+        asyncio.run(consume_and_print(prompt_))
         asyncio.run(refresh_messages(session))
 
 
