@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "unfold.contrib.filters",
     "unfold.contrib.forms",
     "unfold.contrib.inlines",
+    "django_json_widget",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -133,6 +134,9 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
+FORMAT_MODULE_PATH = [
+    "chatddx_backend.formats",
+]
 
 STATIC_URL = "static/"
 STATIC_ROOT = getenv("STATIC_ROOT")
@@ -142,7 +146,3 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CELERY_BROKER_URL = getenv("CELERY_BROKER_URL")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
 CELERY_RESULT_BACKEND = "django-db"
-
-UNFOLD = {
-    "THEME": "dark",
-}

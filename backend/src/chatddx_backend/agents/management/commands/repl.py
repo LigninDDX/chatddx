@@ -68,7 +68,7 @@ def run_repl(session: SessionSpec, agent: AgentSpec):
     print(f"agent: {agent.name}")
 
     for message in session.messages:
-        msg_agent = asyncio.run(trail_cache.get_instance(AgentSpec, message.agent_id))
+        msg_agent = trail_cache.get_sync(AgentSpec, message.agent_id)
         print_message(message.payload, msg_agent)
 
     async def consume_and_print(user_prompt: str):

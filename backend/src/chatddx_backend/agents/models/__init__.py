@@ -14,7 +14,7 @@ from .choices import (
     ToolChoices,
     ValidationChoices,
 )
-from .session import IdentityModel, MessageModel, SessionModel
+from .history import IdentityModel, MessageModel, SessionModel
 
 __all__ = [
     "AgentModel",

@@ -431,6 +431,7 @@ dependencies = [
     { name = "django" },
     { name = "django-celery-results" },
     { name = "django-fernet-encrypted-fields" },
+    { name = "django-json-widget" },
     { name = "django-modeltranslation" },
     { name = "django-ninja" },
     { name = "django-typer" },
@@ -438,6 +439,7 @@ dependencies = [
     { name = "flower" },
     { name = "gunicorn" },
     { name = "jsonschema" },
+    { name = "markdown" },
     { name = "markdown2" },
     { name = "openai" },
     { name = "orjson" },
@@ -484,6 +486,7 @@ requires-dist = [
     { name = "django", specifier = ">=6.0.2" },
     { name = "django-celery-results", specifier = ">=2.6.0" },
     { name = "django-fernet-encrypted-fields", specifier = ">=0.3.1" },
+    { name = "django-json-widget", specifier = ">=2.1.1" },
     { name = "django-modeltranslation", specifier = ">=0.19.19" },
     { name = "django-ninja", specifier = ">=1.6.2" },
     { name = "django-typer", specifier = ">=3.7.0" },
@@ -491,7 +494,8 @@ requires-dist = [
     { name = "flower", specifier = ">=2.0.1" },
     { name = "gunicorn", specifier = ">=25.0.1" },
     { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "markdown2", specifier = ">=2.5.4" },
+    { name = "markdown", specifier = ">=3.10.2" },
+    { name = "markdown2", specifier = ">=2.5.5" },
     { name = "openai", specifier = ">=2.16.0" },
     { name = "orjson", specifier = ">=3.11.7" },
     { name = "prompt-toolkit", specifier = ">=3.0.50" },
@@ -839,6 +843,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1a/aa/529af3888215b8a660fc3897d6d63eaf1de9aa0699c633ca0ec483d4361c/django_fernet_encrypted_fields-0.3.1.tar.gz", hash = "sha256:5ed328c7f9cc7f2d452bb2e125f3ea2bea3563a259fa943e5a1c626175889a71", size = 5265, upload-time = "2025-11-10T08:39:57.398Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/7f/4e0b7ed8413fa58e7a77017342e8ab0e977d41cfc376ab9180ae75f216ec/django_fernet_encrypted_fields-0.3.1-py3-none-any.whl", hash = "sha256:3bd2abab02556dc6e15a58a61161ee6c5cdf45a50a8a52d9e035009eb54c6442", size = 5484, upload-time = "2025-11-10T08:39:55.866Z" },
+]
+
+[[package]]
+name = "django-json-widget"
+version = "2.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/30/923ff229ee284bf2fac7a289ca446fb2725d94b2a34c7cb006c4f811e6c0/django_json_widget-2.1.1.tar.gz", hash = "sha256:dc8102e2fa9accd0f661ea1988c9389f8fbbcb8a4bb9cbfb8fa0525b3c1265c1", size = 384026, upload-time = "2025-12-12T11:22:05.953Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/19/6a/bdbcc079d11d312e463565819089fe83ae6c7f17f274effa4777ca069f64/django_json_widget-2.1.1-py2.py3-none-any.whl", hash = "sha256:2fa3d6fb6dba9436a29ad2cee23fa794381f54a6678ec7d74e990ae081d9800b", size = 293721, upload-time = "2025-12-12T11:22:04.195Z" },
 ]
 
 [[package]]
@@ -1770,6 +1783,15 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown"
+version = "3.10.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/f4/69fa6ed85ae003c2378ffa8f6d2e3234662abd02c10d216c0ba96081a238/markdown-3.10.2.tar.gz", hash = "sha256:994d51325d25ad8aa7ce4ebaec003febcce822c3f8c911e3b17c52f7f589f950", size = 368805, upload-time = "2026-02-09T14:57:26.942Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/1f/77fa3081e4f66ca3576c896ae5d31c3002ac6607f9747d2e3aa49227e464/markdown-3.10.2-py3-none-any.whl", hash = "sha256:e91464b71ae3ee7afd3017d9f358ef0baf158fd9a298db92f1d4761133824c36", size = 108180, upload-time = "2026-02-09T14:57:25.787Z" },
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1783,11 +1805,11 @@ wheels = [
 
 [[package]]
 name = "markdown2"
-version = "2.5.4"
+version = "2.5.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/42/f8/b2ae8bf5f28f9b510ae097415e6e4cb63226bb28d7ee01aec03a755ba03b/markdown2-2.5.4.tar.gz", hash = "sha256:a09873f0b3c23dbfae589b0080587df52ad75bb09a5fa6559147554736676889", size = 145652, upload-time = "2025-07-27T16:16:24.307Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/ae/07d4a5fcaa5509221287d289323d75ac8eda5a5a4ac9de2accf7bbcc2b88/markdown2-2.5.5.tar.gz", hash = "sha256:001547e68f6e7fcf0f1cb83f7e82f48aa7d48b2c6a321f0cd20a853a8a2d1664", size = 157249, upload-time = "2026-03-02T20:46:53.411Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/06/2697b5043c3ecb720ce0d243fc7cf5024c0b5b1e450506e9b21939019963/markdown2-2.5.4-py3-none-any.whl", hash = "sha256:3c4b2934e677be7fec0e6f2de4410e116681f4ad50ec8e5ba7557be506d3f439", size = 49954, upload-time = "2025-07-27T16:16:23.026Z" },
+    { url = "https://files.pythonhosted.org/packages/43/af/4b3891eb0a49d6cfd5cbf3e9bf514c943afc2b0f13e2c57cc57cd88ecc21/markdown2-2.5.5-py3-none-any.whl", hash = "sha256:be798587e09d1f52d2e4d96a649c4b82a778c75f9929aad52a2c95747fa26941", size = 56250, upload-time = "2026-03-02T20:46:52.032Z" },
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ from typing import Any
 
 import orjson
 from ninja import Schema as NinjaSchema
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, computed_field
 
 
 def orjson_default(obj: Any):
@@ -20,7 +20,6 @@ class TrailSchema(BaseModel):
     name: str
 
     @computed_field
-    @property
     def fingerprint(self) -> str:
         serialized = self.model_dump(
             exclude={"name", "fingerprint"},
@@ -38,5 +37,3 @@ class TrailSpec(NinjaSchema):
     name: str
     fingerprint: str
     timestamp: datetime
-
-    model_config = ConfigDict(from_attributes=True)

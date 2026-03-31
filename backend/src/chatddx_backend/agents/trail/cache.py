@@ -1,6 +1,8 @@
 from collections import OrderedDict
 from typing import TypeVar, cast
 
+from asgiref.sync import async_to_sync
+
 from chatddx_backend.agents import type_map
 from chatddx_backend.agents.trail import TrailModel, TrailSpec
 from chatddx_backend.agents.trail.spec_loader import model_from_pk
@@ -15,7 +17,10 @@ class TrailCache:
         self.max_size = max_size
         self.cache = OrderedDict()
 
-    async def get_instance(self, Spec: type[T], pk: int) -> T:
+    def get_sync(self, Spec: type[T], pk: int) -> T:
+        return async_to_sync(self.get_async)(Spec, pk)
+
+    async def get_async(self, Spec: type[T], pk: int) -> T:
         Model = type_map.resolve(Spec, TrailModel)
         key = (Spec, pk)
 

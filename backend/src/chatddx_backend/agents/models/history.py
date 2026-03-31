@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/models/chat.py
+# src/chatddx_backend/agents/models/history.py
 from __future__ import annotations
 
 import uuid

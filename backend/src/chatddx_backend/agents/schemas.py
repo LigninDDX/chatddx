@@ -24,6 +24,7 @@ from pydantic_core import core_schema
 
 from chatddx_backend.agents.models.choices import (
     CoercionChoices,
+    MessageKindChoices,
     ProviderChoices,
     RoleChoices,
     ToolChoices,
@@ -102,8 +103,10 @@ class SessionSpec(SessionBase, NinjaSchema):
 class MessageSpec(NinjaSchema):
     id: int
     agent_id: int
+    session_id: int
     role: RoleChoices
     run_id: UUID
+    kind: MessageKindChoices
     payload: ModelMessage
     timestamp: datetime
 

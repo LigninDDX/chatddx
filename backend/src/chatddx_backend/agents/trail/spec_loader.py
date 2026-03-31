@@ -29,9 +29,8 @@ SpecT = TypeVar("SpecT", bound=TrailSpec)
 async def model_from_schema(
     Model: type[ModelT],
     schema: TrailSchema,
-    mutable: bool = False,
 ) -> ModelT:
-    pk = await pk_from_schema(Model, schema, mutable)
+    pk = await pk_from_schema(Model, schema)
     model = await model_from_pk(Model, pk)
     return model
 
@@ -42,7 +41,6 @@ async def model_from_schema(
 async def pk_from_schema(
     Model: type[TrailModel],
     schema: TrailSchema,
-    mutable: bool = False,
 ) -> int:
     new_values: dict[str, Any] = {}
 
@@ -55,7 +53,6 @@ async def pk_from_schema(
                 new_values[field_name + "_id"] = await pk_from_schema(
                     related_model,
                     value,
-                    mutable,
                 )
 
             case ListOf(values) if related_model:
@@ -64,7 +61,6 @@ async def pk_from_schema(
                         pk_from_schema(
                             related_model,
                             value,
-                            mutable,
                         )
                         for value in values
                     ]

@@ -38,4 +38,4 @@ class RoleChoices(TextChoices):
 
 class MessageKindChoices(TextChoices):
     REQUEST = "request"
-    RESPONSE = "user"
+    RESPONSE = "response"

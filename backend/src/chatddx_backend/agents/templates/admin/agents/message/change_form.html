@@ -1,0 +1,19 @@
+{% extends "admin/change_form.html" %}
+{% block content %}
+  <div class="submit-row" style="display: flex; justify-content: space-between; gap: 0.5rem;">
+    {% if prev_.pk %}
+    <a href="../../{{ prev_.pk }}/change/" class="button" style="flex: 1; text-align: left;">← {{prev_.text}}</a>
+    {% else %}
+      {# Optional: Empty div to maintain spacing if Previous is missing #}
+      <div style="flex: 1;"></div> 
+    {% endif %}
+
+    {% if next_.pk %}
+    <a href="../../{{ next_.pk }}/change/" class="button" style="flex: 1; text-align: right;">{{next_.text}} →</a>
+    {% else %}
+      {# Optional: Empty div to maintain spacing if Next is missing #}
+      <div style="flex: 1;"></div>
+    {% endif %}
+  </div>
+  {{ block.super }}
+{% endblock %}
