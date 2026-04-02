@@ -11,6 +11,7 @@ from typing import (
 from uuid import UUID
 
 import jsonschema
+import tomli_w
 from ninja import Schema as NinjaSchema
 from pydantic import (
     AfterValidator,
@@ -18,6 +19,7 @@ from pydantic import (
     Field,
     GetCoreSchemaHandler,
     JsonValue,
+    computed_field,
 )
 from pydantic_ai import ModelMessage
 from pydantic_core import core_schema
@@ -124,6 +126,10 @@ class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
 class ConnectionSpec(ConnectionBase, TrailSpec):
     profile: dict[str, JsonValue] = Field(default_factory=dict)
 
+    @computed_field
+    def profile_toml(self) -> str:
+        return tomli_w.dumps(self.profile)
+
 
 class SamplingParamsBase(BaseModel):
     temperature: SamplingDecimal | None = None
@@ -203,11 +209,11 @@ class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
         name="default",
     )
     output_type: OutputTypeSchema = OutputTypeSchema(
-        name="default",
+        name="text",
         definition={},
     )
     tool_group: ToolGroupSchema = ToolGroupSchema(
-        name="default",
+        name="no-tools",
         instructions="",
         tools=[],
     )

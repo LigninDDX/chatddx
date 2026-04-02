@@ -9,6 +9,7 @@ from django.db.models.signals import post_migrate
 
 class AgentsConfig(AppConfig):
     name = "chatddx_backend.agents"
+    verbose_name = "Agent configuration"
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):

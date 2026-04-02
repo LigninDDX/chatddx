@@ -26,17 +26,18 @@ else:
 SALT_KEY = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 INSTALLED_APPS = [
+    "unfold",
     "chatddx_backend.agents.apps.AgentsConfig",
     "chatddx_backend.api.apps.ApiConfig",
     "chatddx_backend.cms.apps.CmsConfig",
     "modeltranslation",
     "login_history",
     "django_celery_results",
-    "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
     "unfold.contrib.inlines",
     "django_json_widget",
+    "crispy_forms",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -137,6 +138,10 @@ USE_TZ = True
 FORMAT_MODULE_PATH = [
     "chatddx_backend.formats",
 ]
+
+CRISPY_TEMPLATE_PACK = "unfold_crispy"
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 STATIC_URL = "static/"
 STATIC_ROOT = getenv("STATIC_ROOT")

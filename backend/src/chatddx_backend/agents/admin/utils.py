@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
-from typing import TypeVar
+from typing import cast
 
 from django.db.models import Model as DjangoModel
 from django.db.models import QuerySet
+from pydantic import TypeAdapter
 
-T = TypeVar("T", bound="DjangoModel")
+from chatddx_backend.agents.trail import TrailModel, TrailSpec, spec_from_model
+from chatddx_backend.agents.trail.models import resolve_related_array_fields_sync
 
 
 @dataclass
@@ -43,9 +45,21 @@ def get_step_nav(
     return step_nav
 
 
-def truncate_content(content: str, limit: int):
-    if not content:
-        return "-"
+def truncate_content(content: str | None, limit: int):
+    if content is None:
+        return ""
     if len(content) > limit:
         return content[:limit] + " (...)"
     return content
+
+
+def serialize_trail(Spec: type[TrailSpec], qs):
+    return TypeAdapter(dict[str, Spec]).dump_json(
+        {
+            str(model.pk): spec_from_model(
+                Spec,
+                resolve_related_array_fields_sync(cast(TrailModel, model)),
+            )
+            for model in qs
+        }
+    )

@@ -79,6 +79,31 @@ async def resolve_related_array_fields(model: TrailModel):
     return model
 
 
+def resolve_related_array_fields_sync(model: TrailModel):
+    for field in model._meta.concrete_fields:
+        if isinstance(field, RelatedArrayField):
+            value = getattr(model, field.name)
+
+            if not value:
+                setattr(model, field.name, [])
+                continue
+
+            queryset = field.related_model.objects.filter(pk__in=value)
+            resolved_value = list(queryset)
+
+            for obj in resolved_value:
+                resolve_related_array_fields_sync(obj)
+
+            setattr(model, field.name, resolved_value)
+
+        elif isinstance(field, (ForeignKey, OneToOneField)):
+            related_model = getattr(model, field.name, None)
+            if related_model is not None:
+                resolve_related_array_fields_sync(related_model)
+
+    return model
+
+
 class RelatedArrayField(TypedArrayField):
     def __init__(
         self,

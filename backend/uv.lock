@@ -430,6 +430,7 @@ dependencies = [
     { name = "dj-user-login-history" },
     { name = "django" },
     { name = "django-celery-results" },
+    { name = "django-crispy-forms" },
     { name = "django-fernet-encrypted-fields" },
     { name = "django-json-widget" },
     { name = "django-modeltranslation" },
@@ -449,6 +450,7 @@ dependencies = [
     { name = "redis" },
     { name = "time-machine" },
     { name = "tomli" },
+    { name = "tomli-w" },
 ]
 
 [package.dev-dependencies]
@@ -485,6 +487,7 @@ requires-dist = [
     { name = "dj-user-login-history", specifier = ">=1.0.6" },
     { name = "django", specifier = ">=6.0.2" },
     { name = "django-celery-results", specifier = ">=2.6.0" },
+    { name = "django-crispy-forms", specifier = ">=2.6" },
     { name = "django-fernet-encrypted-fields", specifier = ">=0.3.1" },
     { name = "django-json-widget", specifier = ">=2.1.1" },
     { name = "django-modeltranslation", specifier = ">=0.19.19" },
@@ -504,6 +507,7 @@ requires-dist = [
     { name = "redis", specifier = ">=7.1.0" },
     { name = "time-machine", specifier = ">=3.2.0" },
     { name = "tomli", specifier = ">=2.4.0" },
+    { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -830,6 +834,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/b5/9966c28e31014c228305e09d48b19b35522a8f941fe5af5f81f40dc8fa80/django_celery_results-2.6.0.tar.gz", hash = "sha256:9abcd836ae6b61063779244d8887a88fe80bbfaba143df36d3cb07034671277c", size = 83985, upload-time = "2025-04-10T08:23:52.677Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/da/70f0f3c5364735344c4bc89e53413bcaae95b4fc1de4e98a7a3b9fb70c88/django_celery_results-2.6.0-py3-none-any.whl", hash = "sha256:b9ccdca2695b98c7cbbb8dea742311ba9a92773d71d7b4944a676e69a7df1c73", size = 38351, upload-time = "2025-04-10T08:23:49.965Z" },
+]
+
+[[package]]
+name = "django-crispy-forms"
+version = "2.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/73/42/c2cfb672493730b963ef377b103e29871c56348a215d0ae8cf362fe8ab1e/django_crispy_forms-2.6.tar.gz", hash = "sha256:4921a1087c6cd4f9fa3c139654c1de1c1c385f8bd6729aaee530bc0121ab4b93", size = 1097838, upload-time = "2026-03-01T09:03:37.138Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/96/e3/4c5915a732d6ab54da8871400852b67529518eedfb6b78ecf10bbccfcabb/django_crispy_forms-2.6-py3-none-any.whl", hash = "sha256:8ee0ae28b6b0ac41ff48a65944480c049fe8d1b0047086874fd7efabf4ec1374", size = 31479, upload-time = "2026-03-01T09:03:36.048Z" },
 ]
 
 [[package]]
@@ -3552,6 +3568,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/de/69/9aa0c6a505c2f80e519b43764f8b4ba93b5a0bbd2d9a9de6e2b24271b9a5/tomli-2.4.0-cp314-cp314t-win_amd64.whl", hash = "sha256:2add28aacc7425117ff6364fe9e06a183bb0251b03f986df0e78e974047571fd", size = 120504, upload-time = "2026-01-11T11:22:35.764Z" },
     { url = "https://files.pythonhosted.org/packages/b3/9f/f1668c281c58cfae01482f7114a4b88d345e4c140386241a1a24dcc9e7bc/tomli-2.4.0-cp314-cp314t-win_arm64.whl", hash = "sha256:2b1e3b80e1d5e52e40e9b924ec43d81570f0e7d09d11081b797bc4692765a3d4", size = 99561, upload-time = "2026-01-11T11:22:36.624Z" },
     { url = "https://files.pythonhosted.org/packages/23/d1/136eb2cb77520a31e1f64cbae9d33ec6df0d78bdf4160398e86eec8a8754/tomli-2.4.0-py3-none-any.whl", hash = "sha256:1f776e7d669ebceb01dee46484485f43a4048746235e683bcdffacdf1fb4785a", size = 14477, upload-time = "2026-01-11T11:22:37.446Z" },
+]
+
+[[package]]
+name = "tomli-w"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
 ]
 
 [[package]]

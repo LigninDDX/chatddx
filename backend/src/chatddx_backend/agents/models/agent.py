@@ -5,8 +5,6 @@ import json
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-import jsonschema
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import (
     PROTECT,
@@ -15,7 +13,6 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     JSONField,
-    Model,
     PositiveIntegerField,
     TextField,
     URLField,
@@ -36,14 +33,7 @@ else:
 
 
 class JSONSchemaField(TypedJSONField):
-    def validate(self, value: Any, model_instance: Model):
-        super().validate(value, model_instance)
-
-        if value is not None:
-            try:
-                jsonschema.Draft202012Validator.check_schema(value)
-            except jsonschema.SchemaError as e:
-                raise ValidationError(f"Invalid JSON Schema definition: {e.message}")
+    pass
 
 
 class DecimalEncoder(json.JSONEncoder):

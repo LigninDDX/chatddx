@@ -13,18 +13,29 @@ from pydantic_ai import (
 def get_part_content(
     parts: Sequence[ModelRequestPart | ModelResponsePart],
     PartType: type[ModelRequestPart | ModelResponsePart],
-):
-    content = ""
+) -> str | None:
+    content: list[str] = []
     for part in parts:
         if isinstance(part, PartType):
             if isinstance(part, (ToolCallPart, BuiltinToolCallPart)):
-                content += f"{part.tool_name}: {part.args_as_json_str()}"
+                content.append(f"{part.tool_name}: {part.args_as_json_str()}")
             elif isinstance(part, (ToolReturnPart, BuiltinToolReturnPart)):
-                content += f"{part.tool_name}: {part.content}"
+                content.append(f"{part.tool_name}: {part.content}")
             else:
                 match part.content:
                     case str():
-                        content += part.content
+                        content.append(part.content)
                     case _:
-                        raise ValueError("unsupported part type")
-    return content
+                        raise NotImplementedError(
+                            f"unhandled part type '{type(part.content)}'"
+                        )
+    if not content:
+        return None
+
+    if len(content) != 1:
+        raise NotImplementedError(
+            f"can only handle one piece of content, got '{len(content)}'"
+        )
+
+    if content:
+        return content[0]

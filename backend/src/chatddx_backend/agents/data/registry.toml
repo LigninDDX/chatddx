@@ -45,8 +45,17 @@ extends = ["qwen3-8b-det"]
 instructions = ""
 tool_group = "sentinel"
 
+[agent.ddx-management]
+connection = "qwen3-8b"
+instructions = ""
+sampling_params = ["deterministic", "no-thinking"]
+output_type = "ddx-management"
+
 [output_type.type-check]
 definition_path = "./output_types/type_check.json"
+
+[output_type.ddx-management]
+definition_path = "./output_types/ddx_management.json"
 
 [sampling_params.deterministic]
 seed = 0

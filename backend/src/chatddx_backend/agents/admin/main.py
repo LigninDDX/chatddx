@@ -1,77 +1,65 @@
 # src/chatddx_backend/agents/admin/history.py
+import json
 from dataclasses import asdict
 from typing import Any
 
 from django.contrib import admin
 from django.db.models import Max, Min
-from django.forms import ModelForm
 from django.http import HttpRequest
 from django.utils.formats import date_format
-from django_json_widget.widgets import JSONEditorWidget
+from markdown import markdown
+from unfold.admin import mark_safe
+from unfold.utils import format_html
 
-from chatddx_backend.agents.admin import agent, history
+from chatddx_backend.agents.admin import forms, proxies
 from chatddx_backend.agents.admin.base import TrailModelAdmin, TypedModelAdmin
-from chatddx_backend.agents.admin.utils import get_step_nav
+from chatddx_backend.agents.admin.utils import (
+    get_step_nav,
+    truncate_content,
+)
 
 
-class ConnectionAdminForm(ModelForm):
-    class Meta:
-        model = agent.Connection
-        fields = "__all__"
+@admin.register(proxies.Agent)
+class AgentAdmin(TrailModelAdmin[proxies.Agent]):
+    form = forms.AgentForm
+    list_display = [
+        "__str__",
+        "connection",
+        "sampling_params",
+        "output_type",
+        "validation_strategy",
+        "coercion_strategy",
+        "tool_group",
+    ]
 
 
-@admin.register(agent.Connection)
-class ConnectionAdmin(TrailModelAdmin[agent.Connection]):
-    form = ConnectionAdminForm
+@admin.register(proxies.Connection)
+class ConnectionAdmin(TrailModelAdmin[proxies.Connection]):
+    form = forms.ConnectionForm
     list_display = ["name"]
 
 
-class OutputTypeAdminForm(ModelForm):
-    class Meta:
-        model = agent.OutputType
-        fields = "__all__"
-
-
-@admin.register(agent.OutputType)
-class OutputTypeAdmin(TrailModelAdmin[agent.OutputType]):
-    form = OutputTypeAdminForm
+@admin.register(proxies.OutputType)
+class OutputTypeAdmin(TrailModelAdmin[proxies.OutputType]):
+    form = forms.OutputTypeForm
     list_display = ["name"]
 
 
-class AgentAdminForm(ModelForm):
-    class Meta:
-        model = agent.Agent
-        fields = "__all__"
-
-
-@admin.register(agent.Agent)
-class AgentAdmin(TrailModelAdmin[agent.Agent]):
-    form = AgentAdminForm
+@admin.register(proxies.SamplingParams)
+class SamplingParamsAdmin(TrailModelAdmin[proxies.SamplingParams]):
+    form = forms.SamplingParamsForm
     list_display = ["name"]
 
 
-class SamplingParamsAdminForm(ModelForm):
-    class Meta:
-        model = agent.SamplingParams
-        fields = "__all__"
-
-
-@admin.register(agent.SamplingParams)
-class SamplingParamsAdmin(TrailModelAdmin[agent.SamplingParams]):
-    form = SamplingParamsAdminForm
+@admin.register(proxies.ToolGroup)
+class ToolGroupAdmin(TrailModelAdmin[proxies.ToolGroup]):
+    form = forms.ToolGroupForm
     list_display = ["name"]
 
 
-class IdentityForm(ModelForm):
-    class Meta:
-        model = history.Identity
-        fields = "__all__"
-        widgets = {"secrets": JSONEditorWidget}
-
-
-@admin.register(history.Identity)
-class IdentityAdmin(TypedModelAdmin[history.Identity]):
-    form = IdentityForm
+@admin.register(proxies.Identity)
+class IdentityAdmin(TypedModelAdmin[proxies.Identity]):
+    form = forms.IdentityForm
     list_display = [
         "name",
         "auth_user",
@@ -83,8 +71,8 @@ class IdentityAdmin(TypedModelAdmin[history.Identity]):
     readonly_fields = ["guest_id"]
 
 
-@admin.register(history.Session)
-class SessionAdmin(TypedModelAdmin[history.Session]):
+@admin.register(proxies.Session)
+class SessionAdmin(TypedModelAdmin[proxies.Session]):
     list_display = [
         "timestamp",
         "uuid_",
@@ -105,14 +93,14 @@ class SessionAdmin(TypedModelAdmin[history.Session]):
         )
 
     @admin.display(description="UUID")
-    def uuid_(self, session_model: history.Session):
+    def uuid_(self, session_model: proxies.Session):
         return session_model.uuid
 
     @admin.display(
         description="Earliest Message",
         ordering="annotated_earliest",
     )
-    def earliest_message(self, session_model: history.Session):
+    def earliest_message(self, session_model: proxies.Session):
         timestamp = getattr(session_model, "annotated_earliest", None)
         if timestamp:
             return date_format(timestamp, "DATETIME_FORMAT")
@@ -122,26 +110,27 @@ class SessionAdmin(TypedModelAdmin[history.Session]):
         description="Latest Message",
         ordering="annotated_latest",
     )
-    def latest_message(self, session_model: history.Session):
+    def latest_message(self, session_model: proxies.Session):
         timestamp = getattr(session_model, "annotated_latest", None)
         if timestamp:
             return date_format(timestamp, "DATETIME_FORMAT")
         return None
 
 
-@admin.register(history.Message)
-class MessageAdmin(TypedModelAdmin[history.Message]):
+@admin.register(proxies.Message)
+class MessageAdmin(TypedModelAdmin[proxies.Message]):
     list_display = [
         "timestamp",
-        "__str__",
-        "get_session",
-        "direction",
         "role",
+        "content_short",
+        "direction",
         "agent",
     ]
     fields = list_display + [
         "run_id",
-        "markdown",
+        "get_session",
+        "thinking",
+        "content",
         "payload",
     ]
 
@@ -151,8 +140,33 @@ class MessageAdmin(TypedModelAdmin[history.Message]):
     compressed_fields = True
 
     @admin.display(description="Session", ordering="session__id")
-    def get_session(self, obj: history.Message):
-        return history.Session.objects.get(pk=obj.session.pk)
+    def get_session(self, message: proxies.Message):
+        return proxies.Session.objects.get(pk=message.session.pk)
+
+    def content_short(self, message: proxies.Message):
+        return truncate_content(message.content, 55)
+
+    @admin.display(description="Content")
+    def content(self, message: proxies.Message):
+        json_data_tpl = (
+            '<div class="highlight">'
+            '<pre class="white-space: pre-wrap; word-wrap: break-word;; line-height: 125%;">{}</pre>'
+            "</div>"
+        )
+        markdown_tpl = '<div class="prose dark:prose-invert max-w-none">{}</div>'
+
+        match message.typed_content:
+            case None:
+                return ""
+            case str():
+                html = markdown(
+                    message.typed_content,
+                    extensions=["fenced_code", "tables"],
+                )
+                return format_html(markdown_tpl, mark_safe(html))
+            case _:
+                json_data = json.dumps(message.typed_content, indent=4)
+                return format_html(json_data_tpl, json_data)
 
     def has_add_permission(self, request: HttpRequest):
         return False
@@ -160,14 +174,14 @@ class MessageAdmin(TypedModelAdmin[history.Message]):
     def has_change_permission(
         self,
         request: HttpRequest,
-        obj: history.Message | None = None,
+        obj: proxies.Message | None = None,
     ):
         return False
 
     def has_delete_permission(
         self,
         request: HttpRequest,
-        obj: history.Message | None = None,
+        obj: proxies.Message | None = None,
     ):
         return False
 
