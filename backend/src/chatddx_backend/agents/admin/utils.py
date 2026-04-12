@@ -1,12 +1,8 @@
 from dataclasses import dataclass, field
-from typing import cast
 
+from crispy_forms.layout import LayoutObject
 from django.db.models import Model as DjangoModel
 from django.db.models import QuerySet
-from pydantic import TypeAdapter
-
-from chatddx_backend.agents.trail import TrailModel, TrailSpec, spec_from_model
-from chatddx_backend.agents.trail.models import resolve_related_array_fields_sync
 
 
 @dataclass
@@ -51,15 +47,3 @@ def truncate_content(content: str | None, limit: int):
     if len(content) > limit:
         return content[:limit] + " (...)"
     return content
-
-
-def serialize_trail(Spec: type[TrailSpec], qs):
-    return TypeAdapter(dict[str, Spec]).dump_json(
-        {
-            str(model.pk): spec_from_model(
-                Spec,
-                resolve_related_array_fields_sync(cast(TrailModel, model)),
-            )
-            for model in qs
-        }
-    )

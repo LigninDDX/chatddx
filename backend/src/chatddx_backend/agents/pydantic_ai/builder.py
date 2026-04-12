@@ -70,12 +70,17 @@ def build_model(agent_spec: AgentSpec):
     model_kwargs: dict[str, Any] = {}
     profile_kwargs: dict[str, Any] = agent_spec.connection.profile.copy()
 
-    if agent_spec.coercion_strategy in get_args(StructuredOutputMode):
-        profile_kwargs["default_structured_output_mode"] = agent_spec.coercion_strategy
+    if agent_spec.output_type.coercion_strategy in get_args(StructuredOutputMode):
+        profile_kwargs["default_structured_output_mode"] = (
+            agent_spec.output_type.coercion_strategy
+        )
 
     model_kwargs["profile"] = ModelProfile(**profile_kwargs)
     model_kwargs["model_name"] = agent_spec.connection.model
-    model_kwargs["provider"] = OpenAIProvider(base_url=agent_spec.connection.endpoint)
+
+    model_kwargs["provider"] = OpenAIProvider(
+        base_url=str(agent_spec.connection.endpoint)
+    )
 
     return OpenAIChatModel(**model_kwargs)
 
@@ -125,7 +130,7 @@ async def validate_output(
     ctx: RunContext[AgentContext],
     output: OutputType,
 ) -> OutputType:
-    strategy = ctx.deps.agent.validation_strategy
+    strategy = ctx.deps.agent.output_type.validation_strategy
 
     if strategy == ValidationChoices.NOOP:
         return output

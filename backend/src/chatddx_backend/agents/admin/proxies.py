@@ -1,7 +1,9 @@
+# src/chatddx_backend/agents/admin/proxies.py
 import json
 from functools import cached_property
 
 import jsonschema
+import tomli_w
 from pydantic_ai import (
     TextPart,
     ThinkingPart,
@@ -21,6 +23,7 @@ from chatddx_backend.agents.models import (
     SamplingParamsModel,
     SessionModel,
     ToolGroupModel,
+    ToolModel,
 )
 from chatddx_backend.agents.models.choices import (
     MessageKindChoices,
@@ -35,6 +38,8 @@ from chatddx_backend.agents.trail.cache import trail_cache
 class TrailProxy:
     def __str__(self):
         return ", ".join(getattr(self, "name").split("|"))
+
+    pk: int
 
     @cached_property
     def spec(self):
@@ -53,6 +58,10 @@ class Connection(TrailProxy, ConnectionModel):
         proxy = True
         verbose_name = "Connection"
         verbose_name_plural = "Connections"
+
+    @cached_property
+    def profile_toml(self) -> str:
+        return tomli_w.dumps(self.profile)
 
 
 class OutputType(TrailProxy, OutputTypeModel):
@@ -74,6 +83,13 @@ class ToolGroup(TrailProxy, ToolGroupModel):
         proxy = True
         verbose_name = "Tool group"
         verbose_name_plural = "Tool groups"
+
+
+class Tool(TrailProxy, ToolModel):
+    class Meta:  # type: ignore
+        proxy = True
+        verbose_name = "Tool"
+        verbose_name_plural = "Tools"
 
 
 class Identity(IdentityModel):

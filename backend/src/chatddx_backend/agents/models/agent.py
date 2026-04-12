@@ -188,6 +188,17 @@ class OutputTypeModel(TrailModel):
 
     definition = JSONSchemaField(
         help_text="A valid JSON Schema defining the expected agent response structure.",
+        default=dict,
+    )
+    validation_strategy = CharField(
+        max_length=255,
+        default=ValidationChoices.INFORM,
+        choices=ValidationChoices.choices,
+    )
+    coercion_strategy = CharField(
+        max_length=255,
+        default=CoercionChoices.NATIVE,
+        choices=CoercionChoices.choices,
     )
 
 
@@ -201,15 +212,8 @@ class ToolModel(TrailModel):
         default=ToolChoices.FUNCTION,
         help_text="The type of tool.",
     )
-    description = TextField(
-        default=None,
-        null=True,
-        blank=True,
-    )
+    description = TextField()
     parameters = JSONSchemaField(
-        default=None,
-        null=True,
-        blank=True,
         help_text=(
             "JSON Schema describing the tool's parameters.\n"
             'Example: {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}'
@@ -250,14 +254,4 @@ class AgentModel(TrailModel):
     tool_group = ForeignKey(
         ToolGroupModel,
         on_delete=PROTECT,
-    )
-    validation_strategy = CharField(
-        max_length=255,
-        default=ValidationChoices.INFORM,
-        choices=ValidationChoices.choices,
-    )
-    coercion_strategy = CharField(
-        max_length=255,
-        default=CoercionChoices.NATIVE,
-        choices=CoercionChoices.choices,
     )

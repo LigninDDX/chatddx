@@ -13,15 +13,8 @@
           "type": "string"
         },
         "key_negatives": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
+          "type": "string",
+          "default": "",
           "description": "Absence of specific findings that might argue against this diagnosis (eg. 'No fever' makes pneumonia less likely).",
           "title": "Key Negatives"
         },

@@ -6,11 +6,11 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import (
     Annotated,
     Any,
-    TypeVar,
 )
 from uuid import UUID
 
 import jsonschema
+import tomli
 import tomli_w
 from ninja import Schema as NinjaSchema
 from pydantic import (
@@ -18,8 +18,8 @@ from pydantic import (
     BaseModel,
     Field,
     GetCoreSchemaHandler,
+    HttpUrl,
     JsonValue,
-    computed_field,
 )
 from pydantic_ai import ModelMessage
 from pydantic_core import core_schema
@@ -35,15 +35,15 @@ from chatddx_backend.agents.models.choices import (
 from chatddx_backend.agents.registry import Registry, RegistryRecord
 from chatddx_backend.agents.trail import TrailSchema, TrailSpec
 
-TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
-
 PRECISION = Decimal("0.01")
 
 
 class SamplingDecimal(Decimal):
     @classmethod
     def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
     ) -> core_schema.CoreSchema:
         return core_schema.no_info_plain_validator_function(cls._validate)
 
@@ -58,6 +58,8 @@ def _validate_json_schema(v: Any) -> Any:
             jsonschema.Draft7Validator.check_schema(v)
         except jsonschema.SchemaError as e:
             raise ValueError(f"Invalid JSON Schema: {e.message}")
+        check_v = tomli.loads(tomli_w.dumps(v))
+        assert check_v == v
     return v
 
 
@@ -116,7 +118,7 @@ class MessageSpec(NinjaSchema):
 class ConnectionBase(BaseModel):
     provider: ProviderChoices
     model: str
-    endpoint: str
+    endpoint: HttpUrl
 
 
 class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
@@ -125,10 +127,6 @@ class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
 
 class ConnectionSpec(ConnectionBase, TrailSpec):
     profile: dict[str, JsonValue] = Field(default_factory=dict)
-
-    @computed_field
-    def profile_toml(self) -> str:
-        return tomli_w.dumps(self.profile)
 
 
 class SamplingParamsBase(BaseModel):
@@ -157,7 +155,9 @@ class OutputTypeBase(BaseModel):
     definition: Annotated[
         dict[str, JsonValue],
         AfterValidator(_validate_json_schema),
-    ]
+    ] = Field(default_factory=dict)
+    validation_strategy: ValidationChoices = ValidationChoices.INFORM
+    coercion_strategy: CoercionChoices = CoercionChoices.NATIVE
 
 
 class OutputTypeSchema(OutputTypeBase, TrailSchema, RegistryRecord):
@@ -170,11 +170,11 @@ class OutputTypeSpec(OutputTypeBase, TrailSpec):
 
 class ToolBase(BaseModel):
     type: ToolChoices
-    description: str | None = None
+    description: str = ""
     parameters: Annotated[
-        dict[str, JsonValue] | None,
+        dict[str, JsonValue],
         AfterValidator(_validate_json_schema),
-    ] = None
+    ] = Field(default_factory=dict)
 
 
 class ToolSchema(ToolBase, TrailSchema, RegistryRecord):
@@ -194,13 +194,11 @@ class ToolGroupSchema(ToolGroupBase, TrailSchema, RegistryRecord):
 
 
 class ToolGroupSpec(ToolGroupBase, TrailSpec):
-    tools: list[ToolSpec] = []
+    tools: list[ToolSpec]
 
 
 class AgentBase(BaseModel):
     instructions: str
-    validation_strategy: ValidationChoices = ValidationChoices.INFORM
-    coercion_strategy: CoercionChoices = CoercionChoices.NATIVE
 
 
 class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
@@ -219,8 +217,22 @@ class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
     )
 
 
+class AgentSchemaRef(AgentBase, TrailSchema):
+    connection_id: int
+    sampling_params_id: int
+    output_type_id: int
+    tool_group_id: int
+
+
 class AgentSpec(AgentBase, TrailSpec):
     connection: ConnectionSpec
     sampling_params: SamplingParamsSpec
     output_type: OutputTypeSpec
     tool_group: ToolGroupSpec
+
+
+class AgentSpecRef(AgentBase, TrailSpec):
+    connection_id: int
+    sampling_params_id: int
+    output_type_id: int
+    tool_group_id: int

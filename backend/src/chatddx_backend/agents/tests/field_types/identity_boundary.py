@@ -13,7 +13,7 @@ from django.db.models import (
     TextField,
     URLField,
 )
-from pydantic import JsonValue
+from pydantic import HttpUrl, JsonValue
 
 from chatddx_backend.agents.models import (
     CoercionChoices,
@@ -86,8 +86,13 @@ def _test_optional_SamplingParams(value: SamplingParamsSchema | None):
 
 
 def _test_Connection(value: ConnectionSchema):
-    altered_value = value.model_copy(update={"endpoint": _test_str(value.endpoint)[1]})
+    altered_value = value.model_copy(update={"endpoint": _test_url(value.endpoint)[1]})
     return deepcopy(value), altered_value
+
+
+def _test_url(value: HttpUrl):
+    altered_value = HttpUrl(str(value) + "a")
+    return value, altered_value
 
 
 def _test_optional_Connection(value: ConnectionSchema | None):
@@ -255,5 +260,5 @@ field_types: dict[Any, Callable[[Any], tuple[Any, Any]]] = {
     (ToolModel, list[ToolSchema] | None): _test_optional_tools,
     (ToolGroupModel, ToolGroupSchema): _test_ToolGroup,
     (ToolGroupModel, ToolGroupSchema | None): _test_optional_ToolGroup,
-    (URLField, str): _test_str,
+    (URLField, HttpUrl): _test_url,
 }

@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import (
     Any,
     Awaitable,
@@ -11,6 +12,8 @@ from typing import (
     cast,
     get_type_hints,
 )
+
+from pydantic import HttpUrl
 
 T = TypeVar("T")
 
@@ -25,6 +28,16 @@ class OneOf(Generic[T]):
 @dataclass
 class ListOf(Generic[T]):
     values: list[T]
+
+
+def default_parser(obj: Any):
+    match obj:
+        case Decimal():
+            return str(obj)
+        case HttpUrl():
+            return str(obj)
+        case _:
+            raise TypeError(f"Unsupported type: {type(obj)}")
 
 
 def one_or_list_of(t: type[T], value: object) -> OneOf[T] | ListOf[T] | None:

@@ -88,7 +88,7 @@ async def test_message_spec():
     assert res_part["provider_name"] == None
     assert res_part["provider_details"] == None
     assert res_msg["provider_name"] == "openai"
-    assert res_msg["provider_url"] == spec.connection.endpoint
+    assert res_msg["provider_url"] == str(spec.connection.endpoint)
     assert res_msg["model_name"] == spec.connection.model
     assert res_msg["finish_reason"] == "stop"
 

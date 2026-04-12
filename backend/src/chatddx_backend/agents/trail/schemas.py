@@ -1,19 +1,12 @@
+# src/chatddx_backend/agents/trail/schema.py
 import hashlib
 from datetime import datetime
-from decimal import Decimal
-from typing import Any
 
 import orjson
 from ninja import Schema as NinjaSchema
 from pydantic import BaseModel, computed_field
 
-
-def orjson_default(obj: Any):
-    match obj:
-        case Decimal():
-            return str(obj)
-        case _:
-            raise TypeError(f"Unsupported type: {type(obj)}")
+from chatddx_backend.agents.utils import default_parser
 
 
 class TrailSchema(BaseModel):
@@ -27,7 +20,7 @@ class TrailSchema(BaseModel):
         json = orjson.dumps(
             serialized,
             option=orjson.OPT_SORT_KEYS,
-            default=orjson_default,
+            default=default_parser,
         )
         return hashlib.sha256(json).hexdigest()
 

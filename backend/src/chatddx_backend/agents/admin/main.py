@@ -1,7 +1,7 @@
 # src/chatddx_backend/agents/admin/history.py
 import json
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Mapping
 
 from django.contrib import admin
 from django.db.models import Max, Min
@@ -11,8 +11,9 @@ from markdown import markdown
 from unfold.admin import mark_safe
 from unfold.utils import format_html
 
-from chatddx_backend.agents.admin import forms, proxies
+from chatddx_backend.agents.admin import proxies
 from chatddx_backend.agents.admin.base import TrailModelAdmin, TypedModelAdmin
+from chatddx_backend.agents.admin.forms import agent_plus
 from chatddx_backend.agents.admin.utils import (
     get_step_nav,
     truncate_content,
@@ -21,45 +22,57 @@ from chatddx_backend.agents.admin.utils import (
 
 @admin.register(proxies.Agent)
 class AgentAdmin(TrailModelAdmin[proxies.Agent]):
-    form = forms.AgentForm
+    form = agent_plus.AgentPlusForm
     list_display = [
         "__str__",
         "connection",
         "sampling_params",
         "output_type",
-        "validation_strategy",
-        "coercion_strategy",
         "tool_group",
     ]
+
+    def render_change_form(
+        self,
+        request: HttpRequest,
+        context: Mapping[str, Any],
+        add: bool = False,
+        change: bool = False,
+        form_url: str = "",
+        obj: Any = None,
+    ) -> Any:
+
+        return super().render_change_form(  # type:ignore
+            request,
+            {**context, "template_data": agent_plus.get_template_data()},
+            add=add,
+            change=change,
+            form_url=form_url,
+            obj=obj,
+        )
 
 
 @admin.register(proxies.Connection)
 class ConnectionAdmin(TrailModelAdmin[proxies.Connection]):
-    form = forms.ConnectionForm
     list_display = ["name"]
 
 
 @admin.register(proxies.OutputType)
 class OutputTypeAdmin(TrailModelAdmin[proxies.OutputType]):
-    form = forms.OutputTypeForm
     list_display = ["name"]
 
 
 @admin.register(proxies.SamplingParams)
 class SamplingParamsAdmin(TrailModelAdmin[proxies.SamplingParams]):
-    form = forms.SamplingParamsForm
     list_display = ["name"]
 
 
 @admin.register(proxies.ToolGroup)
 class ToolGroupAdmin(TrailModelAdmin[proxies.ToolGroup]):
-    form = forms.ToolGroupForm
     list_display = ["name"]
 
 
 @admin.register(proxies.Identity)
 class IdentityAdmin(TypedModelAdmin[proxies.Identity]):
-    form = forms.IdentityForm
     list_display = [
         "name",
         "auth_user",
