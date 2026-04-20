@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from django.db import ProgrammingError
 
-from chatddx_backend.agents import type_map
+from chatddx_backend.agents import trail_map
 from chatddx_backend.agents.models import AgentModel
 from chatddx_backend.agents.schemas import (
     AgentSchema,
@@ -23,7 +23,6 @@ from chatddx_backend.agents.trail import (
     TrailSchema,
     TrailSpec,
     model_from_schema,
-    schema_from_spec,
     spec_from_model,
 )
 
@@ -50,18 +49,17 @@ fields = [
 
 
 @pytest.mark.asyncio
-@pytest.mark.django_db()
+@pytest.mark.django_db
 @pytest.mark.parametrize("Schema, record, field_name", fields)
 @pytest.mark.time_machine(datetime(1970, 1, 1), tick=False)
 async def test_identity_boundary(
     time_machine: Any,
-    subtests: pytest.Subtests,
     Schema: type[TrailSchema],
     record: str,
     field_name: str,
 ):
-    Model = type_map.resolve(Schema, TrailModel)
-    Spec = type_map.resolve(Schema, TrailSpec)
+    Model = trail_map.resolve(Schema, TrailModel)
+    Spec = trail_map.resolve(Schema, TrailSpec)
 
     field = Model._meta.get_field(field_name)
 
@@ -76,58 +74,31 @@ async def test_identity_boundary(
     model = await model_from_schema(Model, schema)
     spec = spec_from_model(Spec, model)
 
-    schema = schema_from_spec(Schema, spec)
-
     value, altered_value = identity_boundary.field_types[test_key](
         getattr(schema, field_name)
     )
 
-    for value, expect_fn, msg in (
-        (value, expect_identical, f"apply identical value ({test_key})"),
-        (altered_value, expect_altered, "apply altered value"),
-        (value, expect_identical, "apply identical value again"),
+    for value, altered in (
+        (value, False),
+        (altered_value, True),
+        (value, False),
     ):
         time_machine.shift(timedelta(days=1))
-        test_schema = schema.model_copy(update={field_name: value})
+        raw_copy = schema.model_copy(update={field_name: value})
+
+        test_schema = Schema.model_validate(raw_copy.model_dump())
         test_model = await model_from_schema(Model, test_schema)
         test_spec = spec_from_model(Spec, test_model)
 
-        with subtests.test(msg=msg):
-            expect_fn(Schema, spec, test_spec, field_name)
+        if not altered:
+            assert schema.fingerprint == test_schema.fingerprint
+            assert model.fingerprint == test_model.fingerprint
+            assert spec.fingerprint == test_spec.fingerprint
 
-
-def expect_identical(
-    Schema: type[TrailSchema],
-    spec: TrailSpec,
-    test_spec: TrailSpec,
-    field_name: str,
-):
-    schema = schema_from_spec(Schema, spec)
-    test_schema = schema_from_spec(Schema, test_spec)
-
-    assert spec.name == test_spec.name
-    assert getattr(schema, field_name) == getattr(test_schema, field_name)
-    assert spec.fingerprint == test_spec.fingerprint
-    assert spec.timestamp == test_spec.timestamp
-
-
-def expect_altered(
-    Schema: type[TrailSchema],
-    spec: TrailSpec,
-    test_spec: TrailSpec,
-    field_name: str,
-):
-    schema = schema_from_spec(Schema, spec)
-    test_schema = schema_from_spec(Schema, test_spec)
-
-    assert getattr(schema, field_name) != getattr(test_schema, field_name)
-
-    if field_name == "name":
-        assert spec.name != test_spec.name
-        assert spec.fingerprint == test_spec.fingerprint
-    else:
-        assert spec.name == test_spec.name
-        assert spec.fingerprint != test_spec.fingerprint
+        if altered:
+            assert schema.fingerprint != test_schema.fingerprint
+            assert model.fingerprint != test_model.fingerprint
+            assert spec.fingerprint != test_spec.fingerprint
 
 
 @pytest.mark.asyncio

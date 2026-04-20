@@ -1,6 +1,7 @@
+# src/chatddx_backend/agents/main.py
 from typing import TypeVar
 
-from chatddx_backend.agents import type_map
+from chatddx_backend.agents import trail_map
 from chatddx_backend.agents.schemas import AgentSpec, TrailRegistry
 from chatddx_backend.agents.trail import (
     TrailModel,
@@ -18,8 +19,8 @@ async def spec_from_registry(
     name: str,
     registry: TrailRegistry,
 ) -> T:
-    Model = type_map.resolve(Spec, TrailModel)
-    Schema = type_map.resolve(Spec, TrailSchema)
+    Model = trail_map.resolve(Spec, TrailModel)
+    Schema = trail_map.resolve(Spec, TrailSchema)
 
     schema = registry.get(Schema, name)
     model = await model_from_schema(Model, schema)

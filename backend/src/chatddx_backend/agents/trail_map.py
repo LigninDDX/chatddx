@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/type_map.py
+# src/chatddx_backend/agents/trail_map.py
 from typing import Any, overload
 
 from chatddx_backend.agents.models import (
@@ -25,10 +25,10 @@ from chatddx_backend.agents.schemas import (
 )
 from chatddx_backend.agents.trail import TrailModel, TrailSchema, TrailSpec
 
-type TypeMap = tuple[type[TrailSpec], type[TrailModel], type[TrailSchema]]
+type TrailMap = tuple[type[TrailSpec], type[TrailModel], type[TrailSchema]]
 
 
-type_maps: list[TypeMap] = [
+trail_maps: list[TrailMap] = [
     (ConnectionSpec, ConnectionModel, ConnectionSchema),
     (SamplingParamsSpec, SamplingParamsModel, SamplingParamsSchema),
     (ToolGroupSpec, ToolGroupModel, ToolGroupSchema),
@@ -55,7 +55,7 @@ def resolve(source: Any, target: Any) -> Any:
     target_col = next(i for i, base in enumerate(bases) if issubclass(target, base))
     source_col = next(i for i, base in enumerate(bases) if issubclass(source, base))
 
-    for row in type_maps:
+    for row in trail_maps:
         if row[source_col] is source:
             return row[target_col]
 
