@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Any, get_args
 
 import jsonschema
+from jinja2 import Template
 from pydantic_ai import Agent as PydanticAgent
 from pydantic_ai import (
     ModelProfile,
@@ -24,11 +25,9 @@ from chatddx_backend.agents.pydantic_ai.context import (
 )
 from chatddx_backend.agents.schemas import (
     AgentSpec,
-    SamplingParamsSchema,
     SamplingParamsSpec,
     ToolGroupSpec,
 )
-from chatddx_backend.agents.trail import schema_from_spec
 
 
 def build_agent(
@@ -36,24 +35,17 @@ def build_agent(
     output_type: type[OutputType],
 ) -> PydanticAgent[AgentContext, OutputType]:
 
-    tools: list[PydanticTool] = []
-    model_settings: ModelSettings | None = None
-
     model: OpenAIChatModel = build_model(agent_spec)
+    model_settings = build_config(agent_spec.sampling_params)
+    tool_group_instructions, tools = build_tools(agent_spec.tool_group)
 
-    instructions: str = agent_spec.instructions
-
-    if agent_spec.sampling_params:
-        model_settings = build_config(agent_spec.sampling_params)
-
-    if agent_spec.tool_group:
-        tools_instructions, tools = build_tools(agent_spec.tool_group)
-        if tools_instructions:
-            instructions = "\n---\n".join([instructions, tools_instructions])
+    instructions = Template(agent_spec.instructions).render(
+        tool_group_instructions=tool_group_instructions,
+    )
 
     pydantic_agent = PydanticAgent[AgentContext, OutputType](
         model,
-        name=agent_spec.name,
+        name=agent_spec.fingerprint,
         instructions=instructions,
         tools=tools,
         deps_type=AgentContext,
@@ -86,8 +78,9 @@ def build_model(agent_spec: AgentSpec):
 
 
 def build_config(sampling_params_spec: SamplingParamsSpec) -> ModelSettings:
-    settings = schema_from_spec(SamplingParamsSchema, sampling_params_spec).model_dump(
-        exclude_none=True
+    settings = sampling_params_spec.model_dump(
+        exclude_none=True,
+        exclude={"id", "timestamp", "fingerprint"},
     )
     provider_params = settings.pop("provider_params")
 
