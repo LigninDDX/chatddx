@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 from typing import Any, TypeVar
 
-from django.db import IntegrityError
 from django.db.models import ForeignKey
 
 from chatddx_backend.agents.trail import (
@@ -74,19 +73,10 @@ async def pk_from_schema(
                     f"'{field_value}' is a relation but lacks related_model"
                 )
 
-    name = new_values.pop("name")
-
-    try:
-        model, _ = await Model.objects.aget_or_create(
-            name=name,
-            fingerprint=schema.fingerprint,
-            **new_values,
-        )
-    except IntegrityError:
-        model = await Model.objects.aget(
-            name=name,
-            fingerprint=schema.fingerprint,
-        )
+    model, _ = await Model.objects.aget_or_create(
+        fingerprint=schema.fingerprint,
+        defaults=new_values,
+    )
 
     return model.pk
 
@@ -106,10 +96,3 @@ def spec_from_model(
     model: TrailModel,
 ) -> SpecT:
     return Spec.model_validate(model)
-
-
-def schema_from_spec(
-    Schema: type[SchemaT],
-    spec: TrailSpec,
-) -> SchemaT:
-    return Schema.model_validate(spec.model_dump())

@@ -12,7 +12,7 @@ from pydantic_ai import (
     UserPromptPart,
 )
 
-from chatddx_backend.agents import type_map
+from chatddx_backend.agents import trail_map
 from chatddx_backend.agents.admin.utils import truncate_content
 from chatddx_backend.agents.models import (
     AgentModel,
@@ -43,7 +43,7 @@ class TrailProxy:
 
     @cached_property
     def spec(self):
-        return type_map.resolve(self, TrailSpec).model_validate(self)
+        return trail_map.resolve(self, TrailSpec).model_validate(self)
 
 
 class Agent(TrailProxy, AgentModel):

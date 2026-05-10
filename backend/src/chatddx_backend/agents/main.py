@@ -22,7 +22,7 @@ async def spec_from_registry(
     Model = trail_map.resolve(Spec, TrailModel)
     Schema = trail_map.resolve(Spec, TrailSchema)
 
-    schema = registry.get(Schema, name)
+    schema = registry.get_by_type(Schema, name)
     model = await model_from_schema(Model, schema)
     spec = spec_from_model(Spec, model)
 

@@ -10,12 +10,10 @@ from chatddx_backend.agents.utils import default_parser
 
 
 class TrailSchema(BaseModel):
-    name: str
-
     @computed_field
     def fingerprint(self) -> str:
         serialized = self.model_dump(
-            exclude={"name", "fingerprint"},
+            exclude={"fingerprint"},
         )
         json = orjson.dumps(
             serialized,
@@ -27,6 +25,5 @@ class TrailSchema(BaseModel):
 
 class TrailSpec(NinjaSchema):
     id: int
-    name: str
     fingerprint: str
     timestamp: datetime

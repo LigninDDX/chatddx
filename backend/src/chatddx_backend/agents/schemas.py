@@ -6,6 +6,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import (
     Annotated,
     Any,
+    Generic,
+    TypeVar,
 )
 from uuid import UUID
 
@@ -64,18 +66,19 @@ def _validate_json_schema(v: Any) -> Any:
 
 
 class TrailRegistry(Registry):
-    agent: dict[str, AgentSchema] = {}
-    connection: dict[str, ConnectionSchema] = {}
-    sampling_params: dict[str, SamplingParamsSchema] = {}
-    tool_group: dict[str, ToolGroupSchema] = {}
-    tool: dict[str, ToolSchema] = {}
-    output_type: dict[str, OutputTypeSchema] = {}
+    agent: dict[str, AgentSchema] = Field(default_factory=dict)
+    connection: dict[str, ConnectionSchema] = Field(default_factory=dict)
+    sampling_params: dict[str, SamplingParamsSchema] = Field(default_factory=dict)
+    tool_group: dict[str, ToolGroupSchema] = Field(default_factory=dict)
+    tool: dict[str, ToolSchema] = Field(default_factory=dict)
+    output_type: dict[str, OutputTypeSchema] = Field(default_factory=dict)
 
 
 class IdentityBase(BaseModel):
+    name: str
     user_id: int | None = None
     guest_id: UUID | None = None
-    secrets: dict[str, JsonValue] = {}
+    secrets: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class IdentitySchema(IdentityBase):
@@ -86,20 +89,41 @@ class IdentitySpec(IdentityBase, NinjaSchema):
     id: int
 
 
+class BranchBase(BaseModel):
+    owner_id: int
+    name: str
+    timestamp: datetime | None = None
+
+
+SchemaT = TypeVar("SchemaT", bound=TrailSchema)
+
+
+class BranchSchema(BranchBase, Generic[SchemaT]):
+    target_type: type[SchemaT]
+    target_id: int
+
+
+SpecT = TypeVar("SpecT", bound=TrailSpec)
+
+
+class BranchSpec(BranchBase, NinjaSchema, Generic[SpecT]):
+    id: int
+    target: SpecT
+
+
 class SessionBase(BaseModel):
     uuid: UUID
     description: str | None
     timestamp: datetime
+    owner_id: int
 
 
 class SessionSchema(SessionBase):
-    owner: IdentitySchema = IdentitySchema()
     default_agent: AgentSchema
 
 
 class SessionSpec(SessionBase, NinjaSchema):
     id: int
-    owner: IdentitySpec
     default_agent: AgentSpec
     messages: list[MessageSpec]
 
@@ -169,6 +193,7 @@ class OutputTypeSpec(OutputTypeBase, TrailSpec):
 
 
 class ToolBase(BaseModel):
+    name: str
     type: ToolChoices
     description: str = ""
     parameters: Annotated[
@@ -203,17 +228,19 @@ class AgentBase(BaseModel):
 
 class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
     connection: ConnectionSchema
-    sampling_params: SamplingParamsSchema = SamplingParamsSchema(
-        name="default",
+    sampling_params: SamplingParamsSchema = Field(
+        default_factory=SamplingParamsSchema,
     )
-    output_type: OutputTypeSchema = OutputTypeSchema(
-        name="text",
-        definition={},
+    output_type: OutputTypeSchema = Field(
+        default_factory=lambda: OutputTypeSchema(
+            definition={},
+        ),
     )
-    tool_group: ToolGroupSchema = ToolGroupSchema(
-        name="no-tools",
-        instructions="",
-        tools=[],
+    tool_group: ToolGroupSchema = Field(
+        default_factory=lambda: ToolGroupSchema(
+            instructions="",
+            tools=[],
+        ),
     )
 
 

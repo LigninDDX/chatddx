@@ -49,7 +49,9 @@ def _test_ToolGroup(value: ToolGroupSchema):
 
 def _test_optional_ToolGroup(value: ToolGroupSchema | None):
     altered_value = (
-        registry.get(ToolGroupSchema, "some-tool_group") if value is None else None
+        registry.get_by_type(ToolGroupSchema, "some-tool_group")
+        if value is None
+        else None
     )
     return deepcopy(value), altered_value
 
@@ -63,7 +65,9 @@ def _test_OutputType(value: OutputTypeSchema):
 
 def _test_optional_OutputType(value: OutputTypeSchema | None):
     altered_value = (
-        registry.get(OutputTypeSchema, "some-output_type") if value is None else None
+        registry.get_by_type(OutputTypeSchema, "some-output_type")
+        if value is None
+        else None
     )
     return deepcopy(value), altered_value
 
@@ -78,7 +82,7 @@ def _test_SamplingParams(value: SamplingParamsSchema):
 
 def _test_optional_SamplingParams(value: SamplingParamsSchema | None):
     altered_value = (
-        registry.get(SamplingParamsSchema, "some-sampling_params")
+        registry.get_by_type(SamplingParamsSchema, "some-sampling_params")
         if value is None
         else None
     )
@@ -97,7 +101,9 @@ def _test_url(value: HttpUrl):
 
 def _test_optional_Connection(value: ConnectionSchema | None):
     altered_value = (
-        registry.get(ConnectionSchema, "some-connection") if value is None else None
+        registry.get_by_type(ConnectionSchema, "some-connection")
+        if value is None
+        else None
     )
     return deepcopy(value), altered_value
 
@@ -120,14 +126,16 @@ def _test_optional_tools(value: list[ToolSchema] | None):
 def _test_tool(value: ToolSchema):
     altered_value = value.model_copy(
         update={
-            "description": _test_optional_str(value.description)[1],
+            "description": _test_str(value.description)[1],
         }
     )
     return deepcopy(value), altered_value
 
 
 def _test_optional_tool(value: ToolSchema | None):
-    altered_value = registry.get(ToolSchema, "some-tool") if value is None else None
+    altered_value = (
+        registry.get_by_type(ToolSchema, "some-tool") if value is None else None
+    )
     return deepcopy(value), altered_value
 
 

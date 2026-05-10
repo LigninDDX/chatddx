@@ -70,7 +70,7 @@ async def test_identity_boundary(
     if test_key not in identity_boundary.field_types:
         pytest.fail(f"No test defined for type combination {test_key} on {field_name}")
 
-    schema = registry.get(Schema, record)
+    schema = registry.get_by_type(Schema, record)
     model = await model_from_schema(Model, schema)
     spec = spec_from_model(Spec, model)
 
@@ -104,7 +104,7 @@ async def test_identity_boundary(
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_immutability_trigger():
-    agent_schema = registry.get(AgentSchema, "agent-1")
+    agent_schema = registry.get_by_type(AgentSchema, "agent-1")
     agent_model = await model_from_schema(AgentModel, agent_schema)
 
     with pytest.raises(ProgrammingError):

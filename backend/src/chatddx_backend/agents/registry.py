@@ -4,7 +4,15 @@ from __future__ import annotations
 import json
 from functools import reduce
 from pathlib import Path
-from typing import IO, Any, Callable, TypeVar, cast, get_args, get_origin
+from typing import (
+    IO,
+    Any,
+    Callable,
+    TypeVar,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import tomli
 from pydantic import (
@@ -17,6 +25,8 @@ from pydantic import (
 )
 
 FileLoaders = dict[str, Callable[[IO[bytes]], JsonValue]]
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class ParseError(Exception):
@@ -62,13 +72,10 @@ class RegistryRecord(BaseModel):
         return base_data
 
 
-T = TypeVar("T", bound=BaseModel)
-
-
 class Registry(BaseModel):
     _path: Path | None = PrivateAttr(default=None)
 
-    def get(self, RecordType: type[T], name: str) -> T:
+    def get_by_type(self, RecordType: type[T], name: str) -> T:
         record_type = self.__class__.get_field_by_type(RecordType)
         try:
             return getattr(self, record_type)[name]
@@ -105,7 +112,7 @@ class Registry(BaseModel):
 
     @classmethod
     def from_file(cls, path: Path):
-        data = cls._from_file(path)
+        data = _from_file(path)
         try:
             instance = cls.model_validate(
                 data,
@@ -116,75 +123,71 @@ class Registry(BaseModel):
             )
         except ValidationError as e:
             for err in e.errors():
-                loc = " -> ".join(str(x) for x in err["loc"])
-                print(f"  {loc}: {err['msg']} (got {err.get('input')!r})")
+                loc = " -> ".join(str(e) for e in err["loc"])
+                print(f"{loc}: {err['msg']} (got {err.get('input')!r})")
             raise
 
         instance._path = path
         return instance
 
-    @classmethod
-    def _from_file(cls, path: Path, seen: list[Path] | None = None) -> JsonValue:
-        if seen is None:
-            seen = list()
 
-        resolved_path = path.resolve()
-        if resolved_path in seen:
-            loop = " -> ".join([p.name for p in seen] + [path.name])
-            raise ParseError(f"Circular dependency detected in 'extends': {loop}")
+def _from_file(
+    path: Path,
+    seen: list[Path] | None = None,
+) -> JsonValue:
+    if seen is None:
+        seen = list()
 
-        current_seen = seen + [resolved_path]
+    resolved_path = path.resolve()
+    if resolved_path in seen:
+        loop = " -> ".join([p.name for p in seen] + [path.name])
+        raise ParseError(f"Circular dependency detected in 'extends': {loop}")
 
-        def txt(f: IO[bytes]) -> str:
-            content = f.read().decode("utf-8").rstrip("\n")
-            return content
+    current_seen = seen + [resolved_path]
 
-        loaders: FileLoaders = {
-            ".toml": tomli.load,
-            ".json": json.load,
-            ".txt": txt,
-        }
+    def txt(f: IO[bytes]) -> str:
+        content = f.read().decode("utf-8").rstrip("\n")
+        return content
 
-        with path.open("rb") as f:
-            data = resolve_imports(
-                loaders[path.suffix](f), loaders, path.parent, current_seen
-            )
+    loaders: FileLoaders = {
+        ".toml": tomli.load,
+        ".json": json.load,
+        ".txt": txt,
+    }
 
-        if not isinstance(data, dict):
-            return data
-
-        extends = cast(list[str] | str, data.get("extends", []))
-        if isinstance(extends, str):
-            extends = [extends]
-
-        data = reduce(
-            cls.extend_registries,
-            [cls._from_file(path.parent / p, current_seen) for p in extends],
-            data,
+    with path.open("rb") as f:
+        data = resolve_imports(
+            loaders[path.suffix](f), loaders, path.parent, current_seen
         )
+
+    if not isinstance(data, dict):
         return data
 
-    @classmethod
-    def extend_registries(cls, base: JsonValue, update: JsonValue):
-        if not (isinstance(base, dict) and isinstance(update, dict)):
-            return base
+    extends = cast(list[str] | str, data.get("extends", []))
+    if isinstance(extends, str):
+        extends = [extends]
 
-        for record_type in cls.model_fields:
-            if record_type not in base:
-                base[record_type] = {}
+    return reduce(
+        extend_registries,
+        [_from_file(path.parent / p, current_seen) for p in extends],
+        data,
+    )
 
-            if not isinstance(update.get(record_type), dict):
-                continue
 
-            record_update = update.get(record_type, {})
-
-            if not isinstance(base.get(record_type, {}), dict):
-                raise ValueError(f"unexpected value in '{base}'")
-
-            for name, values in record_update.items():  # type: ignore
-                base[record_type].setdefault(name, values)  # type: ignore
-
+def extend_registries(base: JsonValue, update: JsonValue):
+    if not isinstance(base, dict) or not isinstance(update, dict):
         return base
+
+    for key, value in update.items():
+        if not isinstance(value, dict):
+            continue
+        base_val = base.get(key, {})
+        if not isinstance(base_val, dict):
+            raise ValueError(f"unexpected value in '{base}'")
+
+        base[key] = value | base_val
+
+    return base
 
 
 def resolve_imports(
@@ -198,14 +201,20 @@ def resolve_imports(
         seen = list()
 
     if isinstance(obj, dict):
-        for key in list(obj.keys()):
-            value = obj[key]
-            if key.endswith("_path") and isinstance(value, str):
-                new_key = key.replace("_path", "")
+        new_obj: dict[str, Any] = {}
 
-                if new_key in obj:
+        for key, value in obj.items():
+            if key.endswith("_path"):
+                if not isinstance(value, str):
                     raise ParseError(
-                        f"Both '{key}' and '{new_key}' are defined, pick one. '{obj}'"
+                        f"*_path is expected to be a string, was '{value}'"
+                    )
+
+                key = key.replace("_path", "")
+
+                if key in obj:
+                    raise ParseError(
+                        f"Both '{key}_path' and '{key}' are defined, pick one. '{obj}'"
                     )
 
                 path = (base_path / value).resolve()
@@ -216,31 +225,33 @@ def resolve_imports(
                         f"Circular dependency detected in 'extends': {loop}"
                     )
 
-                current_seen = seen + [path]
+                with path.open("rb") as f:
+                    value = loaders[path.suffix](f)
 
-                with path.open("rb") as linked_file:
-                    obj[new_key] = resolve_imports(
-                        loaders[path.suffix](linked_file),
-                        loaders,
-                        path.parent,
-                        current_seen,
-                    )
-                del obj[key]
+                new_obj[key] = resolve_imports(
+                    value,
+                    loaders,
+                    path.parent,
+                    seen + [path],
+                )
             else:
-                resolve_imports(
+                new_obj[key] = resolve_imports(
                     value,
                     loaders,
                     base_path,
                     seen,
                 )
+        return new_obj
 
     elif isinstance(obj, list):
-        for item in obj:
+        return [
             resolve_imports(
                 item,
                 loaders,
                 base_path,
                 seen,
             )
+            for item in obj
+        ]
 
     return obj

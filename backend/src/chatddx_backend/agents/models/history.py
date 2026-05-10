@@ -10,6 +10,7 @@ from django.db.models import (
     CharField,
     DateTimeField,
     ForeignKey,
+    Index,
     JSONField,
     Model,
     OneToOneField,
@@ -21,14 +22,24 @@ from encrypted_fields.fields import EncryptedJSONField
 
 from chatddx_backend.agents.models.choices import MessageKindChoices, RoleChoices
 
-from .agent import AgentModel
+from .agent import (
+    AgentModel,
+    ConnectionModel,
+    OutputTypeModel,
+    SamplingParamsModel,
+    ToolGroupModel,
+    ToolModel,
+)
 
 
 class IdentityModel(Model):
     class Meta:
         db_table = "agents_identity"
 
-    name = CharField(max_length=255)
+    name = CharField(
+        max_length=255,
+        unique=True,
+    )
     secrets: dict[str, Any] = EncryptedJSONField(default=dict)  # type: ignore[assignment]
     guest_id = UUIDField(
         default=None,
@@ -41,6 +52,89 @@ class IdentityModel(Model):
         null=True,
         blank=True,
         on_delete=PROTECT,
+    )
+
+
+class BranchModel(Model):
+    owner = ForeignKey(
+        IdentityModel,
+        on_delete=PROTECT,
+    )
+    name = CharField(max_length=255)
+    timestamp = DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        abstract = True
+        indexes = [
+            Index(fields=["owner", "name", "-timestamp"]),
+        ]
+
+
+class AgentBranchModel(BranchModel):
+    class Meta(BranchModel.Meta):
+        db_table = "agents_agent_branch"
+
+    target = ForeignKey(
+        AgentModel,
+        on_delete=PROTECT,
+        related_name="branches",
+    )
+
+
+class ConnectionBranchModel(BranchModel):
+    class Meta(BranchModel.Meta):
+        db_table = "agents_connection_branch"
+
+    target = ForeignKey(
+        ConnectionModel,
+        on_delete=PROTECT,
+        related_name="branches",
+    )
+
+
+class SamplingParamsBranchModel(BranchModel):
+    class Meta(BranchModel.Meta):
+        db_table = "agents_sampling_params_branch"
+
+    target = ForeignKey(
+        SamplingParamsModel,
+        on_delete=PROTECT,
+        related_name="branches",
+    )
+
+
+class ToolGroupBranchModel(BranchModel):
+    class Meta(BranchModel.Meta):
+        db_table = "agents_tool_group_branch"
+
+    target = ForeignKey(
+        ToolGroupModel,
+        on_delete=PROTECT,
+        related_name="branches",
+    )
+
+
+class ToolBranchModel(BranchModel):
+    class Meta(BranchModel.Meta):
+        db_table = "agents_tool_branch"
+
+    target = ForeignKey(
+        ToolModel,
+        on_delete=PROTECT,
+        related_name="branches",
+    )
+
+
+class OutputTypeBranchModel(BranchModel):
+    class Meta(BranchModel.Meta):
+        db_table = "agents_output_type_branch"
+
+    target = ForeignKey(
+        OutputTypeModel,
+        on_delete=PROTECT,
+        related_name="branches",
     )
 
 

@@ -19,6 +19,6 @@ def main(path: Path):
     registry = TrailRegistry.from_file(path)
 
     for agent in registry.agent:
-        agent_schema = registry.get(AgentSchema, agent)
+        agent_schema = registry.get_by_type(AgentSchema, agent)
         agent_model = asyncio.run(model_from_schema(AgentModel, agent_schema))
         print(f"Immutable record upsert: {agent_model.pk} ({agent_model.fingerprint})")

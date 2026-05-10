@@ -53,22 +53,22 @@ class AgentAdmin(TrailModelAdmin[proxies.Agent]):
 
 @admin.register(proxies.Connection)
 class ConnectionAdmin(TrailModelAdmin[proxies.Connection]):
-    list_display = ["name"]
+    list_display = ["fingerprint"]
 
 
 @admin.register(proxies.OutputType)
 class OutputTypeAdmin(TrailModelAdmin[proxies.OutputType]):
-    list_display = ["name"]
+    list_display = ["fingerprint"]
 
 
 @admin.register(proxies.SamplingParams)
 class SamplingParamsAdmin(TrailModelAdmin[proxies.SamplingParams]):
-    list_display = ["name"]
+    list_display = ["fingerprint"]
 
 
 @admin.register(proxies.ToolGroup)
 class ToolGroupAdmin(TrailModelAdmin[proxies.ToolGroup]):
-    list_display = ["name"]
+    list_display = ["fingerprint"]
 
 
 @admin.register(proxies.Identity)

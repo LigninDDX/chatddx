@@ -9,7 +9,6 @@ from django.db.models import (
     CharField,
     DateTimeField,
     ForeignKey,
-    Index,
     Model,
     OneToOneField,
 )
@@ -21,16 +20,11 @@ else:
 
 
 class TrailModel(Model):
-    name = CharField(
-        max_length=255,
-        db_index=True,
-        help_text="Identifier for this record, last update is considered canon.",
-    )
     fingerprint = CharField(
         max_length=64,
         db_index=True,
         editable=False,
-        help_text="Fingerprint for this configuration",
+        unique=True,
     )
     timestamp = DateTimeField(
         auto_now_add=True,
@@ -38,12 +32,10 @@ class TrailModel(Model):
 
     class Meta:
         abstract = True
-        unique_together = (("name", "fingerprint"),)
-        indexes = [Index(fields=["name"])]
 
     @override
     def __str__(self):
-        return self.name
+        return self.fingerprint
 
 
 async def resolve_related_array_fields(model: TrailModel):
