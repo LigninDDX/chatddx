@@ -46,6 +46,7 @@ async def resolve_related_array_fields(model: TrailModel):
             setattr(model, field.name, [])
             return
 
+        assert field.related_model
         queryset = field.related_model.objects.filter(pk__in=value)
         resolved_value = [obj async for obj in queryset]
 

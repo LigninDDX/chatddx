@@ -1,3 +1,4 @@
+# src/chatddx_backend/agents/admin/forms/agent_plus.py
 from copy import deepcopy
 from typing import Any
 
@@ -13,75 +14,7 @@ from chatddx_backend.agents.admin.forms import (
     SamplingParamsForm,
     ToolGroupForm,
 )
-from chatddx_backend.agents.admin.schemas import (
-    AgentFormData,
-    ConnectionFormData,
-    OutputTypeFormData,
-    SamplingParamsFormData,
-    TemplateData,
-    ToolGroupFormData,
-)
-from chatddx_backend.agents.models import (
-    AgentModel,
-    ConnectionModel,
-    OutputTypeModel,
-    SamplingParamsModel,
-    ToolGroupModel,
-)
-
-
-def model_as_dict(agent_model: AgentModel):
-    agent_dict = {
-        "agent": AgentFormData.model_validate(
-            agent_model,
-        ),
-        "connection": ConnectionFormData.model_validate(
-            agent_model.connection,
-        ),
-        "sampling_params": SamplingParamsFormData.model_validate(
-            agent_model.sampling_params,
-        ),
-        "output_type": OutputTypeFormData.model_validate(
-            agent_model.output_type,
-        ),
-        "tool_group": ToolGroupFormData.model_validate(
-            agent_model.tool_group,
-        ),
-    }
-
-    def flatten_dict(d: dict[str, Any], sep: str = "_"):
-        return {
-            f"{outer}{sep}{inner}": value
-            for outer, inner_dict in d.items()
-            for inner, value in inner_dict.model_dump().items()
-        }
-
-    return flatten_dict(agent_dict)
-
-
-def get_template_data():
-    return TemplateData(
-        agent={
-            model.pk: AgentFormData.model_validate(model)
-            for model in AgentModel.objects.all()
-        },
-        connection={
-            model.pk: ConnectionFormData.model_validate(model)
-            for model in ConnectionModel.objects.all()
-        },
-        sampling_params={
-            model.pk: SamplingParamsFormData.model_validate(model)
-            for model in SamplingParamsModel.objects.all()
-        },
-        output_type={
-            model.pk: OutputTypeFormData.model_validate(model)
-            for model in OutputTypeModel.objects.all()
-        },
-        tool_group={
-            model.pk: ToolGroupFormData.model_validate(model)
-            for model in ToolGroupModel.objects.all()
-        },
-    ).model_dump_json()
+from chatddx_backend.agents.models.history import AgentBranchModel
 
 
 def apply_prefix_to_layout(layout_node: LayoutObject, prefix: str):
@@ -95,9 +28,6 @@ def apply_prefix_to_layout(layout_node: LayoutObject, prefix: str):
 
 
 class AgentPlusForm(forms.ModelForm):
-    class Media:
-        js = ("js/agent_template_selector.js",)
-
     class Meta:
         model = proxies.Agent
         fields = []
@@ -106,18 +36,52 @@ class AgentPlusForm(forms.ModelForm):
         instance = kwargs.get("instance")
 
         if instance:
-            kwargs["initial"] = model_as_dict(instance)
+            kwargs["initial"] = self.get_initial(instance)
 
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def get_initial(cls, agent_model: AgentBranchModel):
+        agent_dict = {
+            "agent": AgentForm.get_initial(
+                agent_model.target,
+                agent_model.name,
+            ),
+            "connection": ConnectionForm.get_initial(
+                agent_model.target.connection,
+                agent_model.connection_name,
+            ),
+            "sampling_params": SamplingParamsForm.get_initial(
+                agent_model.target.sampling_params,
+                agent_model.sampling_params_name,
+            ),
+            "output_type": OutputTypeForm.get_initial(
+                agent_model.target.output_type,
+                agent_model.output_type_name,
+            ),
+            "tool_group": ToolGroupForm.get_initial(
+                agent_model.target.tool_group,
+                agent_model.tool_group_name,
+            ),
+        }
+
+        def flatten_dict(d: dict[str, Any], sep: str = "_"):
+            return {
+                f"{outer}{sep}{inner}": value
+                for outer, inner_dict in d.items()
+                for inner, value in inner_dict.items()
+            }
+
+        return flatten_dict(agent_dict)
 
     @property
     def helper(self):
         helper = FormHelper()
 
         helper.layout = Layout()
-        helper.form_id = "agent_plus_form"
+        helper.form_tag = False
 
-        sub_forms: list[
+        sub_form_map: list[
             tuple[
                 str,
                 type[
@@ -136,12 +100,12 @@ class AgentPlusForm(forms.ModelForm):
             ("tool_group_", ToolGroupForm),
         ]
 
-        for prefix, cls in sub_forms:
+        for prefix, cls in sub_form_map:
             sub_form_instance = cls()
 
             helper.layout.append(
                 apply_prefix_to_layout(
-                    deepcopy(sub_form_instance.helper.layout),
+                    deepcopy(sub_form_instance.helper.layout[0]),
                     prefix,
                 )
             )

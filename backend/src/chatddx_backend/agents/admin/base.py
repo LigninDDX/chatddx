@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 from unfold.admin import ModelAdmin
 
+from chatddx_backend.agents.models.history import BranchModel
 from chatddx_backend.agents.trail import TrailModel
 
 T = TypeVar("T", bound="DjangoModel")
@@ -20,6 +21,15 @@ S = TypeVar("S", bound="TrailModel")
 
 
 class TrailModelAdmin(TypedModelAdmin[S]):
+    def get_queryset(self, request: HttpRequest) -> QuerySet[S]:
+        qs: QuerySet[S] = super().get_queryset(request)
+        return qs
+
+
+B = TypeVar("B", bound="BranchModel")
+
+
+class BranchModelAdmin(TypedModelAdmin[S]):
     def get_queryset(self, request: HttpRequest) -> QuerySet[S]:
         qs: QuerySet[S] = super().get_queryset(request)
         return qs

@@ -1,24 +1,29 @@
+# chatddx_backend/agents/management/commands/init-data.py
 import asyncio
 from pathlib import Path
 from typing import Any
 
 from django_typer.management import Typer
 
-from chatddx_backend.agents.models import AgentModel
-from chatddx_backend.agents.schemas import AgentSchema, TrailRegistry
-from chatddx_backend.agents.trail import model_from_schema
+from chatddx_backend.agents.branches import get_branch_model
+from chatddx_backend.agents.models import IdentityModel
+from chatddx_backend.agents.schemas import TrailRegistry
 
 app: Typer[Any, Any] = Typer()
 
 
 @app.command()
-def main(path: Path):
+def main(path: Path, owner_name: str):
     """
     Copy a registry to database
     """
     registry = TrailRegistry.from_file(path)
-
-    for agent in registry.agent:
-        agent_schema = registry.get_by_type(AgentSchema, agent)
-        agent_model = asyncio.run(model_from_schema(AgentModel, agent_schema))
-        print(f"Immutable record upsert: {agent_model.pk} ({agent_model.fingerprint})")
+    owner, created = IdentityModel.objects.get_or_create(name=owner_name)
+    for kind, registry_dict in registry:
+        for agent_name, agent_schema in registry_dict.items():
+            branch_model = asyncio.run(
+                get_branch_model(agent_name, owner.pk, agent_schema)
+            )
+            print(
+                f"{kind} {agent_name} {branch_model.pk} ({branch_model.target.fingerprint})"
+            )

@@ -12,88 +12,82 @@ from pydantic_ai import (
     UserPromptPart,
 )
 
-from chatddx_backend.agents import trail_map
 from chatddx_backend.agents.admin.utils import truncate_content
 from chatddx_backend.agents.models import (
-    AgentModel,
-    ConnectionModel,
     IdentityModel,
     MessageModel,
-    OutputTypeModel,
-    SamplingParamsModel,
     SessionModel,
-    ToolGroupModel,
-    ToolModel,
 )
 from chatddx_backend.agents.models.choices import (
     MessageKindChoices,
     RoleChoices,
 )
+from chatddx_backend.agents.models.history import (
+    AgentBranchModel,
+    ConnectionBranchModel,
+    OutputTypeBranchModel,
+    SamplingParamsBranchModel,
+    ToolBranchModel,
+    ToolGroupBranchModel,
+)
 from chatddx_backend.agents.pydantic_ai.utils import get_part_content
 from chatddx_backend.agents.schemas import AgentSpec, MessageSpec
-from chatddx_backend.agents.trail import TrailSpec
 from chatddx_backend.agents.trail.cache import trail_cache
 
 
 class TrailProxy:
     def __str__(self):
-        return ", ".join(getattr(self, "name").split("|"))
-
-    pk: int
-
-    @cached_property
-    def spec(self):
-        return trail_map.resolve(self, TrailSpec).model_validate(self)
+        return self.name
 
 
-class Agent(TrailProxy, AgentModel):
-    class Meta:  # type: ignore
+class Agent(TrailProxy, AgentBranchModel):
+    class Meta:
         proxy = True
         verbose_name = "Agent"
         verbose_name_plural = "Agents"
 
 
-class Connection(TrailProxy, ConnectionModel):
-    class Meta:  # type: ignore
+class Connection(TrailProxy, ConnectionBranchModel):
+    class Meta:
         proxy = True
         verbose_name = "Connection"
         verbose_name_plural = "Connections"
 
     @cached_property
     def profile_toml(self) -> str:
-        return tomli_w.dumps(self.profile)
+        return tomli_w.dumps(self.target.profile)
 
 
-class OutputType(TrailProxy, OutputTypeModel):
-    class Meta:  # type: ignore
+class OutputType(TrailProxy, OutputTypeBranchModel):
+    class Meta:
         proxy = True
         verbose_name = "Output type"
         verbose_name_plural = "Output types"
 
 
-class SamplingParams(TrailProxy, SamplingParamsModel):
-    class Meta:  # type: ignore
+class SamplingParams(TrailProxy, SamplingParamsBranchModel):
+    class Meta:
         proxy = True
         verbose_name = "Sampling parameters"
         verbose_name_plural = "Sampling parameters"
 
 
-class ToolGroup(TrailProxy, ToolGroupModel):
-    class Meta:  # type: ignore
+class ToolGroup(TrailProxy, ToolGroupBranchModel):
+    class Meta:
         proxy = True
         verbose_name = "Tool group"
         verbose_name_plural = "Tool groups"
 
 
-class Tool(TrailProxy, ToolModel):
-    class Meta:  # type: ignore
+class Tool(TrailProxy, ToolBranchModel):
+    class Meta:
         proxy = True
         verbose_name = "Tool"
         verbose_name_plural = "Tools"
 
 
 class Identity(IdentityModel):
-    class Meta:  # type: ignore
+    class Meta:
         proxy = True
         verbose_name = "Identity"
         verbose_name_plural = "Identities"
@@ -103,7 +97,7 @@ class Identity(IdentityModel):
 
 
 class Session(SessionModel):
-    class Meta:  # type: ignore
+    class Meta:
         proxy = True
         verbose_name = "Session"
         verbose_name_plural = "Sessions"
@@ -119,7 +113,7 @@ class Session(SessionModel):
 
 
 class Message(MessageModel):
-    class Meta:  # type: ignore
+    class Meta:
         proxy = True
         verbose_name = "Message"
         verbose_name_plural = "Messages"
@@ -209,7 +203,7 @@ class Message(MessageModel):
 
                         if part_text and part_tool_call:
                             raise NotImplementedError(
-                                f"unhandled combo part with both text and tool call"
+                                "unhandled combo part with both text and tool call"
                             )
 
                         if part_tool_call:

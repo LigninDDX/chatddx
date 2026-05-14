@@ -3,7 +3,6 @@ from uuid import UUID
 
 from chatddx_backend.agents.models import IdentityModel, MessageModel, SessionModel
 from chatddx_backend.agents.schemas import (
-    AgentSpec,
     IdentitySpec,
     MessageSpec,
     SessionSpec,
@@ -17,22 +16,22 @@ async def get_identity(name: str) -> IdentitySpec:
 
 
 async def start_session(
-    owner: IdentitySpec,
-    agent: AgentSpec,
+    owner_id: int,
+    agent_id: int,
     description: str | None = None,
 ) -> SessionSpec:
 
     session_model = await SessionModel.objects.acreate(
-        owner_id=owner.id,
-        default_agent_id=agent.id,
+        owner_id=owner_id,
+        default_agent_id=agent_id,
         description=description,
     )
 
-    return await resume_session(owner, session_model.uuid)
+    return await resume_session(owner_id, session_model.uuid)
 
 
 async def resume_session(
-    owner: IdentitySpec,
+    owner_id: int,
     uuid: UUID | str,
 ) -> SessionSpec:
 
@@ -41,7 +40,7 @@ async def resume_session(
         .prefetch_related("messages")
         .aget(
             uuid__startswith=uuid,
-            owner_id=owner.id,
+            owner_id=owner_id,
         )
     )
     await resolve_related_array_fields(session_model.default_agent)

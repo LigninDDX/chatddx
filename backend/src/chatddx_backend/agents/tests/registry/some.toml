@@ -15,7 +15,7 @@ temperature = 1
 
 [tool.some-tool]
 type = "function"
-description = "some tool"
+command = "some-tool"
 
 [tool_group.some-tool_group]
 instructions = "some tool group instructions"

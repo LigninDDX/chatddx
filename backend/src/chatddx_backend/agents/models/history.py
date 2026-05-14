@@ -157,7 +157,7 @@ class SessionModel(Model):
         on_delete=PROTECT,
     )
     default_agent = ForeignKey(
-        AgentModel,
+        AgentBranchModel,
         on_delete=PROTECT,
     )
 

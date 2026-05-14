@@ -92,7 +92,7 @@ def build_tools(
 ) -> tuple[str, list[PydanticTool]]:
     return tool_group_spec.instructions, [
         PydanticTool(
-            getattr(tools, tool_spec.name),
+            getattr(tools, tool_spec.command),
             takes_ctx=True,
         )
         for tool_spec in tool_group_spec.tools

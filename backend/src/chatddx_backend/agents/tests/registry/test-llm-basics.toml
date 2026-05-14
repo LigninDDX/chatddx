@@ -63,9 +63,11 @@ seed = 0
 provider_params_path = "../provider_params/disable_thinking.json"
 
 [tool.sentinel_string]
+command = "sentinel_string"
 type = "function"
 
 [tool.sentinel_op]
+command = "sentinel_op"
 type = "function"
 
 [tool_group.sentinel]

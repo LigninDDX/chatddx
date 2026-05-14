@@ -119,12 +119,12 @@ class SessionBase(BaseModel):
 
 
 class SessionSchema(SessionBase):
-    default_agent: AgentSchema
+    default_agent: BranchSchema[AgentSchema]
 
 
 class SessionSpec(SessionBase, NinjaSchema):
     id: int
-    default_agent: AgentSpec
+    default_agent: BranchSpec[AgentSpec]
     messages: list[MessageSpec]
 
 
@@ -193,7 +193,7 @@ class OutputTypeSpec(OutputTypeBase, TrailSpec):
 
 
 class ToolBase(BaseModel):
-    name: str
+    command: str
     type: ToolChoices
     description: str = ""
     parameters: Annotated[

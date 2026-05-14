@@ -1,5 +1,10 @@
 # src/chatddx_backend/agents/tests/registry/test-llm-basics.toml
 
+[connection.openai-gpt4]
+model = "4o"
+provider = "openai"
+endpoint = "http://openai.com:12009/v1/"
+
 [connection.qwen3-8b]
 model = "Qwen/Qwen3-8B-AWQ"
 provider = "vllm"
@@ -8,6 +13,11 @@ endpoint = "http://pelle.km:12009/v1/"
 [connection.qwen3-8b.profile]
 supports_json_schema_output = true
 ignore_streamed_leading_whitespace = true
+
+[agent.gpt4-test]
+connection = "openai-gpt4"
+instructions = ""
+sampling_params = ["no-thinking"]
 
 [agent.qwen3-8b-det]
 partial = true
@@ -64,9 +74,11 @@ seed = 0
 provider_params_path = "./provider_params/disable_thinking.json"
 
 [tool.sentinel_string]
+command = "sentinel_string"
 type = "function"
 
 [tool.sentinel_op]
+command = "sentinel_op"
 type = "function"
 
 [tool_group.sentinel]

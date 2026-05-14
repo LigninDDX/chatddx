@@ -48,7 +48,7 @@ async def stream_from_session(
         dispatcher = Dispatcher()
 
     if not agent_spec:
-        agent_spec = session.default_agent
+        agent_spec = session.default_agent.target
 
     dispatcher.subscribe(
         on_result(
@@ -91,7 +91,7 @@ async def run_from_session(
     if not dispatcher:
         dispatcher = Dispatcher()
     if not agent_spec:
-        agent_spec = session.default_agent
+        agent_spec = session.default_agent.target
 
     dispatcher.subscribe(
         on_result(

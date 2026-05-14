@@ -12,6 +12,7 @@ from pydantic import (
     JsonValue,
     ValidationInfo,
     computed_field,
+    model_validator,
 )
 
 from chatddx_backend.agents.models import ToolModel
@@ -56,7 +57,7 @@ def resolve_tools(v: Any) -> list[ToolFormData]:
 
 
 class ToolFormData(ToolSpec):
-    make_template: bool = False
+    name: str | None = None
     parameters_toml_input: str | None = Field(
         default=None,
         exclude=True,
@@ -69,13 +70,19 @@ class ToolFormData(ToolSpec):
         default_factory=dict,
     )
 
+    @model_validator(mode="after")
+    def add_name_from_context(self, info):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
+
     @computed_field
     def parameters_toml(self) -> str:
         return tomli_w.dumps(self.parameters)
 
 
 class ConnectionFormData(ConnectionSpec):
-    make_template: bool = False
+    name: str | None = None
     profile_toml_input: str | None = Field(
         default=None,
         exclude=True,
@@ -88,13 +95,19 @@ class ConnectionFormData(ConnectionSpec):
         default_factory=dict,
     )
 
+    @model_validator(mode="after")
+    def add_name_from_context(self, info):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
+
     @computed_field
     def profile_toml(self) -> str:
         return tomli_w.dumps(self.profile)
 
 
 class SamplingParamsFormData(SamplingParamsSpec):
-    make_template: bool = False
+    name: str | None = None
 
     logit_bias_toml_input: str | None = Field(default=None, exclude=True)
     logit_bias: Annotated[
@@ -114,6 +127,12 @@ class SamplingParamsFormData(SamplingParamsSpec):
         default_factory=dict,
     )
 
+    @model_validator(mode="after")
+    def add_name_from_context(self, info):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
+
     @computed_field
     def logit_bias_toml(self) -> str:
         return tomli_w.dumps(self.logit_bias)
@@ -124,7 +143,7 @@ class SamplingParamsFormData(SamplingParamsSpec):
 
 
 class OutputTypeFormData(OutputTypeSpec):
-    make_template: bool = False
+    name: str | None = None
 
     toml_input: str | None = Field(default=None, exclude=True)
     definition: Annotated[
@@ -135,23 +154,42 @@ class OutputTypeFormData(OutputTypeSpec):
         default_factory=dict,
     )
 
+    @model_validator(mode="after")
+    def add_name_from_context(self, info):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
+
     @computed_field
     def definition_toml(self) -> str:
         return tomli_w.dumps(self.definition)
 
 
 class ToolGroupFormData(ToolGroupBase, TrailSpec):
-    make_template: bool = False
+    name: str | None = None
     tools: list[int]
+
+    @model_validator(mode="after")
+    def add_name_from_context(self, info):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
 
 
 class AgentFormData(AgentSpecRef):
-    make_template: bool = False
+    name: str | None = None
+
+    @model_validator(mode="after")
+    def add_name_from_context(self, info):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
 
 
 class TemplateData(BaseModel):
-    agent: dict[int, AgentFormData]
-    connection: dict[int, ConnectionFormData]
-    sampling_params: dict[int, SamplingParamsFormData]
-    output_type: dict[int, OutputTypeFormData]
-    tool_group: dict[int, ToolGroupFormData]
+    agent: dict[str, AgentFormData]
+    connection: dict[str, ConnectionFormData]
+    sampling_params: dict[str, SamplingParamsFormData]
+    output_type: dict[str, OutputTypeFormData]
+    tool_group: dict[str, ToolGroupFormData]
+    tool: dict[str, ToolFormData]

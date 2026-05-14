@@ -1,70 +1,51 @@
 # chatddx_backend/agents/test/test_branches.py
 from pathlib import Path
-from typing import TypeVar
 
 import pytest
+import pytest_asyncio
 
-from chatddx_backend.agents import trail_map
+from chatddx_backend.agents.branches import get_branch_model, get_branches_from_registry
 from chatddx_backend.agents.models import IdentityModel
-from chatddx_backend.agents.models.history import BranchModel
 from chatddx_backend.agents.schemas import (
     AgentSchema,
-    BranchSchema,
+    ConnectionSchema,
     TrailRegistry,
 )
-from chatddx_backend.agents.trail import TrailModel, TrailSchema
-from chatddx_backend.agents.trail.spec_loader import pk_from_schema
-
-registry: TrailRegistry = TrailRegistry.from_file(
-    Path(__file__).parent / "registry/test-registry.toml"
-)
 
 
-TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
-
-
-async def get_branch_schema(
-    name: str,
-    owner_id: int,
-    trail_schema: TrailSchemaT,
-) -> BranchSchema[TrailSchemaT]:
-    return BranchSchema[type(trail_schema)](
-        name=name,
-        owner_id=owner_id,
-        target_type=type(trail_schema),
-        target_id=await pk_from_schema(
-            trail_map.resolve(
-                type(trail_schema),
-                TrailModel,
-            ),
-            trail_schema,
-        ),
+@pytest.fixture
+def registry():
+    return TrailRegistry.from_file(
+        Path(__file__).parent / "registry/test-registry.toml"
     )
+
+
+@pytest_asyncio.fixture
+async def owner():
+    owner, created = await IdentityModel.objects.aget_or_create(name="alex")
+    return owner
+
+
+@pytest_asyncio.fixture
+async def branches(owner, registry):
+    return await get_branches_from_registry(owner, registry)
 
 
 @pytest.mark.django_db
 @pytest.mark.asyncio
-async def test_schemas_from_registry():
-    owner = IdentityModel(name="alex")
-    owner.save()
-
-    branch_schemas: list[BranchSchema[TrailSchema]] = [
-        await get_branch_schema(
-            name=name,
-            owner_id=owner.pk,
-            trail_schema=schema,
-        )
-        for _, registry_dict in registry
-        for name, schema in registry_dict.items()
-    ]
-
-    for branch_schema in branch_schemas:
-        branch_model = trail_map.resolve(
-            type(branch.target), TrailModel
-        ).branches.rel.related_model
-        branch_instance = branch_model(**branch.model_dump())
-        print(branch_instance)
-
+async def test_schemas_from_registry(branches):
     assert branches["agent-1"].name == "agent-1"
-    assert type(branches["agent-1"].target) == AgentSchema
-    assert branches["agent-1"].target.instructions == "hello 1"
+    assert branches["agent-1"].target_type == AgentSchema
+
+    assert branches["connection-1"].name == "connection-1"
+    assert branches["connection-1"].target_type == ConnectionSchema
+
+
+@pytest.mark.django_db
+@pytest.mark.asyncio
+async def test_model_from_schema(owner, registry):
+    branch_model = await get_branch_model(
+        "agent-1", owner.pk, registry.agent["agent-1"]
+    )
+    assert branch_model.pk is not None
+    assert branch_model.name == "agent-1"

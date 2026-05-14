@@ -1,3 +1,9 @@
+from .loader import (
+    model_from_pk,
+    model_from_schema,
+    pk_from_schema,
+    spec_from_model,
+)
 from .models import (
     RelatedArrayField,
     TrailModel,
@@ -6,10 +12,6 @@ from .models import (
 from .schemas import (
     TrailSchema,
     TrailSpec,
-)
-from .spec_loader import (
-    model_from_schema,
-    spec_from_model,
 )
 
 __all__ = [
@@ -20,4 +22,5 @@ __all__ = [
     "resolve_related_array_fields",
     "model_from_schema",
     "spec_from_model",
+    "pk_from_schema",
 ]

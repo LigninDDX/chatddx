@@ -1,9 +1,11 @@
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
 from chatddx_backend.agents.main import get_agent
 from chatddx_backend.agents.models import IdentityModel
+from chatddx_backend.agents.models.history import AgentBranchModel
 from chatddx_backend.agents.pydantic_ai.runners import run_from_session, run_from_spec
 from chatddx_backend.agents.schemas import TrailRegistry
 from chatddx_backend.agents.session import get_identity, resume_session, start_session
@@ -13,6 +15,12 @@ registry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/test-llm-basics.toml"
 )
 dispatcher = Dispatcher()
+
+
+@pytest_asyncio.fixture
+async def owner():
+    owner, created = await IdentityModel.objects.aget_or_create(name="alex")
+    return owner
 
 
 @pytest.mark.asyncio
@@ -117,21 +125,21 @@ async def test_tool_call():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_session():
-    username = "alex"
+async def test_session(owner):
     agent = await get_agent("no-thinking", registry)
 
-    await IdentityModel.objects.acreate(name=username)
-
-    owner = await get_identity(username)
-
-    session = await start_session(owner, agent)
+    agent_branch = await AgentBranchModel.objects.acreate(
+        name="no-thinking",
+        owner_id=owner.id,
+        target_id=agent.id,
+    )
+    session = await start_session(owner.id, agent_branch.id)
 
     result = await run_from_session(session, "say 'aaa'")
 
     assert result.output == "aaa"
 
-    agent_session = await resume_session(owner, session.uuid)
+    agent_session = await resume_session(owner.id, session.uuid)
 
     result = await run_from_session(agent_session, "say it again")
     assert "aaa" in str(result.output)

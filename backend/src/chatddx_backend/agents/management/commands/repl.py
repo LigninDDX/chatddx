@@ -1,6 +1,5 @@
 # src/chatddx_backend/agents/management/commands/repl.py
 import asyncio
-from pathlib import Path
 from typing import Annotated, Any
 
 import typer
@@ -18,25 +17,21 @@ from pydantic_ai import (
 )
 from rich.console import Console
 
-from chatddx_backend.agents.main import get_agent
+from chatddx_backend.agents.models import SessionModel
+from chatddx_backend.agents.models.history import AgentBranchModel
 from chatddx_backend.agents.pydantic_ai.runners import (
     stream_from_session,
 )
-from chatddx_backend.agents.schemas import AgentSpec, SessionSpec, TrailRegistry
+from chatddx_backend.agents.schemas import AgentSpec, BranchSpec, SessionSpec
 from chatddx_backend.agents.session import (
     get_identity,
     refresh_messages,
     resume_session,
     start_session,
 )
-from chatddx_backend.agents.trail.cache import trail_cache
 
 app: Typer[Any, Any] = Typer()
 console = Console()
-
-registry = TrailRegistry.from_file(
-    Path(__file__).parent.parent.parent / "data/registry.toml"
-)
 
 
 @app.command()
@@ -50,34 +45,58 @@ def main(
     """
 
     owner = asyncio.run(get_identity(owner_name))
-    agent = asyncio.run(get_agent(agent_name, registry)) if agent_name else None
+
+    if session_uuid is None and agent_name is None:
+        typer.echo("Error: You must provide either --session or --agent or both.")
+        typer.secho("\nAvailable agents:", bold=True)
+        for agent in AgentBranchModel.objects.filter(owner_id=owner.id):
+            typer.echo(agent.name)
+
+        typer.secho("\nAvailable sessions:", bold=True)
+        for session in SessionModel.objects.filter(owner_id=owner.id):
+            typer.echo(
+                f"{session.uuid} {session.timestamp.strftime('%Y-%m-%d %H:%M')} {session.default_agent.name} {len(session.messages.all())}"
+            )
+
+        return
 
     if session_uuid:
-        session = asyncio.run(resume_session(owner, session_uuid))
-        if not agent:
-            agent = session.default_agent
-    else:
-        assert agent
-        session = asyncio.run(start_session(owner, agent))
+        session = asyncio.run(resume_session(owner.id, session_uuid))
+        if not agent_name:
+            agent_branch = session.default_agent
 
-    run_repl(session, agent)
+    if agent_name:
+        agent_branch = BranchSpec[AgentSpec].model_validate(
+            AgentBranchModel.objects.filter(name=agent_name, owner_id=owner.id).latest(
+                "timestamp"
+            )
+        )
+        if not session_uuid:
+            session = asyncio.run(start_session(owner.id, agent_branch.id))
+
+    run_repl(session, agent_branch)
 
 
-def run_repl(session: SessionSpec, agent: AgentSpec):
+def run_repl(session: SessionSpec, agent_branch: BranchSpec[AgentSpec]):
+    agent_spec = agent_branch.target
+    agent_name = agent_branch.name
     print(f"session id: {session.uuid}")
-    print(f"agent: {agent.name}")
+    print(f"agent: {agent_name}")
 
     for message in session.messages:
-        msg_agent = trail_cache.get_sync(AgentSpec, message.agent_id)
-        print_message(message.payload, msg_agent)
+        msg_agent = AgentBranchModel.objects.filter(
+            owner_id=session.owner_id,
+            target_id=message.agent_id,
+        ).first()
+        print_message(message.payload, msg_agent.name, msg_agent.target)
 
     async def consume_and_print(user_prompt: str):
-        console.print(agent.name, style="#FFFFFF")
+        console.print(agent_name, style="#FFFFFF")
 
         stream_gen = stream_from_session(
             session,
             user_prompt,
-            agent_spec=agent,
+            agent_spec=agent_spec,
         )
 
         thunk = False
@@ -107,14 +126,19 @@ def run_repl(session: SessionSpec, agent: AgentSpec):
         asyncio.run(refresh_messages(session))
 
 
-def print_message(message: ModelMessage, agent: AgentSpec, skip_text: bool = False):
+def print_message(
+    message: ModelMessage,
+    name: str,
+    agent: AgentSpec,
+    skip_text: bool = False,
+):
     content: list[tuple[str, str]] = []
     assert message.timestamp
 
     if not skip_text:
         content.extend(
             [
-                (agent.name, "#FFFFFF"),
+                (name, "#FFFFFF"),
                 (f"======{message.timestamp.strftime('%Y-%m-%d %H:%M:%S')}======", ""),
             ]
         )

@@ -162,7 +162,7 @@ class ToolModel(TrailModel):
     class Meta(TrailModel.Meta):
         db_table = "agents_tool"
 
-    name = CharField(
+    command = CharField(
         max_length=255,
         db_index=True,
         help_text="Name of the tool",

@@ -4,8 +4,7 @@ from typing import TypeVar, cast
 from asgiref.sync import async_to_sync
 
 from chatddx_backend.agents import trail_map
-from chatddx_backend.agents.trail import TrailModel, TrailSpec
-from chatddx_backend.agents.trail.spec_loader import model_from_pk
+from chatddx_backend.agents.trail import TrailModel, TrailSpec, model_from_pk
 
 T = TypeVar("T", bound=TrailSpec)
 

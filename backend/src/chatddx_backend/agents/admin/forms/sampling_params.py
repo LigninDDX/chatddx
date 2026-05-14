@@ -1,13 +1,14 @@
 # src/chatddx_backend/agents/admin/forms/sampling_params.py
+from typing import Any
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django.forms import (
-    BooleanField,
     CharField,
     DecimalField,
-    Form,
     IntegerField,
     ModelChoiceField,
+    ModelForm,
 )
 from unfold.layout import Hr
 from unfold.widgets import (
@@ -19,9 +20,29 @@ from unfold.widgets import (
 )
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.schemas import SamplingParamsFormData
 
 
-class SamplingParamsForm(Form):
+class SamplingParamsForm(ModelForm):
+    class Meta:
+        model = proxies.SamplingParams
+        fields = []
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        instance = kwargs.get("instance")
+
+        if instance:
+            kwargs["initial"] = self.get_initial(instance.target, instance.name)
+
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def get_initial(cls, trail_model, name=None):
+        return SamplingParamsFormData.model_validate(
+            trail_model,
+            context={"name": name},
+        ).model_dump()
+
     name = CharField(
         max_length=255,
         widget=UnfoldAdminTextInputWidget(
@@ -37,12 +58,6 @@ class SamplingParamsForm(Form):
         widget=UnfoldAdminSelect2Widget(),
         label="Sampling Template",
         help_text="Optional. Select a pre-configured template to populate the parameters below.",
-    )
-    make_template = BooleanField(
-        required=False,
-        initial=False,
-        label="Save as Template",
-        help_text="Make these exact sampling parameters available as a reusable template.",
     )
     temperature = DecimalField(
         required=False,
@@ -118,13 +133,14 @@ class SamplingParamsForm(Form):
     )
 
     helper = FormHelper()
+    helper.form_tag = False
+    helper.include_media = False
     helper.layout = Layout(
         Fieldset(
             "Sampling Parameters",
             Row(
                 Column(
-                    Row("name"),
-                    Row("make_template"),
+                    "name",
                     css_class="w-1/2",
                 ),
                 Column(
