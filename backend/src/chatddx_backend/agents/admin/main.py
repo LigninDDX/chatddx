@@ -1,11 +1,11 @@
 # src/chatddx_backend/agents/admin/history.py
 import json
 from dataclasses import asdict
-from typing import Any, Mapping, Protocol
+from typing import Any
 
 from django.contrib import admin
-from django.db.models import Max, Min, OuterRef, Subquery
-from django.forms import ModelForm, ValidationError
+from django.db.models import Max, Min, QuerySet
+from django.forms import ValidationError
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.formats import date_format
@@ -14,7 +14,13 @@ from unfold.admin import mark_safe
 from unfold.utils import format_html
 
 from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.base import BranchModelAdmin, TypedModelAdmin
+from chatddx_backend.agents.admin.base import (
+    BranchModelAdmin,
+    TypedModelAdmin,
+    _qs_canon,
+    get_template_data,
+    qs_agent_list,
+)
 from chatddx_backend.agents.admin.forms import (
     ConnectionForm,
     OutputTypeForm,
@@ -23,75 +29,10 @@ from chatddx_backend.agents.admin.forms import (
     agent_plus,
 )
 from chatddx_backend.agents.admin.forms.tool import ToolForm
-from chatddx_backend.agents.admin.schemas import (
-    AgentFormData,
-    ConnectionFormData,
-    OutputTypeFormData,
-    SamplingParamsFormData,
-    TemplateData,
-    ToolFormData,
-    ToolGroupFormData,
-)
 from chatddx_backend.agents.admin.utils import (
     get_step_nav,
     truncate_content,
 )
-from chatddx_backend.agents.models import (
-    AgentModel,
-    ConnectionModel,
-    IdentityModel,
-    OutputTypeModel,
-    SamplingParamsModel,
-    ToolGroupModel,
-    ToolModel,
-)
-from chatddx_backend.agents.models.history import (
-    AgentBranchModel,
-    ConnectionBranchModel,
-    OutputTypeBranchModel,
-    SamplingParamsBranchModel,
-    ToolBranchModel,
-    ToolGroupBranchModel,
-)
-from chatddx_backend.agents.schemas import ToolSchema
-from chatddx_backend.agents.trail import model_from_schema
-
-
-def _get_branches(model, request):
-    BranchModel, FormData, TrailModel = branch_map[model]
-    branches = {
-        str(instance.target.pk): FormData.model_validate(
-            instance.target,
-            context={"name": instance.name},
-        )
-        for instance in _qs_canon(BranchModel.objects, request)
-    }
-    if model == "agent":
-        return branches
-
-    if model == "tool":
-        return branches
-
-    qs = (
-        _qs_agent_list(AgentBranchModel.objects, request)
-        .filter(**{f"{model}_id__isnull": True})
-        .values_list(f"target__{model}_id", flat=True)
-        .distinct()
-    )
-
-    for branchless_trail in TrailModel.objects.filter(id__in=qs):
-        label = branchless_trail.fingerprint[:6]
-
-        branches[str(branchless_trail.pk)] = FormData.model_validate(
-            branchless_trail,
-            context={"name": label},
-        )
-    return branches
-
-
-def _get_template_data(request):
-    td = TemplateData(**{model: _get_branches(model, request) for model in branch_map})
-    return td.model_dump_json()
 
 
 def _get_branch_link(obj, field_name):
@@ -118,122 +59,11 @@ def _get_branch_link(obj, field_name):
     return format_html('<a href="{}">{}</a>', url, label)
 
 
-def _qs_owned(qs, request):
-    return qs.filter(owner__name=request.user.username)
-
-
-def _qs_canon(qs, request):
-    return (
-        _qs_owned(qs, request)
-        .order_by("owner_id", "name", "-timestamp")
-        .distinct("owner_id", "name")
-    )
-
-
-def _qs_agent_list(qs, request):
-    agent_relations = ["connection", "sampling_params", "output_type", "tool_group"]
-    branch_annotations = {
-        f"{model}_{field}": Subquery(_branch_subquery(request, model, field))
-        for field in ("name", "id")
-        for model in agent_relations
-    }
-    return (
-        _qs_owned(qs, request)
-        .select_related(*[f"target__{model}" for model in agent_relations])
-        .annotate(**branch_annotations)
-    )
-
-
-def _branch_subquery(request, model, column):
-    return (
-        branch_map[model][0]
-        .objects.filter(
-            target=OuterRef(f"target__{model}"),
-            owner__name=request.user.username,
-        )
-        .values(column)[:1]
-    )
-
-
-branch_map = {
-    "agent": (
-        AgentBranchModel,
-        AgentFormData,
-        AgentModel,
-    ),
-    "connection": (
-        ConnectionBranchModel,
-        ConnectionFormData,
-        ConnectionModel,
-    ),
-    "sampling_params": (
-        SamplingParamsBranchModel,
-        SamplingParamsFormData,
-        SamplingParamsModel,
-    ),
-    "output_type": (
-        OutputTypeBranchModel,
-        OutputTypeFormData,
-        OutputTypeModel,
-    ),
-    "tool_group": (
-        ToolGroupBranchModel,
-        ToolGroupFormData,
-        ToolGroupModel,
-    ),
-    "tool": (
-        ToolBranchModel,
-        ToolFormData,
-        ToolModel,
-    ),
-}
-
-
-class RenderableAdmin(Protocol):
-    def render_change_form(
-        self, request: HttpRequest, context: Mapping[str, Any], **kwargs: Any
-    ) -> Any: ...
-    def get_change_form_context(
-        self,
-        request: HttpRequest,
-        obj: Any,
-    ) -> dict[str, Any]: ...
-
-
-class RenderChangeFormMixin:
-    def get_change_form_context(
-        self,
-        request: HttpRequest,
-        obj: Any,
-    ) -> dict[str, Any]:
-        """Default implementation or override in subclasses"""
-        return {}
-
-    def render_change_form(
-        self: RenderableAdmin,
-        request: HttpRequest,
-        context: Mapping[str, Any],
-        add: bool = False,
-        change: bool = False,
-        form_url: str = "",
-        obj: Any = None,
-    ) -> Any:
-        new_context = {**context, **self.get_change_form_context(request, obj)}
-
-        return super().render_change_form(  # type: ignore[invalid-super-argument]
-            request,
-            new_context,
-            add=add,
-            change=change,
-            form_url=form_url,
-            obj=obj,
-        )
-
-
 @admin.register(proxies.Agent)
-class AgentAdmin(RenderChangeFormMixin, BranchModelAdmin[proxies.Agent]):
+class AgentAdmin(BranchModelAdmin[proxies.Agent]):
     form = agent_plus.AgentPlusForm
-    change_form_template = "admin/agents/change_form.html"
+    name = "agent"
+
     list_display = [
         "__str__",
         "instructions",
@@ -275,12 +105,16 @@ class AgentAdmin(RenderChangeFormMixin, BranchModelAdmin[proxies.Agent]):
         } | {model: getattr(obj.target, model).pk for model in agent_relations}
 
         return {
-            "template_data": _get_template_data(request),
+            "template_data": get_template_data(request),
             "form_info": json.dumps(form_info),
         }
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs_agent_list(qs, request)
+
     def get_object(self, request, object_id, from_field=None):
-        queryset = _qs_agent_list(self.get_queryset(request), request)
+        queryset = self.get_queryset(request)
         field = (
             self.model._meta.pk
             if from_field is None
@@ -292,15 +126,12 @@ class AgentAdmin(RenderChangeFormMixin, BranchModelAdmin[proxies.Agent]):
         except (self.model.DoesNotExist, ValidationError, ValueError):
             return None
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return _qs_agent_list(qs, request)
-
 
 @admin.register(proxies.Connection)
-class ConnectionAdmin(RenderChangeFormMixin, BranchModelAdmin[proxies.Connection]):
+class ConnectionAdmin(BranchModelAdmin[proxies.Connection]):
     form = ConnectionForm
-    change_form_template = "admin/agents/change_form.html"
+    name = "connection"
+
     list_display = [
         "name",
         "_model",
@@ -320,29 +151,12 @@ class ConnectionAdmin(RenderChangeFormMixin, BranchModelAdmin[proxies.Connection
     def provider(self, obj):
         return obj.target.get_provider_display()
 
-    def get_change_form_context(
-        self,
-        request: HttpRequest,
-        obj: Any,
-    ) -> dict[str, Any]:
-        return {
-            "template_data": _get_template_data(request),
-            "form_info": json.dumps(
-                {
-                    "name": "connection",
-                    "connection": obj.target.pk,
-                }
-            ),
-        }
-
 
 @admin.register(proxies.SamplingParams)
-class SamplingParamsAdmin(
-    RenderChangeFormMixin,
-    BranchModelAdmin[proxies.SamplingParams],
-):
+class SamplingParamsAdmin(BranchModelAdmin[proxies.SamplingParams]):
     form = SamplingParamsForm
-    change_form_template = "admin/agents/change_form.html"
+    name = "sampling_params"
+
     list_display = [
         "name",
         "seed",
@@ -362,25 +176,12 @@ class SamplingParamsAdmin(
     def top_p(self, obj):
         return obj.target.top_p
 
-    def get_change_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
-        return {
-            "template_data": _get_template_data(request),
-            "form_info": json.dumps(
-                {
-                    "name": "sampling_params",
-                    "sampling_params": obj.target.pk,
-                }
-            ),
-        }
-
 
 @admin.register(proxies.OutputType)
-class OutputTypeAdmin(
-    RenderChangeFormMixin,
-    BranchModelAdmin[proxies.OutputType],
-):
+class OutputTypeAdmin(BranchModelAdmin[proxies.OutputType]):
     form = OutputTypeForm
-    change_form_template = "admin/agents/change_form.html"
+    name = "output_type"
+
     list_display = [
         "name",
         "_type",
@@ -400,7 +201,7 @@ class OutputTypeAdmin(
         ordering="target__definition",
     )
     def _type(self, obj):
-        return obj.target.definition["type"]
+        return obj.target.definition.get("type", None)
 
     @admin.display(
         description="Validation Strategy",
@@ -409,25 +210,11 @@ class OutputTypeAdmin(
     def validation_strategy(self, obj):
         return obj.target.get_validation_strategy_display()
 
-    def get_change_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
-        return {
-            "template_data": _get_template_data(request),
-            "form_info": json.dumps(
-                {
-                    "name": "output_type",
-                    "output_type": obj.target.pk,
-                }
-            ),
-        }
-
 
 @admin.register(proxies.ToolGroup)
-class ToolGroupAdmin(
-    RenderChangeFormMixin,
-    BranchModelAdmin[proxies.ToolGroup],
-):
+class ToolGroupAdmin(BranchModelAdmin[proxies.ToolGroup]):
     form = ToolGroupForm
-    change_form_template = "admin/agents/change_form.html"
+    name = "tool_group"
     list_display = [
         "name",
     ]
@@ -439,47 +226,16 @@ class ToolGroupAdmin(
     def coercion_strategy(self, obj):
         return obj.target.get_coercion_strategy_display()
 
-    def get_change_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
-        return {
-            "template_data": _get_template_data(request),
-            "form_info": json.dumps(
-                {
-                    "name": "tool_group",
-                    "tool_group": obj.target.pk,
-                }
-            ),
-        }
-
 
 @admin.register(proxies.Tool)
-class ToolAdmin(
-    RenderChangeFormMixin,
-    BranchModelAdmin[proxies.Tool],
-):
+class ToolAdmin(BranchModelAdmin[proxies.Tool]):
     form = ToolForm
-    change_form_template = "admin/agents/change_form.html"
+    name = "tool"
+
     list_display = [
         "name",
         "type",
     ]
-
-    def get_form(self, request, obj=None, change=False, **kwargs):
-        class FormWithRequest(ToolForm):
-            def __init__(self, *args, **inner_kwargs):
-                inner_kwargs["request"] = request
-                super().__init__(*args, **inner_kwargs)
-
-        return FormWithRequest
-
-    def save_model(self, request, obj, form, change):
-        owner, _ = IdentityModel.objects.get_or_create(name=request.user.username)
-        schema = ToolSchema(**form.cleaned_data)
-        model = ToolModel(**schema.model_dump())
-        model.save()
-        obj.target = model
-        obj.owner = owner
-
-        super().save_model(request, obj, form, change)
 
     @admin.display(
         description="Type",
@@ -487,17 +243,6 @@ class ToolAdmin(
     )
     def type(self, obj):
         return obj.target.get_type_display()
-
-    def get_change_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
-        return {
-            "template_data": _get_template_data(request),
-            "form_info": json.dumps(
-                {
-                    "name": "tool",
-                    "tool": obj.target.pk if obj else None,
-                }
-            ),
-        }
 
 
 @admin.register(proxies.Identity)

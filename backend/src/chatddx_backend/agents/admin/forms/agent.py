@@ -27,7 +27,7 @@ class AgentForm(forms.Form):
         help_text="Create a new agent, or enter an existing name to update it. The latest save becomes the active version.",
     )
     template = forms.ModelChoiceField(
-        queryset=proxies.Connection.objects.none(),
+        queryset=proxies.Agent.objects.none(),
         required=False,
         empty_label="--- Start from scratch ---",
         widget=UnfoldAdminSelect2Widget(),

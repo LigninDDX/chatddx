@@ -4,13 +4,26 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from chatddx_backend.agents.branches import get_branch_model, get_branches_from_registry
+from chatddx_backend.agents.branches import get_branch_model, get_branch_schema
 from chatddx_backend.agents.models import IdentityModel
 from chatddx_backend.agents.schemas import (
     AgentSchema,
+    BranchSchema,
     ConnectionSchema,
     TrailRegistry,
 )
+
+
+async def get_branches_from_registry(owner: IdentityModel, registry: TrailRegistry):
+    branches: dict[str, BranchSchema] = {}
+    for _, registry_dict in registry:
+        for name, schema in registry_dict.items():
+            branches[name] = await get_branch_schema(
+                name=name,
+                owner_id=owner.pk,
+                trail_schema=schema,
+            )
+    return branches
 
 
 @pytest.fixture

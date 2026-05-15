@@ -1,43 +1,90 @@
 # src/chatddx_backend/agents/admin/schemas.py
 from __future__ import annotations
 
+import tomllib
 from typing import Annotated, Any, cast
 
-import tomli
 import tomli_w
+from ninja import Schema as NinjaSchema
 from pydantic import (
     BaseModel,
     BeforeValidator,
     Field,
     JsonValue,
-    ValidationInfo,
-    computed_field,
+    PlainSerializer,
     model_validator,
 )
 
 from chatddx_backend.agents.models import ToolModel
 from chatddx_backend.agents.schemas import (
-    AgentSpecRef,
-    ConnectionSpec,
-    OutputTypeSpec,
-    SamplingDecimal,
-    SamplingParamsSpec,
+    AgentBase,
+    ConnectionBase,
+    OutputTypeBase,
+    SamplingParamsBase,
+    ToolBase,
     ToolGroupBase,
-    ToolSpec,
 )
-from chatddx_backend.agents.trail import TrailSpec
 
 
-def check_toml_input(v: Any, info: ValidationInfo) -> dict[str, Any]:
-    toml_input = info.data.get(f"{info.field_name}_toml_input")
+def parse_toml_or_dict(v: Any) -> dict | None:
+    match v:
+        case None:
+            return None
+        case str():
+            if not v.strip():
+                return None
+            try:
+                return tomllib.loads(v)
+            except Exception as e:
+                raise ValueError(f"Invalid TOML: {e}. Got: '{v}'.")
+        case dict():
+            return v
+        case _:
+            raise ValueError(f"Unexpected input: {v}")
 
-    if toml_input:
-        try:
-            return tomli.loads(toml_input)
-        except tomli.TOMLDecodeError as e:
-            raise ValueError(f"Invalid TOML format in {info.field_name}: {e}")
 
-    return v or {}
+def parse_text_or_list(v: Any) -> list[str] | None:
+    match v:
+        case None:
+            return None
+        case str():
+            if not v.strip():
+                return None
+            return [line.strip() for line in v.splitlines() if line.strip()]
+        case list():
+            return v
+        case _:
+            raise ValueError(f"Unexpected input: {v}")
+
+
+def dict_to_toml(v: dict | None) -> str:
+    return tomli_w.dumps(v) if v is not None else ""
+
+
+def list_to_text(v: list[str] | None) -> str:
+    return "\n".join(v) if v is not None else ""
+
+
+TomlDict = Annotated[
+    dict[str, JsonValue] | None,
+    BeforeValidator(parse_toml_or_dict),
+    PlainSerializer(
+        dict_to_toml,
+        return_type=str,
+        when_used="json",
+    ),
+]
+
+
+TextList = Annotated[
+    list[str] | None,
+    BeforeValidator(parse_text_or_list),
+    PlainSerializer(
+        list_to_text,
+        return_type=str,
+        when_used="json",
+    ),
+]
 
 
 def resolve_tools(v: Any) -> list[ToolFormData]:
@@ -56,19 +103,9 @@ def resolve_tools(v: Any) -> list[ToolFormData]:
     raise ValueError(f"unexpected value {v}")
 
 
-class ToolFormData(ToolSpec):
+class BranchFormData(NinjaSchema):
+    id: int | None = None
     name: str | None = None
-    parameters_toml_input: str | None = Field(
-        default=None,
-        exclude=True,
-    )
-    parameters: Annotated[
-        dict[str, JsonValue],
-        BeforeValidator(check_toml_input),
-    ] = Field(
-        exclude=True,
-        default_factory=dict,
-    )
 
     @model_validator(mode="after")
     def add_name_from_context(self, info):
@@ -76,114 +113,34 @@ class ToolFormData(ToolSpec):
             self.name = info.context.get("name")
         return self
 
-    @computed_field
-    def parameters_toml(self) -> str:
-        return tomli_w.dumps(self.parameters)
+
+class ToolFormData(ToolBase, BranchFormData):
+    parameters: TomlDict = Field(default_factory=dict)
 
 
-class ConnectionFormData(ConnectionSpec):
-    name: str | None = None
-    profile_toml_input: str | None = Field(
-        default=None,
-        exclude=True,
-    )
-    profile: Annotated[
-        dict[str, JsonValue],
-        BeforeValidator(check_toml_input),
-    ] = Field(
-        exclude=True,
-        default_factory=dict,
-    )
-
-    @model_validator(mode="after")
-    def add_name_from_context(self, info):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
-
-    @computed_field
-    def profile_toml(self) -> str:
-        return tomli_w.dumps(self.profile)
+class ConnectionFormData(ConnectionBase, BranchFormData):
+    profile: TomlDict = Field(default_factory=dict)
 
 
-class SamplingParamsFormData(SamplingParamsSpec):
-    name: str | None = None
-
-    logit_bias_toml_input: str | None = Field(default=None, exclude=True)
-    logit_bias: Annotated[
-        dict[str, SamplingDecimal],
-        BeforeValidator(check_toml_input),
-    ] = Field(
-        exclude=True,
-        default_factory=dict,
-    )
-
-    provider_params_toml_input: str | None = Field(default=None, exclude=True)
-    provider_params: Annotated[
-        dict[str, JsonValue],
-        BeforeValidator(check_toml_input),
-    ] = Field(
-        exclude=True,
-        default_factory=dict,
-    )
-
-    @model_validator(mode="after")
-    def add_name_from_context(self, info):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
-
-    @computed_field
-    def logit_bias_toml(self) -> str:
-        return tomli_w.dumps(self.logit_bias)
-
-    @computed_field
-    def provider_params_toml(self) -> str:
-        return tomli_w.dumps(self.provider_params)
+class SamplingParamsFormData(SamplingParamsBase, BranchFormData):
+    logit_bias: TomlDict = Field(default_factory=dict)
+    provider_params: TomlDict = Field(default_factory=dict)
+    stop_sequences: TextList | None = Field(default_factory=list)
 
 
-class OutputTypeFormData(OutputTypeSpec):
-    name: str | None = None
-
-    toml_input: str | None = Field(default=None, exclude=True)
-    definition: Annotated[
-        dict[str, JsonValue],
-        BeforeValidator(check_toml_input),
-    ] = Field(
-        exclude=True,
-        default_factory=dict,
-    )
-
-    @model_validator(mode="after")
-    def add_name_from_context(self, info):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
-
-    @computed_field
-    def definition_toml(self) -> str:
-        return tomli_w.dumps(self.definition)
+class OutputTypeFormData(OutputTypeBase, BranchFormData):
+    definition: TomlDict = Field(default_factory=dict)
 
 
-class ToolGroupFormData(ToolGroupBase, TrailSpec):
-    name: str | None = None
+class ToolGroupFormData(ToolGroupBase, BranchFormData):
     tools: list[int]
 
-    @model_validator(mode="after")
-    def add_name_from_context(self, info):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
 
-
-class AgentFormData(AgentSpecRef):
-    name: str | None = None
-
-    @model_validator(mode="after")
-    def add_name_from_context(self, info):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
+class AgentFormData(AgentBase, BranchFormData):
+    connection_id: int
+    sampling_params_id: int
+    output_type_id: int
+    tool_group_id: int
 
 
 class TemplateData(BaseModel):

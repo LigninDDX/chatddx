@@ -115,7 +115,7 @@ class SamplingParamsForm(ModelForm):
         label="Stop Sequences",
         help_text="Enter sequences (one per line). The model will automatically halt generation if it encounters any of these.",
     )
-    logit_bias_toml = CharField(
+    logit_bias = CharField(
         required=False,
         widget=UnfoldAdminExpandableTextareaWidget(
             attrs={"placeholder": "100256 = -100\n1234 = 5"}
@@ -123,7 +123,7 @@ class SamplingParamsForm(ModelForm):
         label="Logit Bias (TOML)",
         help_text="Modify the likelihood of specific tokens appearing. Format as TOML mapping token IDs to bias values.",
     )
-    provider_params_toml = CharField(
+    provider_params = CharField(
         required=False,
         widget=UnfoldAdminExpandableTextareaWidget(
             attrs={"placeholder": "top_a = 0.5\nrepetition_penalty = 1.1"}
@@ -170,8 +170,8 @@ class SamplingParamsForm(ModelForm):
             Hr(),
             Row(
                 Column("stop_sequences"),
-                Column("logit_bias_toml"),
-                Column("provider_params_toml"),
+                Column("logit_bias"),
+                Column("provider_params"),
             ),
             css_class="mb-8",
         )

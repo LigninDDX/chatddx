@@ -33,13 +33,16 @@ class OutputTypeForm(ModelForm):
             kwargs["initial"] = self.get_initial(instance.target, instance.name)
 
         super().__init__(*args, **kwargs)
+        if self.data:
+            self.data = self.data.copy()
+            self.data.pop("template", None)
 
     @classmethod
     def get_initial(cls, trail_model, name=None):
         return OutputTypeFormData.model_validate(
             trail_model,
             context={"name": name},
-        ).model_dump()
+        ).model_dump(mode="json")
 
     name = CharField(
         max_length=255,
@@ -69,7 +72,7 @@ class OutputTypeForm(ModelForm):
         label="Enforcement Strategy",
         help_text="How the model is forced to follow the schema (e.g., via System Prompts, Native JSON decoding, or Tool/Function Calling).",
     )
-    definition_toml = CharField(
+    definition = CharField(
         required=False,
         widget=UnfoldAdminExpandableTextareaWidget(
             attrs={
@@ -105,7 +108,7 @@ class OutputTypeForm(ModelForm):
                     css_class="w-1/2",
                 ),
                 Column(
-                    Row("definition_toml"),
+                    Row("definition"),
                     css_class="w-1/2",
                 ),
             ),

@@ -16,6 +16,32 @@ from chatddx_backend.agents.admin.forms import (
 )
 from chatddx_backend.agents.models.history import AgentBranchModel
 
+OPTIONAL_FIELDS = {
+    "connection_name",
+    "sampling_params_name",
+    "output_type_name",
+    "tool_group_name",
+}
+
+SUB_FORMS: list[
+    tuple[
+        str,
+        type[
+            AgentForm
+            | ConnectionForm
+            | SamplingParamsForm
+            | OutputTypeForm
+            | ToolGroupForm
+        ],
+    ]
+] = [
+    ("agent_", AgentForm),
+    ("connection_", ConnectionForm),
+    ("sampling_params_", SamplingParamsForm),
+    ("output_type_", OutputTypeForm),
+    ("tool_group_", ToolGroupForm),
+]
+
 
 def apply_prefix_to_layout(layout_node: LayoutObject, prefix: str):
     for i, item in enumerate(layout_node.fields):
@@ -39,6 +65,18 @@ class AgentPlusForm(forms.ModelForm):
             kwargs["initial"] = self.get_initial(instance)
 
         super().__init__(*args, **kwargs)
+
+        for prefix, cls in SUB_FORMS:
+            sub_form_instance = cls()
+
+            for _name, _field in sub_form_instance.fields.items():
+                name = f"{prefix}{_name}"
+                field = deepcopy(_field)
+
+                if name in OPTIONAL_FIELDS:
+                    field.required = False
+
+                self.fields[name] = field
 
     @classmethod
     def get_initial(cls, agent_model: AgentBranchModel):
@@ -80,27 +118,9 @@ class AgentPlusForm(forms.ModelForm):
 
         helper.layout = Layout()
         helper.form_tag = False
+        helper.include_media = False
 
-        sub_form_map: list[
-            tuple[
-                str,
-                type[
-                    AgentForm
-                    | ConnectionForm
-                    | SamplingParamsForm
-                    | OutputTypeForm
-                    | ToolGroupForm
-                ],
-            ]
-        ] = [
-            ("agent_", AgentForm),
-            ("connection_", ConnectionForm),
-            ("sampling_params_", SamplingParamsForm),
-            ("output_type_", OutputTypeForm),
-            ("tool_group_", ToolGroupForm),
-        ]
-
-        for prefix, cls in sub_form_map:
+        for prefix, cls in SUB_FORMS:
             sub_form_instance = cls()
 
             helper.layout.append(
@@ -109,8 +129,5 @@ class AgentPlusForm(forms.ModelForm):
                     prefix,
                 )
             )
-
-            for name, field in sub_form_instance.fields.items():
-                self.fields[f"{prefix}{name}"] = field
 
         return helper

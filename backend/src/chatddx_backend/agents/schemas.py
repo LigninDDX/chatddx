@@ -1,6 +1,8 @@
 # src/chatddx_backend/agents/schemas.py
 from __future__ import annotations
 
+import json
+import tomllib
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import (
@@ -12,7 +14,6 @@ from typing import (
 from uuid import UUID
 
 import jsonschema
-import tomli
 import tomli_w
 from ninja import Schema as NinjaSchema
 from pydantic import (
@@ -60,7 +61,7 @@ def _validate_json_schema(v: Any) -> Any:
             jsonschema.Draft7Validator.check_schema(v)
         except jsonschema.SchemaError as e:
             raise ValueError(f"Invalid JSON Schema: {e.message}")
-        check_v = tomli.loads(tomli_w.dumps(v))
+        check_v = tomllib.loads(tomli_w.dumps(v))
         assert check_v == v
     return v
 
@@ -143,14 +144,15 @@ class ConnectionBase(BaseModel):
     provider: ProviderChoices
     model: str
     endpoint: HttpUrl
+    profile: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class ConnectionSchema(ConnectionBase, TrailSchema, RegistryRecord):
-    profile: dict[str, JsonValue] = Field(default_factory=dict)
+    pass
 
 
 class ConnectionSpec(ConnectionBase, TrailSpec):
-    profile: dict[str, JsonValue] = Field(default_factory=dict)
+    pass
 
 
 class SamplingParamsBase(BaseModel):
@@ -218,6 +220,10 @@ class ToolGroupSchema(ToolGroupBase, TrailSchema, RegistryRecord):
     tools: list[ToolSchema]
 
 
+class ToolGroupSchemaRef(ToolGroupBase, TrailSchema, RegistryRecord):
+    tools: list[int]
+
+
 class ToolGroupSpec(ToolGroupBase, TrailSpec):
     tools: list[ToolSpec]
 
@@ -244,7 +250,7 @@ class AgentSchema(AgentBase, TrailSchema, RegistryRecord):
     )
 
 
-class AgentSchemaRef(AgentBase, TrailSchema):
+class AgentSchemaRef(AgentBase, TrailSchema, RegistryRecord):
     connection_id: int
     sampling_params_id: int
     output_type_id: int
@@ -256,10 +262,3 @@ class AgentSpec(AgentBase, TrailSpec):
     sampling_params: SamplingParamsSpec
     output_type: OutputTypeSpec
     tool_group: ToolGroupSpec
-
-
-class AgentSpecRef(AgentBase, TrailSpec):
-    connection_id: int
-    sampling_params_id: int
-    output_type_id: int
-    tool_group_id: int

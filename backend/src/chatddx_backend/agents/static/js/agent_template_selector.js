@@ -10,7 +10,10 @@
       const $template_selector = $(template_selector_id);
 
       const populateField = (key, value) => {
-        key = key.replace(/_id$/, '_template');
+        if (key.endsWith('_id')) {
+          key = key.replace(/_id$/, '_template');
+          value = String(value);
+        }
         const field_id = (is_agent_plus && !key.endsWith('_template') ?
           `#id_${model}_${key}` : '#id_' + key
         );
@@ -44,13 +47,10 @@
         const selected_id = $(this).val();
 
         if (selected_id === clear_id) {
-          const firstKey = Object.keys(data)[0];
-          if (!firstKey) {
-            console.warn("no firstKey");
-            return;
-          }
+          const fields = Object.keys(data)[0]; // boldly expect at least one row exists
+          if (!fields) return;
 
-          $.each(data[firstKey], function(key) {
+          $.each(data[fields], function(key) {
             populateField(key, '');
           });
           return;
@@ -64,20 +64,22 @@
           console.warn(`no data for selected_id '${selected_id}'`);
           return;
         }
+
         $.each(data[selected_id], function(key, value) {
           populateField(key, value);
         });
-
       });
+
       const preselected_id = form_info[model];
 
       if (!preselected_id) {
         console.warn(`no preselected_id for model ${model}`);
       } else {
-        $template_selector.val(preselected_id).trigger('change');
+        $template_selector.val(preselected_id);
       }
 
     };
+
     if (form_info.name === "agent_plus") {
       $.each(template_data, function(model, data) {
         populateOptions(model, data);
@@ -85,6 +87,5 @@
     } else {
       populateOptions(form_info.name, template_data[form_info.name]);
     }
-
   });
 })(django.jQuery);

@@ -24,10 +24,9 @@ from chatddx_backend.agents.models import ToolChoices
 class ToolForm(ModelForm):
     class Meta:
         model = proxies.Tool
-        fields = []
+        fields = ["name"]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        self.request = kwargs.pop("request", None)
         instance = kwargs.get("instance")
 
         if instance:
@@ -37,14 +36,14 @@ class ToolForm(ModelForm):
 
         if self.data:
             self.data = self.data.copy()
-            del self.data["template"]
+            self.data.pop("template", None)
 
     @classmethod
     def get_initial(cls, trail_model, name=None):
         return ToolFormData.model_validate(
             trail_model,
             context={"name": name},
-        ).model_dump()
+        ).model_dump(mode="json")
 
     def clean(self):
         cleaned_data = super().clean()
@@ -52,7 +51,6 @@ class ToolForm(ModelForm):
 
     name = CharField(
         max_length=255,
-        required=False,
         widget=UnfoldAdminTextInputWidget(),
         label="Tool Name",
         help_text="Create a new tool, or enter an existing name to update it. The latest save becomes the active version.",
@@ -77,7 +75,7 @@ class ToolForm(ModelForm):
         label="Tool Type",
         help_text="The service hosting the selected model.",
     )
-    parameters_toml = CharField(
+    parameters = CharField(
         required=False,
         widget=UnfoldAdminExpandableTextareaWidget(),
         label="Parameter Definition (TOML)",
@@ -109,7 +107,7 @@ class ToolForm(ModelForm):
                     css_class="w-1/2",
                 ),
                 Column(
-                    "parameters_toml",
+                    "parameters",
                     css_class="w-1/2",
                 ),
             ),

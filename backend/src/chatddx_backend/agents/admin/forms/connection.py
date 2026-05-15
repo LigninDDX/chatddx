@@ -79,7 +79,7 @@ class ConnectionForm(forms.ModelForm):
         label="API Key",
         help_text="Stored securely under your personal user account. It is <strong>not</strong> saved in the shared version history.",
     )
-    profile_toml = forms.CharField(
+    profile = forms.CharField(
         widget=UnfoldAdminExpandableTextareaWidget(),
         required=False,
         label="Provider Parameters (TOML)",
@@ -113,7 +113,7 @@ class ConnectionForm(forms.ModelForm):
                 ),
                 Column(
                     Row("provider"),
-                    Row("profile_toml"),
+                    Row("profile"),
                     css_class="w-1/2",
                 ),
             ),

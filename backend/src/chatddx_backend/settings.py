@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     "chatddx_backend.api.apps.ApiConfig",
     "chatddx_backend.cms.apps.CmsConfig",
     "modeltranslation",
-    "login_history",
     "django_celery_results",
     "unfold.contrib.filters",
     "unfold.contrib.forms",

@@ -1,19 +1,24 @@
-{% extends "admin/change_form.html" %}
+{% extends "admin/change_form.html" %} {# Note: Extend Unfold's version if using Unfold #}
+
 {% block content %}
-  <div class="submit-row" style="display: flex; justify-content: space-between; gap: 0.5rem;">
+  <div class="version-pager" style="display: flex; justify-content: space-between; margin-bottom: 1rem; gap: 1rem;">
+
     {% if prev_.pk %}
-    <a href="../../{{ prev_.pk }}/change/" class="button" style="flex: 1; text-align: left;">← {{prev_.text}}</a>
+      <a href="../../{{ prev_.pk }}/change/" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md border text-sm font-medium transition-colors">
+        ← {{ prev_.text }}
+      </a>
     {% else %}
-      {# Optional: Empty div to maintain spacing if Previous is missing #}
-      <div style="flex: 1;"></div> 
+      <span></span> {# Spacer #}
     {% endif %}
 
     {% if next_.pk %}
-    <a href="../../{{ next_.pk }}/change/" class="button" style="flex: 1; text-align: right;">{{next_.text}} →</a>
+      <a href="../../{{ next_.pk }}/change/" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md border text-sm font-medium transition-colors">
+        {{ next_.text }} →
+      </a>
     {% else %}
-      {# Optional: Empty div to maintain spacing if Next is missing #}
-      <div style="flex: 1;"></div>
+      <span></span> {# Spacer #}
     {% endif %}
   </div>
+
   {{ block.super }}
 {% endblock %}
