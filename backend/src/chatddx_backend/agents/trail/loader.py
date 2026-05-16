@@ -47,20 +47,22 @@ async def pk_from_schema(
 
     for field_name, field_value in schema:
         field = Model._meta.get_field(field_name)
-        related_model = getattr(field, "related_model", None)
+        associated_model = (
+            getattr(field, "associated_model", None) or field.related_model
+        )
 
         match one_or_list_of(TrailSchema, field_value):
-            case OneOf(value) if related_model:
+            case OneOf(value) if associated_model:
                 new_values[field_name + "_id"] = await pk_from_schema(
-                    related_model,
+                    associated_model,
                     value,
                 )
 
-            case ListOf(values) if related_model:
+            case ListOf(values) if associated_model:
                 new_values[field_name] = await asyncio.gather(
                     *[
                         pk_from_schema(
-                            related_model,
+                            associated_model,
                             value,
                         )
                         for value in values
@@ -72,7 +74,7 @@ async def pk_from_schema(
 
             case _:
                 raise ValueError(
-                    f"'{field_value}' is a relation but lacks related_model"
+                    f"'{field_value}' is a relation but lacks associated model"
                 )
 
     model, _ = await Model.objects.aget_or_create(

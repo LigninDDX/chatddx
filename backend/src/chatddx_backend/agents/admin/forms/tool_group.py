@@ -1,6 +1,7 @@
 # src/chatddx_backend/agents/admin/forms/tool_group.py
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
+from django.db.models import F
 from django.forms import (
     CharField,
     ModelChoiceField,
@@ -10,6 +11,7 @@ from unfold.layout import Hr
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
+    UnfoldAdminSelectMultipleWidget,
     UnfoldAdminTextInputWidget,
 )
 
@@ -31,7 +33,7 @@ class ToolGroupForm(BaseForm):
 
         self.fields["tools"].queryset = ToolModel.objects.filter(
             branches__owner__name=request.user.username
-        ).distinct()
+        ).annotate(branch_name=F("branches__name"))
 
     name = CharField(
         max_length=255,
@@ -51,7 +53,7 @@ class ToolGroupForm(BaseForm):
     )
     tools = ModelMultipleChoiceField(
         queryset=ToolModel.objects.none(),
-        # widget=UnfoldAdminSelect2Widget(attrs={"multiple": "multiple"}),
+        widget=UnfoldAdminSelectMultipleWidget(),
         required=False,
         label="Available Tools",
         help_text="Select the specific functions, APIs, or integrations this agent is permitted to execute.",
@@ -87,11 +89,11 @@ class ToolGroupForm(BaseForm):
             Hr(),
             Row(
                 Column(
-                    "tools",
+                    "instructions",
                     css_class="w-1/2",
                 ),
                 Column(
-                    "instructions",
+                    "tools",
                     css_class="w-1/2",
                 ),
             ),

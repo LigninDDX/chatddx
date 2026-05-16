@@ -1,8 +1,37 @@
 from dataclasses import dataclass, field
+from typing import Any
 
-from crispy_forms.layout import LayoutObject
 from django.db.models import Model as DjangoModel
 from django.db.models import QuerySet
+
+
+def flatten_dict(d: dict[str, Any]):
+    return {
+        f"{outer}{inner}": value
+        for outer, inner_dict in d.items()
+        for inner, value in inner_dict.items()
+    }
+
+
+def unflatten_dict(
+    d: dict[str, Any],
+    outer_keys: list[str],
+) -> dict[str, dict[str, Any]]:
+
+    result = {}
+
+    for flat_key, value in d.items():
+        for outer in outer_keys:
+            if flat_key.startswith(outer):
+                inner = flat_key[len(outer) :].strip("_")
+
+                if outer not in result:
+                    result[outer] = {}
+
+                result[outer][inner] = value
+                break
+
+    return result
 
 
 @dataclass

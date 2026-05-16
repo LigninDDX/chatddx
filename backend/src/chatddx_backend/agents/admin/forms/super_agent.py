@@ -5,8 +5,12 @@ from typing import Any
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, LayoutObject
 from django import forms
+from django.http import HttpRequest
+from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.base import get_branch_model
 from chatddx_backend.agents.admin.forms import (
     AgentForm,
     ConnectionForm,
@@ -14,7 +18,9 @@ from chatddx_backend.agents.admin.forms import (
     SamplingParamsForm,
     ToolGroupForm,
 )
+from chatddx_backend.agents.admin.utils import flatten_dict, unflatten_dict
 from chatddx_backend.agents.models.history import AgentBranchModel
+from chatddx_backend.agents.models.loader import agent_relations
 
 OPTIONAL_FIELDS = {
     "connection_name",
@@ -58,9 +64,55 @@ class SuperAgentForm(forms.ModelForm):
         model = proxies.Agent
         fields = []
 
+    form_data: BaseModel
+    model_name: str
+    request: HttpRequest
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        data = unflatten_dict(cleaned_data, agent_relations + ["agent"])
+        agent_data = data.pop("agent")
+        owner_name = self.request.user.username
+
+        for relation_name, relation_data in data.items():
+            try:
+                relation_obj = get_branch_model(
+                    relation_name, owner_name, relation_data
+                )
+            except PydanticValidationError as e:
+                for error in e.errors():
+                    self.add_error(
+                        f"{relation_name}_{error['loc'][0]}",
+                        error["msg"],
+                    )
+                return
+
+            if not relation_obj.pk and relation_obj.name:
+                relation_obj.save()
+
+            agent_data[relation_name + "_id"] = relation_obj.target.pk
+
+        try:
+            self.actual_obj = get_branch_model(
+                "agent",
+                self.request.user.username,
+                agent_data,
+            )
+        except PydanticValidationError as e:
+            for error in e.errors():
+                self.add_error(
+                    f"agent_{error['loc'][0]}",
+                    error["msg"],
+                )
+            return
+
+        return agent_data
+
     def __init__(self, *args: Any, **kwargs: Any):
         instance = kwargs.get("instance")
-        request = kwargs.pop("request")
+        self.request = kwargs.pop("request")
+        self.model_name = kwargs.pop("model_name")
         self.sub_forms = {}
 
         if instance:
@@ -68,14 +120,24 @@ class SuperAgentForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
+        if self.data:
+            self.data = self.data.copy()
+            self.data.pop("agent_template", None)
+            for field_name in agent_relations:
+                self.data.pop(f"{field_name}_template", None)
+
+        ignore_fields = [f"agent_{relation}_id" for relation in agent_relations]
+
         for prefix, cls in SUB_FORMS:
             self.sub_forms[prefix] = cls(
                 is_subform=True,
-                request=request,
+                request=self.request,
             )
 
             for _name, _field in self.sub_forms[prefix].fields.items():
                 name = f"{prefix}{_name}"
+                if name in ignore_fields:
+                    continue
                 field = deepcopy(_field)
 
                 if name in OPTIONAL_FIELDS:
@@ -107,13 +169,6 @@ class SuperAgentForm(forms.ModelForm):
                 agent_model.tool_group_name,
             ),
         }
-
-        def flatten_dict(d: dict[str, Any]):
-            return {
-                f"{outer}{inner}": value
-                for outer, inner_dict in d.items()
-                for inner, value in inner_dict.items()
-            }
 
         return flatten_dict(agent_dict)
 

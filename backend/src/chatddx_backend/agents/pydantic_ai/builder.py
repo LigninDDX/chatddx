@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/pydantic_ai.py
+# src/chatddx_backend/agents/pydantic_ai/builder.py
 from decimal import Decimal
 from typing import Any, get_args
 

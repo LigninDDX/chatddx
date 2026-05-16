@@ -44,7 +44,7 @@ def parse_toml_or_dict(v: Any) -> dict | None:
             try:
                 return tomllib.loads(v)
             except Exception as e:
-                raise ValueError(f"Invalid TOML: {e}. Got: '{v}'.")
+                raise ValueError(e)
         case dict():
             return v
         case _:
@@ -66,7 +66,7 @@ def parse_text_or_list(v: Any) -> list[str] | None:
 
 
 def dict_to_toml(v: dict | None) -> str:
-    return tomli_w.dumps(v) if v is not None else ""
+    return tomli_w.dumps(v).strip() if v is not None else ""
 
 
 def list_to_text(v: list[str] | None) -> str:

@@ -63,14 +63,14 @@ def _get_branch_link(obj, field_name):
 class AgentAdmin(BranchModelAdmin[proxies.Agent]):
     form = AgentForm
     name = "agent"
+    list_display = BranchModelAdmin.list_display + []
 
 
 @admin.register(proxies.SuperAgent)
 class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     form = SuperAgentForm
-    name = "super_agent"
-    list_display = [
-        "__str__",
+    name = "agent"
+    list_display = BranchModelAdmin.list_display + [
         "instructions",
         "connection",
         "output_type",
@@ -98,19 +98,18 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     def tool_group(self, obj):
         return _get_branch_link(obj, "tool_group")
 
-    def get_change_form_context(
+    def get_form_context(
         self,
         request: HttpRequest,
         obj: Any,
     ) -> dict[str, Any]:
-        form_info = (
-            {
-                "name": "super_agent",
-                "agent": obj.target.pk if obj else None,
-            }
-            | {model: getattr(obj.target, model).pk for model in agent_relations}
+        form_info = {
+            "name": "super_agent",
+            "agent": obj.target.pk if obj else None,
+        } | (
+            {model: getattr(obj.target, model).pk for model in agent_relations}
             if obj
-            else None
+            else {}
         )
 
         return {
@@ -128,7 +127,7 @@ class ConnectionAdmin(BranchModelAdmin[proxies.Connection]):
     form = ConnectionForm
     name = "connection"
 
-    list_display = [
+    list_display = BranchModelAdmin.list_display + [
         "name",
         "_model",
         "provider",
@@ -153,7 +152,7 @@ class SamplingParamsAdmin(BranchModelAdmin[proxies.SamplingParams]):
     form = SamplingParamsForm
     name = "sampling_params"
 
-    list_display = [
+    list_display = BranchModelAdmin.list_display + [
         "name",
         "seed",
         "temperature",
@@ -178,7 +177,7 @@ class OutputTypeAdmin(BranchModelAdmin[proxies.OutputType]):
     form = OutputTypeForm
     name = "output_type"
 
-    list_display = [
+    list_display = BranchModelAdmin.list_display + [
         "name",
         "_type",
         "validation_strategy",
@@ -211,16 +210,7 @@ class OutputTypeAdmin(BranchModelAdmin[proxies.OutputType]):
 class ToolGroupAdmin(BranchModelAdmin[proxies.ToolGroup]):
     form = ToolGroupForm
     name = "tool_group"
-    list_display = [
-        "name",
-    ]
-
-    @admin.display(
-        description="Coercion Strategy",
-        ordering="target__coercion_strategy",
-    )
-    def coercion_strategy(self, obj):
-        return obj.target.get_coercion_strategy_display()
+    list_display = BranchModelAdmin.list_display + []
 
 
 @admin.register(proxies.Tool)
@@ -228,8 +218,7 @@ class ToolAdmin(BranchModelAdmin[proxies.Tool]):
     form = ToolForm
     name = "tool"
 
-    list_display = [
-        "name",
+    list_display = BranchModelAdmin.list_display + [
         "type",
     ]
 

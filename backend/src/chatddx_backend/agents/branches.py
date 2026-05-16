@@ -1,12 +1,8 @@
 from typing import TypeVar
 
 from chatddx_backend.agents import trail_map
-from chatddx_backend.agents.models import IdentityModel
 from chatddx_backend.agents.models.history import BranchModel
-from chatddx_backend.agents.schemas import (
-    BranchSchema,
-    TrailRegistry,
-)
+from chatddx_backend.agents.schemas import BranchSchema
 from chatddx_backend.agents.trail import TrailModel, TrailSchema, pk_from_schema
 
 TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
@@ -45,7 +41,6 @@ async def model_from_schema(
     schema: BranchSchema[TrailSchemaT],
 ) -> BranchModel:
     trail_model_class = trail_map.resolve(schema.target_type, TrailModel)
-    # branches: reverse FK added by concrete BranchModel subclass
     branch_model_class = trail_model_class.branches.rel.related_model  # type: ignore[attr-defined]
     instance, _ = await branch_model_class.objects.aget_or_create(
         owner_id=schema.owner_id,

@@ -184,7 +184,7 @@ class ToolGroupModel(TrailModel):
     instructions = TextField()
     tools = RelatedArrayField(  # type: ignore
         IntegerField(),
-        related_model=ToolModel,
+        associated_model=ToolModel,
         default=list,
     )
 

@@ -48,8 +48,8 @@ async def resolve_related_array_fields(model: TrailModel):
             setattr(model, field.name, [])
             return
 
-        assert field.related_model
-        queryset = field.related_model.objects.filter(pk__in=value)
+        assert field.associated_model
+        queryset = field.associated_model.objects.filter(pk__in=value)
         resolved_value = [obj async for obj in queryset]
 
         await asyncio.gather(
@@ -64,9 +64,9 @@ async def resolve_related_array_fields(model: TrailModel):
             tasks.append(fetch_and_set_array(field, value))
 
         elif isinstance(field, (ForeignKey, OneToOneField)):
-            related_model = getattr(model, field.name, None)
-            if related_model is not None:
-                tasks.append(resolve_related_array_fields(related_model))
+            associated_model = getattr(model, field.name, None)
+            if associated_model is not None:
+                tasks.append(resolve_related_array_fields(associated_model))
 
     if tasks:
         await asyncio.gather(*tasks)
@@ -83,7 +83,7 @@ def resolve_related_array_fields_sync(model: TrailModel):
                 setattr(model, field.name, [])
                 continue
 
-            queryset = field.related_model.objects.filter(pk__in=value)
+            queryset = field.associated_model.objects.filter(pk__in=value)
             resolved_value = list(queryset)
 
             for obj in resolved_value:
@@ -92,9 +92,9 @@ def resolve_related_array_fields_sync(model: TrailModel):
             setattr(model, field.name, resolved_value)
 
         elif isinstance(field, (ForeignKey, OneToOneField)):
-            related_model = getattr(model, field.name, None)
-            if related_model is not None:
-                resolve_related_array_fields_sync(related_model)
+            associated_model = getattr(model, field.name, None)
+            if associated_model is not None:
+                resolve_related_array_fields_sync(associated_model)
 
     return model
 
@@ -103,13 +103,13 @@ class RelatedArrayField(TypedArrayField):
     def __init__(
         self,
         *args: Any,
-        related_model: type[TrailModel],
+        associated_model: type[TrailModel],
         **kwargs: Any,
     ) -> None:
-        self.related_model: type[TrailModel] = related_model
+        self.associated_model: type[TrailModel] = associated_model
         super().__init__(*args, **kwargs)
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()
-        kwargs["related_model"] = self.related_model
+        kwargs["associated_model"] = self.associated_model
         return name, path, args, kwargs

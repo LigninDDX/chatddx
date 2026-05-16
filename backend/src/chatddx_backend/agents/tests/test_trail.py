@@ -63,7 +63,8 @@ async def test_identity_boundary(
 
     field = Model._meta.get_field(field_name)
 
-    db_type = field.related_model if field.related_model else field.__class__
+    associated_model = getattr(field, "associated_model", None)
+    db_type = field.related_model or associated_model or field.__class__
     api_type = Schema.model_fields[field_name].annotation
     test_key = (db_type, api_type)
 

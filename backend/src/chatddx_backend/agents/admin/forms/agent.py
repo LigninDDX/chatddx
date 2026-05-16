@@ -2,7 +2,7 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django import forms
-from django.db.models import F, Q
+from django.db.models import F, OuterRef, Q, Subquery
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
@@ -19,6 +19,7 @@ from chatddx_backend.agents.models import (
     SamplingParamsModel,
     ToolGroupModel,
 )
+from chatddx_backend.agents.models.loader import agent_relations
 
 
 class AgentForm(BaseForm):
@@ -37,19 +38,18 @@ class AgentForm(BaseForm):
         request = kwargs["request"]
         super().__init__(*args, **kwargs)
 
-        for field_name in [
-            "connection",
-            "sampling_params",
-            "output_type",
-            "tool_group",
-        ]:
+        for field_name in agent_relations:
             TrailModel = branch_map[field_name][2]
+            branch_subquery = TrailModel.objects.filter(pk=OuterRef("pk")).values(
+                "branches__name"
+            )[:1]
+
             self.fields[field_name + "_id"].queryset = (
                 TrailModel.objects.filter(
                     Q(agentmodel__branches__owner__name=request.user.username)
                     | Q(branches__owner__name=request.user.username)
                 )
-                .annotate(branch_name=F("branches__name"))
+                .annotate(branch_name=Subquery(branch_subquery))
                 .distinct()
             )
 
@@ -136,8 +136,10 @@ class AgentForm(BaseForm):
             ),
             css_class="mb-8",
         )
+
         if self.is_subform:
             pass
+
         helper.layout = Layout(main_section, relations_section)
 
         return helper

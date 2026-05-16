@@ -1,3 +1,4 @@
+# src/chatddx_backend/agents/tests/test_admin_timeline.py
 from collections import defaultdict
 from pathlib import Path
 
@@ -7,9 +8,13 @@ from django.urls import reverse
 
 from chatddx_backend.agents.admin import proxies
 from chatddx_backend.agents.admin.base import qs_super_agent
-from chatddx_backend.agents.admin.schemas import TemplateData
+from chatddx_backend.agents.admin.schemas import (
+    TemplateData,
+    dict_to_toml,
+    parse_toml_or_dict,
+)
 from chatddx_backend.agents.models import AgentModel, ConnectionModel, IdentityModel
-from chatddx_backend.agents.models.history import AgentBranchModel
+from chatddx_backend.agents.models.history import AgentBranchModel, ToolBranchModel
 from chatddx_backend.agents.models.loader import create_form_data
 from chatddx_backend.agents.schemas import TrailRegistry
 
@@ -76,6 +81,190 @@ def template_data(owner: IdentityModel, registry: TrailRegistry):
             form_data[kind][str(branch_id)] = data
 
     return TemplateData(**form_data)
+
+
+@pytest.mark.django_db
+def test_super_agent(template_data, owner, admin_client):
+
+    post_data_nested = {
+        "agent_": template_data.agent["some-agent"].model_dump(
+            mode="json", exclude_none=True
+        ),
+        "connection_": template_data.connection["some-connection"].model_dump(
+            mode="json", exclude_none=True
+        ),
+        "sampling_params_": template_data.sampling_params[
+            "some-sampling_params"
+        ].model_dump(mode="json", exclude_none=True),
+        "tool_group_": template_data.tool_group["some-tool_group"].model_dump(
+            mode="json", exclude_none=True
+        ),
+        "output_type_": template_data.output_type["some-output_type"].model_dump(
+            mode="json", exclude_none=True
+        ),
+    }
+    post_data = {
+        f"{outer}{inner}": value
+        for outer, inner_dict in post_data_nested.items()
+        for inner, value in inner_dict.items()
+    }
+
+    existing = AgentBranchModel.objects.filter(
+        owner__name=owner.name,
+        name="some-agent",
+    )
+
+    assert existing.count() == 1
+
+    response = admin_client.post(
+        reverse("admin:agents_superagent_add"),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    existing = AgentBranchModel.objects.filter(
+        owner__name=owner.name,
+        name="some-agent",
+    )
+
+    assert existing.count() == 1
+
+    response = admin_client.post(
+        reverse("admin:agents_superagent_change", args=[existing.first().pk]),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    existing = AgentBranchModel.objects.filter(
+        owner__name=owner.name,
+        name="some-agent",
+    )
+
+    assert existing.count() == 1
+
+    assert existing.first().target.output_type.definition["type"] == "object"
+
+    output_type_def = parse_toml_or_dict(post_data["output_type_definition"])
+
+    assert output_type_def is not None
+    assert output_type_def["type"] == "object"
+    assert output_type_def["properties"]["age"]["minimum"] == 0
+
+    post_data["output_type_definition"] = dict_to_toml(output_type_def)
+
+    response = admin_client.post(
+        reverse("admin:agents_superagent_change", args=[existing.first().pk]),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    existing = AgentBranchModel.objects.filter(
+        owner__name=owner.name,
+        name="some-agent",
+    )
+
+    assert existing.count() == 1
+
+    output_type_def["properties"]["age"]["minimum"] = 1
+    post_data["output_type_definition"] = dict_to_toml(output_type_def)
+
+    response = admin_client.post(
+        reverse("admin:agents_superagent_change", args=[existing.first().pk]),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    existing = AgentBranchModel.objects.filter(
+        owner__name=owner.name,
+        name="some-agent",
+    )
+
+    assert existing.count() == 2
+
+    post_data["output_type_definition"] = "asdf"
+    response = admin_client.post(
+        reverse("admin:agents_superagent_change", args=[existing.first().pk]),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert (
+            "Expected '='"
+            in response.context["adminform"].form.errors["output_type_definition"][0]
+        )
+
+
+@pytest.mark.django_db
+def test_append(template_data, owner, admin_client):
+    data = template_data.tool
+    some_key = "some-tool"
+
+    post_data = data[some_key].model_dump(mode="json", exclude_none=True)
+
+    assert isinstance(post_data["command"], str)
+    assert post_data["command"] == "some-tool"
+    assert post_data["id"] is not None
+
+    existing = ToolBranchModel.objects.filter(
+        owner__name=owner.name,
+        name=some_key,
+    )
+
+    assert existing.count() == 1
+
+    post_data["command"] = "some-command"
+
+    response = admin_client.post(
+        reverse("admin:agents_tool_change", args=[existing.first().pk]),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    (message,) = [str(m) for m in response.context["messages"]]
+    assert "changed successfully" in message
+
+    versions = ToolBranchModel.objects.filter(
+        owner__name=owner.name,
+        name=some_key,
+    ).count()
+
+    assert versions == 2
+
+    response = admin_client.post(
+        reverse("admin:agents_tool_delete", args=[existing.first().pk]),
+        data={"post": "yes"},
+        follow=True,
+    )
+
+    existing = ToolBranchModel.objects.filter(
+        owner__name=owner.name,
+        name=some_key,
+    )
+
+    assert existing.count() == 1
+
+    response = admin_client.post(
+        reverse("admin:agents_tool_delete", args=[existing.first().pk]),
+        data={"post": "yes"},
+        follow=True,
+    )
+    assert existing.count() == 0
 
 
 @pytest.mark.django_db
@@ -177,7 +366,6 @@ def test_sampling_params(template_data):
 @pytest.mark.django_db
 def test_output_type(template_data, admin_client):
     data = template_data.output_type
-    add_url = reverse("admin:agents_outputtype_add")
     some_key, *rest = data.keys()
 
     post_data = data[some_key].model_dump(mode="json", exclude_none=True)
@@ -186,7 +374,7 @@ def test_output_type(template_data, admin_client):
     post_data["definition"] = "asdf=1"
 
     response = admin_client.post(
-        add_url,
+        reverse("admin:agents_outputtype_add"),
         data=post_data,
         follow=True,
     )
@@ -230,7 +418,6 @@ def test_agent_qs(template_data, owner):
 @pytest.mark.django_db
 def test_agent(template_data, admin_client):
     data = template_data.agent
-    add_url = reverse("admin:agents_agent_add")
     some_key = "some-agent"
 
     post_data = data[some_key].model_dump(mode="json", exclude_none=True)
@@ -246,7 +433,7 @@ def test_agent(template_data, admin_client):
     )
 
     response = admin_client.post(
-        add_url,
+        reverse("admin:agents_agent_add"),
         data=post_data,
         follow=True,
     )
