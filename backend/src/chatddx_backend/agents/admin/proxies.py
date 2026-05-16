@@ -40,6 +40,13 @@ class TrailProxy:
         return self.name
 
 
+class SuperAgent(TrailProxy, AgentBranchModel):
+    class Meta:
+        proxy = True
+        verbose_name = "Super Agent"
+        verbose_name_plural = "Super Agents"
+
+
 class Agent(TrailProxy, AgentBranchModel):
     class Meta:
         proxy = True

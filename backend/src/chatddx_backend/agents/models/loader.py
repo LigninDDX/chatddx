@@ -70,6 +70,8 @@ model_map = {
     ),
 }
 
+agent_relations = ["connection", "sampling_params", "output_type", "tool_group"]
+
 
 def _ref_tool_group(schema):
     tool_ids = [create_trail(tool).pk for tool in schema.tools]
@@ -77,9 +79,10 @@ def _ref_tool_group(schema):
 
 
 def _ref_agent(schema):
-    refs = ["connection", "sampling_params", "output_type", "tool_group"]
-    ref_ids = {ref + "_id": create_trail(getattr(schema, ref)).pk for ref in refs}
-    return AgentSchemaRef(**schema.model_dump(exclude=set(refs)) | ref_ids)
+    ref_ids = {
+        ref + "_id": create_trail(getattr(schema, ref)).pk for ref in agent_relations
+    }
+    return AgentSchemaRef(**schema.model_dump(exclude=set(agent_relations)) | ref_ids)
 
 
 def create_trail(schema):

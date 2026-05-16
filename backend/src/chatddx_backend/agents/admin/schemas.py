@@ -5,6 +5,7 @@ import tomllib
 from typing import Annotated, Any, cast
 
 import tomli_w
+from django.db.models import Model as DjangoModel
 from ninja import Schema as NinjaSchema
 from pydantic import (
     BaseModel,
@@ -12,6 +13,7 @@ from pydantic import (
     Field,
     JsonValue,
     PlainSerializer,
+    field_validator,
     model_validator,
 )
 
@@ -24,6 +26,12 @@ from chatddx_backend.agents.schemas import (
     ToolBase,
     ToolGroupBase,
 )
+
+
+def extract_django_pk(value):
+    if isinstance(value, DjangoModel):
+        return value.pk
+    return value
 
 
 def parse_toml_or_dict(v: Any) -> dict | None:
@@ -135,12 +143,31 @@ class OutputTypeFormData(OutputTypeBase, BranchFormData):
 class ToolGroupFormData(ToolGroupBase, BranchFormData):
     tools: list[int]
 
+    @field_validator(
+        "tools",
+        mode="before",
+    )
+    @classmethod
+    def extract_django_pks(cls, values):
+        return [extract_django_pk(value) for value in values]
+
 
 class AgentFormData(AgentBase, BranchFormData):
     connection_id: int
     sampling_params_id: int
     output_type_id: int
     tool_group_id: int
+
+    @field_validator(
+        "connection_id",
+        "sampling_params_id",
+        "output_type_id",
+        "tool_group_id",
+        mode="before",
+    )
+    @classmethod
+    def extract_django_pk(cls, value):
+        return extract_django_pk(value)
 
 
 class TemplateData(BaseModel):

@@ -4,8 +4,7 @@ from dataclasses import asdict
 from typing import Any
 
 from django.contrib import admin
-from django.db.models import Max, Min, QuerySet
-from django.forms import ValidationError
+from django.db.models import Max, Min
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.formats import date_format
@@ -17,22 +16,23 @@ from chatddx_backend.agents.admin import proxies
 from chatddx_backend.agents.admin.base import (
     BranchModelAdmin,
     TypedModelAdmin,
-    _qs_canon,
     get_template_data,
-    qs_agent_list,
+    qs_super_agent,
 )
 from chatddx_backend.agents.admin.forms import (
+    AgentForm,
     ConnectionForm,
     OutputTypeForm,
     SamplingParamsForm,
     ToolGroupForm,
-    agent_plus,
 )
+from chatddx_backend.agents.admin.forms.super_agent import SuperAgentForm
 from chatddx_backend.agents.admin.forms.tool import ToolForm
 from chatddx_backend.agents.admin.utils import (
     get_step_nav,
     truncate_content,
 )
+from chatddx_backend.agents.models.loader import agent_relations
 
 
 def _get_branch_link(obj, field_name):
@@ -61,9 +61,14 @@ def _get_branch_link(obj, field_name):
 
 @admin.register(proxies.Agent)
 class AgentAdmin(BranchModelAdmin[proxies.Agent]):
-    form = agent_plus.AgentPlusForm
+    form = AgentForm
     name = "agent"
 
+
+@admin.register(proxies.SuperAgent)
+class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
+    form = SuperAgentForm
+    name = "super_agent"
     list_display = [
         "__str__",
         "instructions",
@@ -98,11 +103,15 @@ class AgentAdmin(BranchModelAdmin[proxies.Agent]):
         request: HttpRequest,
         obj: Any,
     ) -> dict[str, Any]:
-        agent_relations = ["connection", "sampling_params", "output_type", "tool_group"]
-        form_info = {
-            "name": "agent_plus",
-            "agent": obj.target.pk,
-        } | {model: getattr(obj.target, model).pk for model in agent_relations}
+        form_info = (
+            {
+                "name": "super_agent",
+                "agent": obj.target.pk if obj else None,
+            }
+            | {model: getattr(obj.target, model).pk for model in agent_relations}
+            if obj
+            else None
+        )
 
         return {
             "template_data": get_template_data(request),
@@ -111,20 +120,7 @@ class AgentAdmin(BranchModelAdmin[proxies.Agent]):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs_agent_list(qs, request)
-
-    def get_object(self, request, object_id, from_field=None):
-        queryset = self.get_queryset(request)
-        field = (
-            self.model._meta.pk
-            if from_field is None
-            else self.model._meta.get_field(from_field)
-        )
-        try:
-            object_id = field.to_python(object_id)
-            return queryset.get(**{field.attname: object_id})
-        except (self.model.DoesNotExist, ValidationError, ValueError):
-            return None
+        return qs_super_agent(qs, request.user.username)
 
 
 @admin.register(proxies.Connection)

@@ -4,17 +4,18 @@
     const form_info = JSON.parse($('#form-info').html());
 
     const populateOptions = (model, data) => {
-      const is_agent_plus = form_info.name === "agent_plus";
-      const template_selector_id = is_agent_plus ? `#id_${model}_template` : '#id_template';
+      const is_super_agent = form_info.name === "super_agent";
+      const suffix = form_info.name === "agent" ? "_id" : "_template";
+      const template_selector_id = is_super_agent ? `#id_${model}_template` : '#id_template';
       const clear_id = `clear_${model}`;
       const $template_selector = $(template_selector_id);
 
       const populateField = (key, value) => {
         if (key.endsWith('_id')) {
-          key = key.replace(/_id$/, '_template');
+          key = key.replace(/_id$/, suffix);
           value = String(value);
         }
-        const field_id = (is_agent_plus && !key.endsWith('_template') ?
+        const field_id = (is_super_agent && !key.endsWith(suffix) ?
           `#id_${model}_${key}` : '#id_' + key
         );
 
@@ -25,7 +26,7 @@
           let valueToSet = value;
 
           if (value === '' && $field.is('select')) {
-            const targetModel = key.replace('_template', '');
+            const targetModel = key.replace(suffix, '');
             valueToSet = `clear_${targetModel}`;
           }
 
@@ -80,7 +81,7 @@
 
     };
 
-    if (form_info.name === "agent_plus") {
+    if (form_info.name === "super_agent") {
       $.each(template_data, function(model, data) {
         populateOptions(model, data);
       });

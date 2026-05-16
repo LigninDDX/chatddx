@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/admin/forms/agent_plus.py
+# src/chatddx_backend/agents/admin/forms/super_agent.py
 from copy import deepcopy
 from typing import Any
 
@@ -53,13 +53,15 @@ def apply_prefix_to_layout(layout_node: LayoutObject, prefix: str):
     return layout_node
 
 
-class AgentPlusForm(forms.ModelForm):
+class SuperAgentForm(forms.ModelForm):
     class Meta:
         model = proxies.Agent
         fields = []
 
     def __init__(self, *args: Any, **kwargs: Any):
         instance = kwargs.get("instance")
+        request = kwargs.pop("request")
+        self.sub_forms = {}
 
         if instance:
             kwargs["initial"] = self.get_initial(instance)
@@ -67,9 +69,12 @@ class AgentPlusForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         for prefix, cls in SUB_FORMS:
-            sub_form_instance = cls()
+            self.sub_forms[prefix] = cls(
+                is_subform=True,
+                request=request,
+            )
 
-            for _name, _field in sub_form_instance.fields.items():
+            for _name, _field in self.sub_forms[prefix].fields.items():
                 name = f"{prefix}{_name}"
                 field = deepcopy(_field)
 
@@ -81,31 +86,31 @@ class AgentPlusForm(forms.ModelForm):
     @classmethod
     def get_initial(cls, agent_model: AgentBranchModel):
         agent_dict = {
-            "agent": AgentForm.get_initial(
+            "agent_": AgentForm.get_initial(
                 agent_model.target,
                 agent_model.name,
             ),
-            "connection": ConnectionForm.get_initial(
+            "connection_": ConnectionForm.get_initial(
                 agent_model.target.connection,
                 agent_model.connection_name,
             ),
-            "sampling_params": SamplingParamsForm.get_initial(
+            "sampling_params_": SamplingParamsForm.get_initial(
                 agent_model.target.sampling_params,
                 agent_model.sampling_params_name,
             ),
-            "output_type": OutputTypeForm.get_initial(
+            "output_type_": OutputTypeForm.get_initial(
                 agent_model.target.output_type,
                 agent_model.output_type_name,
             ),
-            "tool_group": ToolGroupForm.get_initial(
+            "tool_group_": ToolGroupForm.get_initial(
                 agent_model.target.tool_group,
                 agent_model.tool_group_name,
             ),
         }
 
-        def flatten_dict(d: dict[str, Any], sep: str = "_"):
+        def flatten_dict(d: dict[str, Any]):
             return {
-                f"{outer}{sep}{inner}": value
+                f"{outer}{inner}": value
                 for outer, inner_dict in d.items()
                 for inner, value in inner_dict.items()
             }
@@ -120,8 +125,8 @@ class AgentPlusForm(forms.ModelForm):
         helper.form_tag = False
         helper.include_media = False
 
-        for prefix, cls in SUB_FORMS:
-            sub_form_instance = cls()
+        for prefix, _ in SUB_FORMS:
+            sub_form_instance = self.sub_forms[prefix]
 
             helper.layout.append(
                 apply_prefix_to_layout(

@@ -2,15 +2,30 @@ from collections import defaultdict
 from pathlib import Path
 
 import pytest
+from django.db.models import Q
 from django.urls import reverse
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.base import qs_super_agent
 from chatddx_backend.agents.admin.schemas import TemplateData
-from chatddx_backend.agents.models import IdentityModel
+from chatddx_backend.agents.models import AgentModel, ConnectionModel, IdentityModel
+from chatddx_backend.agents.models.history import AgentBranchModel
 from chatddx_backend.agents.models.loader import create_form_data
 from chatddx_backend.agents.schemas import TrailRegistry
 
 parameters = [
+    (
+        "agent",
+        "instructions",
+        proxies.Agent,
+        lambda i: f"instruction {i}",
+    ),
+    (
+        "tool_group",
+        "instructions",
+        proxies.ToolGroup,
+        lambda i: f"instruction {i}",
+    ),
     (
         "output_type",
         "definition",
@@ -64,6 +79,73 @@ def template_data(owner: IdentityModel, registry: TrailRegistry):
 
 
 @pytest.mark.django_db
+def test_view(template_data, owner, admin_client):
+    versions = list(
+        AgentBranchModel.objects.filter(
+            owner_id=owner.pk,
+            name="some-agent",
+        ).order_by("timestamp")
+    )
+
+    v2_url = reverse("admin:agents_agent_change", args=[versions[0].pk])
+    response = admin_client.get(v2_url)
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_ownership(template_data, owner):
+    connection_fields = [field.name for field in ConnectionModel._meta.fields]
+
+    agent_trails = AgentModel.objects.filter(
+        branches__owner__name=owner.name
+    ).distinct()
+    assert len(agent_trails) == 4
+
+    all_owned_connections = (
+        ConnectionModel.objects.filter(
+            Q(agentmodel__branches__owner__name=owner.name)
+            | Q(branches__owner__name=owner.name)
+        )
+        .values(*connection_fields, "branches__name")
+        .distinct()
+    )
+    assert all_owned_connections[0]["branches__name"] == "some-connection"
+    assert len(all_owned_connections) == 2
+
+    agent_connections = ConnectionModel.objects.filter(
+        agentmodel__branches__owner__name=owner.name
+    ).distinct()
+    assert len(agent_connections) == 2
+
+    new_owner = IdentityModel.objects.create(name="alex")
+    some_agent = AgentBranchModel.objects.filter(name="some-agent").first()
+    some_agent.owner_id = new_owner.pk
+    some_agent.save()
+
+    (some_agent_trail,) = AgentModel.objects.filter(
+        branches__owner__name="alex"
+    ).distinct()
+    assert some_agent_trail is not None
+    assert some_agent_trail.pk == some_agent.target.pk
+
+    agent_trails = AgentModel.objects.filter(
+        branches__owner__name=owner.name
+    ).distinct()
+    assert len(agent_trails) == 3
+
+    agent_connections = ConnectionModel.objects.filter(
+        agentmodel__branches__owner__name=owner.name
+    ).distinct()
+    assert len(agent_connections) == 1
+
+    all_owned_connections = ConnectionModel.objects.filter(
+        Q(agentmodel__branches__owner__name=owner.name)
+        | Q(branches__owner__name=owner.name)
+    ).distinct()
+    assert len(all_owned_connections) == 2
+
+
+@pytest.mark.django_db
 def test_sampling_params(template_data):
     data = template_data.sampling_params
 
@@ -111,6 +193,69 @@ def test_output_type(template_data, admin_client):
 
     (message,) = [str(m) for m in response.context["messages"]]
     assert "added successfully" in message
+
+
+@pytest.mark.django_db
+def test_tool_group(template_data, admin_client):
+    data = template_data.tool_group
+    add_url = reverse("admin:agents_toolgroup_add")
+    some_key = "tool_group-1"
+
+    post_data = data[some_key].model_dump(mode="json", exclude_none=True)
+
+    assert isinstance(post_data["instructions"], str)
+    assert post_data["instructions"] == "use these tools"
+    assert len(post_data["tools"]) == 3
+
+    response = admin_client.post(
+        add_url,
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    assert "adminform" not in response.context
+
+    (message,) = [str(m) for m in response.context["messages"]]
+    assert "up to date" in message
+
+
+@pytest.mark.django_db
+def test_agent_qs(template_data, owner):
+    qs = proxies.Agent.objects.filter(name="some-agent", owner_id=owner.pk)
+    agent = qs_super_agent(qs, owner.name).first()
+    assert agent is not None
+    assert agent.connection_id is not None
+
+
+@pytest.mark.django_db
+def test_agent(template_data, admin_client):
+    data = template_data.agent
+    add_url = reverse("admin:agents_agent_add")
+    some_key = "some-agent"
+
+    post_data = data[some_key].model_dump(mode="json", exclude_none=True)
+
+    assert isinstance(post_data["instructions"], str)
+    assert post_data["instructions"] == "some instructions"
+    assert post_data["id"] is not None
+    assert post_data["connection_id"] is not None
+
+    assert (
+        AgentBranchModel.objects.get(pk=post_data["id"]).target.instructions
+        == "some instructions"
+    )
+
+    response = admin_client.post(
+        add_url,
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    (message,) = [str(m) for m in response.context["messages"]]
+    assert "up to date" in message
 
 
 @pytest.mark.django_db

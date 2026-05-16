@@ -13,29 +13,16 @@ from unfold.widgets import (
 )
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.forms.base import BaseForm
 from chatddx_backend.agents.admin.schemas import ConnectionFormData
 from chatddx_backend.agents.models import ProviderChoices
 
 
-class ConnectionForm(forms.ModelForm):
-    class Meta:
+class ConnectionForm(BaseForm):
+    form_data = ConnectionFormData
+
+    class Meta(BaseForm.Meta):
         model = proxies.Connection
-        fields = []
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        instance = kwargs.get("instance")
-
-        if instance:
-            kwargs["initial"] = self.get_initial(instance.target, instance.name)
-
-        super().__init__(*args, **kwargs)
-
-    @classmethod
-    def get_initial(cls, trail_model, name=None):
-        return ConnectionFormData.model_validate(
-            trail_model,
-            context={"name": name},
-        ).model_dump()
 
     name = forms.CharField(
         required=False,

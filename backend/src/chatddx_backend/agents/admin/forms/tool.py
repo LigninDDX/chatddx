@@ -17,37 +17,16 @@ from unfold.widgets import (
 )
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.forms.base import BaseForm
 from chatddx_backend.agents.admin.schemas import ToolFormData
 from chatddx_backend.agents.models import ToolChoices
 
 
-class ToolForm(ModelForm):
-    class Meta:
+class ToolForm(BaseForm):
+    form_data = ToolFormData
+
+    class Meta(BaseForm.Meta):
         model = proxies.Tool
-        fields = ["name"]
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        instance = kwargs.get("instance")
-
-        if instance:
-            kwargs["initial"] = self.get_initial(instance.target, instance.name)
-
-        super().__init__(*args, **kwargs)
-
-        if self.data:
-            self.data = self.data.copy()
-            self.data.pop("template", None)
-
-    @classmethod
-    def get_initial(cls, trail_model, name=None):
-        return ToolFormData.model_validate(
-            trail_model,
-            context={"name": name},
-        ).model_dump(mode="json")
-
-    def clean(self):
-        cleaned_data = super().clean()
-        return cleaned_data
 
     name = CharField(
         max_length=255,

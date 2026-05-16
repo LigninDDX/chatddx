@@ -2,6 +2,7 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django import forms
+from django.db.models import F, Q
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
@@ -9,16 +10,48 @@ from unfold.widgets import (
 )
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.base import branch_map
+from chatddx_backend.agents.admin.forms.base import BaseForm
 from chatddx_backend.agents.admin.schemas import AgentFormData
+from chatddx_backend.agents.models import (
+    ConnectionModel,
+    OutputTypeModel,
+    SamplingParamsModel,
+    ToolGroupModel,
+)
 
 
-class AgentForm(forms.Form):
-    @classmethod
-    def get_initial(cls, trail_model, name=None):
-        return AgentFormData.model_validate(
-            trail_model,
-            context={"name": name},
-        ).model_dump()
+class AgentForm(BaseForm):
+    form_data = AgentFormData
+
+    class Meta(BaseForm.Meta):
+        model = proxies.Agent
+
+    def __init__(self, *args, **kwargs):
+        self.is_subform = kwargs.get("is_subform")
+
+        if self.is_subform:
+            super().__init__(*args, **kwargs)
+            return
+
+        request = kwargs["request"]
+        super().__init__(*args, **kwargs)
+
+        for field_name in [
+            "connection",
+            "sampling_params",
+            "output_type",
+            "tool_group",
+        ]:
+            TrailModel = branch_map[field_name][2]
+            self.fields[field_name + "_id"].queryset = (
+                TrailModel.objects.filter(
+                    Q(agentmodel__branches__owner__name=request.user.username)
+                    | Q(branches__owner__name=request.user.username)
+                )
+                .annotate(branch_name=F("branches__name"))
+                .distinct()
+            )
 
     name = forms.CharField(
         max_length=255,
@@ -42,11 +75,34 @@ class AgentForm(forms.Form):
         label="System instructions",
         help_text="The core system prompt that dictates the agent's persona, rules, and boundaries.",
     )
+    connection_id = forms.ModelChoiceField(
+        queryset=ConnectionModel.objects.none(),
+        widget=UnfoldAdminSelect2Widget(),
+        label="Connection",
+    )
+    sampling_params_id = forms.ModelChoiceField(
+        queryset=SamplingParamsModel.objects.none(),
+        widget=UnfoldAdminSelect2Widget(),
+        label="Sampling Parameters",
+    )
+    output_type_id = forms.ModelChoiceField(
+        queryset=OutputTypeModel.objects.none(),
+        widget=UnfoldAdminSelect2Widget(),
+        label="Output Type",
+    )
+    tool_group_id = forms.ModelChoiceField(
+        queryset=ToolGroupModel.objects.none(),
+        widget=UnfoldAdminSelect2Widget(),
+        label="Tool Group",
+    )
 
-    helper = FormHelper()
+    @property
+    def helper(self):
+        helper = FormHelper()
+        helper.form_tag = False
+        helper.include_media = False
 
-    helper.layout = Layout(
-        Fieldset(
+        main_section = Fieldset(
             "Agent Settings",
             Row(
                 Column(
@@ -64,4 +120,24 @@ class AgentForm(forms.Form):
             ),
             css_class="mb-8",
         )
-    )
+        relations_section = Fieldset(
+            "Agent Relations",
+            Row(
+                Column(
+                    "connection_id",
+                    "sampling_params_id",
+                    css_class="w-1/2",
+                ),
+                Column(
+                    "output_type_id",
+                    "tool_group_id",
+                    css_class="w-1/2",
+                ),
+            ),
+            css_class="mb-8",
+        )
+        if self.is_subform:
+            pass
+        helper.layout = Layout(main_section, relations_section)
+
+        return helper

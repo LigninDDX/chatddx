@@ -35,7 +35,9 @@ class TrailModel(Model):
 
     @override
     def __str__(self):
-        return self.fingerprint
+        name = getattr(self, "branch_name", None)
+        short_hash = self.fingerprint[:6]
+        return f"{name} ({short_hash})" if name else short_hash
 
 
 async def resolve_related_array_fields(model: TrailModel):

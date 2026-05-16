@@ -3,8 +3,9 @@ import json
 from typing import Any, Generic, TypeVar, cast
 
 from django.contrib import messages
+from django.db.models import F, OuterRef, Q, QuerySet, Subquery
 from django.db.models import Model as DjangoModel
-from django.db.models import OuterRef, QuerySet, Subquery
+from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from unfold.admin import ModelAdmin
 
@@ -35,89 +36,85 @@ from chatddx_backend.agents.models.history import (
     ToolBranchModel,
     ToolGroupBranchModel,
 )
+from chatddx_backend.agents.models.loader import agent_relations
 from chatddx_backend.agents.schemas import (
-    AgentSchema,
+    AgentSchemaRef,
     ConnectionSchema,
     OutputTypeSchema,
     SamplingParamsSchema,
-    ToolGroupSchema,
+    ToolGroupSchemaRef,
     ToolSchema,
 )
 from chatddx_backend.agents.trail import TrailModel
 
 
-def _get_branches(model, request):
+def get_owned_trails(model, owner_name):
     BranchModel, FormData, TrailModel, _ = branch_map[model]
-    branches = {
-        str(instance.target.pk): FormData.model_validate(
-            instance.target,
-            context={"name": instance.name},
-        )
-        for instance in _qs_canon(BranchModel.objects, request)
-    }
-    if model == "agent":
-        return branches
 
-    if model == "tool":
-        return branches
+    indirectly_owned = Q(agentmodel__branches__owner__name=owner_name)
+    directly_owned = Q(branches__owner__name=owner_name)
 
-    qs = (
-        qs_agent_list(AgentBranchModel.objects, request)
-        .filter(**{f"{model}_id__isnull": True})
-        .values_list(f"target__{model}_id", flat=True)
-        .distinct()
+    if model in ("tool", "agent"):
+        owned = directly_owned
+    else:
+        owned = directly_owned | indirectly_owned
+
+    branches = _qs_canon(BranchModel.objects, owner_name)
+    branchless_trails = (
+        TrailModel.objects.filter(owned).filter(branches__isnull=True).distinct()
     )
 
-    for branchless_trail in TrailModel.objects.filter(id__in=qs):
-        label = branchless_trail.fingerprint[:6]
-
-        branches[str(branchless_trail.pk)] = FormData.model_validate(
-            branchless_trail,
-            context={"name": label},
+    form_data = {}
+    for branch in branches:
+        form_data[str(branch.target.pk)] = FormData.model_validate(
+            branch.target,
+            context={"name": branch.name},
         )
-    return branches
+    for trail in branchless_trails:
+        form_data[str(trail.pk)] = FormData.model_validate(
+            trail,
+            context={"name": trail.fingerprint[:6]},
+        )
+    return form_data
 
 
 def get_template_data(request):
-    td = TemplateData(**{model: _get_branches(model, request) for model in branch_map})
+    td = TemplateData(
+        **{
+            model: get_owned_trails(model, request.user.username)
+            for model in branch_map
+        }
+    )
     return td.model_dump_json()
 
 
-def _qs_owned(qs, request):
-    return qs.filter(owner__name=request.user.username)
-
-
-def _qs_canon(qs, request):
+def _qs_canon(qs, owner_name):
     return (
-        _qs_owned(qs, request)
+        qs.filter(owner__name=owner_name)
         .order_by("owner_id", "name", "-timestamp")
         .distinct("owner_id", "name")
     )
 
 
-def qs_agent_list(qs, request):
-    agent_relations = ["connection", "sampling_params", "output_type", "tool_group"]
+def qs_super_agent(qs, owner_name):
+    def subquery(owner_name, model, column):
+        return (
+            branch_map[model][0]
+            .objects.filter(
+                target=OuterRef(f"target__{model}"),
+                owner__name=owner_name,
+            )
+            .values(column)[:1]
+        )
+
     branch_annotations = {
-        f"{model}_{field}": Subquery(_branch_subquery(request, model, field))
+        f"{model}_{field}": Subquery(subquery(owner_name, model, field))
         for field in ("name", "id")
         for model in agent_relations
     }
-    return (
-        _qs_owned(qs, request)
-        .select_related(*[f"target__{model}" for model in agent_relations])
-        .annotate(**branch_annotations)
-    )
-
-
-def _branch_subquery(request, model, column):
-    return (
-        branch_map[model][0]
-        .objects.filter(
-            target=OuterRef(f"target__{model}"),
-            owner__name=request.user.username,
-        )
-        .values(column)[:1]
-    )
+    return qs.select_related(
+        *[f"target__{model}" for model in agent_relations]
+    ).annotate(**branch_annotations)
 
 
 branch_map = {
@@ -125,7 +122,7 @@ branch_map = {
         AgentBranchModel,
         AgentFormData,
         AgentModel,
-        AgentSchema,
+        AgentSchemaRef,
     ),
     "connection": (
         ConnectionBranchModel,
@@ -149,7 +146,7 @@ branch_map = {
         ToolGroupBranchModel,
         ToolGroupFormData,
         ToolGroupModel,
-        ToolGroupSchema,
+        ToolGroupSchemaRef,
     ),
     "tool": (
         ToolBranchModel,
@@ -184,6 +181,16 @@ class BranchModelAdmin(TypedModelAdmin[S]):
     name: str
     change_form_template = "admin/agents/branch_change_form.html"
 
+    def get_form(self, request, obj=None, **kwargs):
+        Form = super().get_form(request, obj, **kwargs)
+
+        class FormWithRequest(Form):
+            def __new__(cls, *args, **fkwargs):
+                fkwargs.setdefault("request", request)
+                return Form(*args, **fkwargs)
+
+        return FormWithRequest
+
     def get_change_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
         return {
             "template_data": get_template_data(request),
@@ -197,24 +204,23 @@ class BranchModelAdmin(TypedModelAdmin[S]):
 
     def get_queryset(self, request):
         qs: QuerySet[S] = super().get_queryset(request)
-        return _qs_canon(qs, request)
+        return _qs_canon(qs, request.user.username)
 
     def save_model(self, request, obj, form, change):
+        BranchModel, FormData, TrailModel, TrailSchema = branch_map[self.name]
         owner, _ = IdentityModel.objects.get_or_create(name=request.user.username)
-        form_data = branch_map[self.name][1].model_validate(form.cleaned_data)
-        schema = branch_map[self.name][3].model_validate(
-            form_data.model_dump(exclude_none=True)
-        )
+        form_data = FormData.model_validate(form.cleaned_data)
+        schema = TrailSchema.model_validate(form_data.model_dump(exclude_none=True))
         name = form.cleaned_data["name"]
 
-        trail, _ = branch_map[self.name][2].objects.get_or_create(
+        trail, _ = TrailModel.objects.get_or_create(
             fingerprint=schema.fingerprint,
             defaults=schema.model_dump(),
         )
 
         canon = _qs_canon(
-            branch_map[self.name][0].objects.filter(name=name),
-            request,
+            BranchModel.objects.filter(name=name),
+            request.user.username,
         ).first()
 
         if canon and schema.fingerprint == canon.target.fingerprint:
@@ -233,7 +239,13 @@ class BranchModelAdmin(TypedModelAdmin[S]):
         super().save_model(request, obj, form, change)
 
     def render_change_form(
-        self, request, context, add=False, change=False, form_url="", obj=None
+        self,
+        request,
+        context,
+        add=False,
+        change=False,
+        form_url="",
+        obj=None,
     ):
         context = {**context, **self.get_change_form_context(request, obj)}
         if obj and hasattr(obj, "name"):

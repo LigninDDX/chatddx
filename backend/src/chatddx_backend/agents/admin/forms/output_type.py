@@ -1,5 +1,4 @@
 # src/chatddx_backend/agents/admin/forms/output_type.py
-from typing import Any
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
@@ -7,7 +6,6 @@ from django.forms import (
     CharField,
     ChoiceField,
     ModelChoiceField,
-    ModelForm,
 )
 from unfold.layout import Hr
 from unfold.widgets import (
@@ -17,32 +15,16 @@ from unfold.widgets import (
 )
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.forms.base import BaseForm
 from chatddx_backend.agents.admin.schemas import OutputTypeFormData
 from chatddx_backend.agents.models import CoercionChoices, ValidationChoices
 
 
-class OutputTypeForm(ModelForm):
-    class Meta:
+class OutputTypeForm(BaseForm):
+    form_data = OutputTypeFormData
+
+    class Meta(BaseForm.Meta):
         model = proxies.OutputType
-        fields = []
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        instance = kwargs.get("instance")
-
-        if instance:
-            kwargs["initial"] = self.get_initial(instance.target, instance.name)
-
-        super().__init__(*args, **kwargs)
-        if self.data:
-            self.data = self.data.copy()
-            self.data.pop("template", None)
-
-    @classmethod
-    def get_initial(cls, trail_model, name=None):
-        return OutputTypeFormData.model_validate(
-            trail_model,
-            context={"name": name},
-        ).model_dump(mode="json")
 
     name = CharField(
         max_length=255,

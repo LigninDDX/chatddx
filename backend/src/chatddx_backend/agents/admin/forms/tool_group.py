@@ -1,12 +1,9 @@
 # src/chatddx_backend/agents/admin/forms/tool_group.py
-from typing import Any
-
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django.forms import (
     CharField,
     ModelChoiceField,
-    ModelForm,
 )
 from unfold.fields import ModelMultipleChoiceField
 from unfold.layout import Hr
@@ -17,29 +14,24 @@ from unfold.widgets import (
 )
 
 from chatddx_backend.agents.admin import proxies
+from chatddx_backend.agents.admin.forms.base import BaseForm
 from chatddx_backend.agents.admin.schemas import ToolGroupFormData
+from chatddx_backend.agents.models import ToolModel
 
 
-class ToolGroupForm(ModelForm):
-    class Meta:
+class ToolGroupForm(BaseForm):
+    form_data = ToolGroupFormData
+
+    class Meta(BaseForm.Meta):
         model = proxies.ToolGroup
-        fields = []
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        instance = kwargs.get("instance")
-
-        if instance:
-            kwargs["initial"] = self.get_initial(instance.target, instance.name)
-
+    def __init__(self, *args, **kwargs):
+        request = kwargs["request"]
         super().__init__(*args, **kwargs)
-        self.fields["tools"].queryset = proxies.Tool.objects.all()
 
-    @classmethod
-    def get_initial(cls, trail_model, name=None):
-        return ToolGroupFormData.model_validate(
-            trail_model,
-            context={"name": name},
-        ).model_dump()
+        self.fields["tools"].queryset = ToolModel.objects.filter(
+            branches__owner__name=request.user.username
+        ).distinct()
 
     name = CharField(
         max_length=255,
@@ -58,8 +50,8 @@ class ToolGroupForm(ModelForm):
         help_text="Optional. Select a pre-configured template to populate the tools and instructions below.",
     )
     tools = ModelMultipleChoiceField(
-        queryset=proxies.Tool.objects.none(),
-        widget=UnfoldAdminSelect2Widget(attrs={"multiple": "multiple"}),
+        queryset=ToolModel.objects.none(),
+        # widget=UnfoldAdminSelect2Widget(attrs={"multiple": "multiple"}),
         required=False,
         label="Available Tools",
         help_text="Select the specific functions, APIs, or integrations this agent is permitted to execute.",
