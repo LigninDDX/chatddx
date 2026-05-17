@@ -5,12 +5,11 @@ import uuid
 import django.core.validators
 import django.db.models.deletion
 import encrypted_fields.fields
+import repo.admin.proxies
+import repo.models.agent
+import repo.trail.models
 from django.conf import settings
 from django.db import migrations, models
-
-import chatddx_backend.agents.admin.proxies
-import chatddx_backend.agents.models.agent
-import chatddx_backend.agents.trail.models
 
 
 class Migration(migrations.Migration):
@@ -109,7 +108,7 @@ class Migration(migrations.Migration):
                 ("timestamp", models.DateTimeField(auto_now_add=True)),
                 (
                     "definition",
-                    chatddx_backend.agents.models.agent.JSONSchemaField(default=dict),
+                    repo.models.agent.JSONSchemaField(default=dict),
                 ),
                 (
                     "validation_strategy",
@@ -228,9 +227,9 @@ class Migration(migrations.Migration):
                     "logit_bias",
                     models.JSONField(
                         blank=True,
-                        decoder=chatddx_backend.agents.models.agent.DecimalDecoder,
+                        decoder=repo.models.agent.DecimalDecoder,
                         default=dict,
-                        encoder=chatddx_backend.agents.models.agent.DecimalEncoder,
+                        encoder=repo.models.agent.DecimalEncoder,
                     ),
                 ),
                 ("provider_params", models.JSONField(blank=True, default=dict)),
@@ -266,10 +265,10 @@ class Migration(migrations.Migration):
                 ("instructions", models.TextField()),
                 (
                     "tools",
-                    chatddx_backend.agents.trail.models.RelatedArrayField(
+                    repo.trail.models.RelatedArrayField(
                         base_field=models.IntegerField(),
                         default=list,
-                        associated_model=chatddx_backend.agents.models.agent.ToolModel,
+                        associated_model=repo.models.agent.ToolModel,
                     ),
                 ),
             ],
@@ -318,7 +317,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("description", models.TextField()),
-                ("parameters", chatddx_backend.agents.models.agent.JSONSchemaField()),
+                ("parameters", repo.models.agent.JSONSchemaField()),
             ],
             options={
                 "db_table": "agents_tool",
@@ -336,15 +335,15 @@ class Migration(migrations.Migration):
                 "constraints": [],
             },
             bases=(
-                chatddx_backend.agents.admin.proxies.TrailProxy,
-                "agents.agentmodel",
+                repo.admin.proxies.TrailProxy,
+                "repo.agentmodel",
             ),
         ),
         migrations.AddField(
             model_name="agentmodel",
             name="connection",
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.PROTECT, to="agents.connectionmodel"
+                on_delete=django.db.models.deletion.PROTECT, to="repo.connectionmodel"
             ),
         ),
         migrations.CreateModel(
@@ -358,8 +357,8 @@ class Migration(migrations.Migration):
                 "constraints": [],
             },
             bases=(
-                chatddx_backend.agents.admin.proxies.TrailProxy,
-                "agents.connectionmodel",
+                repo.admin.proxies.TrailProxy,
+                "repo.connectionmodel",
             ),
         ),
         migrations.CreateModel(
@@ -411,14 +410,14 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="branches",
-                        to="agents.agentmodel",
+                        to="repo.agentmodel",
                     ),
                 ),
                 (
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
             ],
@@ -437,7 +436,7 @@ class Migration(migrations.Migration):
                 "indexes": [],
                 "constraints": [],
             },
-            bases=("agents.identitymodel",),
+            bases=("repo.identitymodel",),
         ),
         migrations.CreateModel(
             name="MessageModel",
@@ -477,7 +476,7 @@ class Migration(migrations.Migration):
                     "agent",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.agentmodel",
+                        to="repo.agentmodel",
                     ),
                 ),
             ],
@@ -496,7 +495,7 @@ class Migration(migrations.Migration):
                 "indexes": [],
                 "constraints": [],
             },
-            bases=("agents.messagemodel",),
+            bases=("repo.messagemodel",),
         ),
         migrations.CreateModel(
             name="OutputTypeBranchModel",
@@ -516,7 +515,7 @@ class Migration(migrations.Migration):
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
                 (
@@ -524,7 +523,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="branches",
-                        to="agents.outputtypemodel",
+                        to="repo.outputtypemodel",
                     ),
                 ),
             ],
@@ -537,7 +536,7 @@ class Migration(migrations.Migration):
             model_name="agentmodel",
             name="output_type",
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.PROTECT, to="agents.outputtypemodel"
+                on_delete=django.db.models.deletion.PROTECT, to="repo.outputtypemodel"
             ),
         ),
         migrations.CreateModel(
@@ -551,8 +550,8 @@ class Migration(migrations.Migration):
                 "constraints": [],
             },
             bases=(
-                chatddx_backend.agents.admin.proxies.TrailProxy,
-                "agents.outputtypemodel",
+                repo.admin.proxies.TrailProxy,
+                "repo.outputtypemodel",
             ),
         ),
         migrations.CreateModel(
@@ -573,7 +572,7 @@ class Migration(migrations.Migration):
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
                 (
@@ -581,7 +580,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="branches",
-                        to="agents.samplingparamsmodel",
+                        to="repo.samplingparamsmodel",
                     ),
                 ),
             ],
@@ -595,7 +594,7 @@ class Migration(migrations.Migration):
             name="sampling_params",
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.PROTECT,
-                to="agents.samplingparamsmodel",
+                to="repo.samplingparamsmodel",
             ),
         ),
         migrations.CreateModel(
@@ -609,8 +608,8 @@ class Migration(migrations.Migration):
                 "constraints": [],
             },
             bases=(
-                chatddx_backend.agents.admin.proxies.TrailProxy,
-                "agents.samplingparamsmodel",
+                repo.admin.proxies.TrailProxy,
+                "repo.samplingparamsmodel",
             ),
         ),
         migrations.CreateModel(
@@ -632,14 +631,14 @@ class Migration(migrations.Migration):
                     "default_agent",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.agentbranchmodel",
+                        to="repo.agentbranchmodel",
                     ),
                 ),
                 (
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
             ],
@@ -653,7 +652,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.PROTECT,
                 related_name="messages",
-                to="agents.sessionmodel",
+                to="repo.sessionmodel",
             ),
         ),
         migrations.CreateModel(
@@ -666,7 +665,7 @@ class Migration(migrations.Migration):
                 "indexes": [],
                 "constraints": [],
             },
-            bases=("agents.sessionmodel",),
+            bases=("repo.sessionmodel",),
         ),
         migrations.CreateModel(
             name="ToolGroupBranchModel",
@@ -686,7 +685,7 @@ class Migration(migrations.Migration):
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
                 (
@@ -694,7 +693,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="branches",
-                        to="agents.toolgroupmodel",
+                        to="repo.toolgroupmodel",
                     ),
                 ),
             ],
@@ -707,7 +706,7 @@ class Migration(migrations.Migration):
             model_name="agentmodel",
             name="tool_group",
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.PROTECT, to="agents.toolgroupmodel"
+                on_delete=django.db.models.deletion.PROTECT, to="repo.toolgroupmodel"
             ),
         ),
         migrations.CreateModel(
@@ -721,8 +720,8 @@ class Migration(migrations.Migration):
                 "constraints": [],
             },
             bases=(
-                chatddx_backend.agents.admin.proxies.TrailProxy,
-                "agents.toolgroupmodel",
+                repo.admin.proxies.TrailProxy,
+                "repo.toolgroupmodel",
             ),
         ),
         migrations.CreateModel(
@@ -743,7 +742,7 @@ class Migration(migrations.Migration):
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
                 (
@@ -751,7 +750,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="branches",
-                        to="agents.toolmodel",
+                        to="repo.toolmodel",
                     ),
                 ),
             ],
@@ -770,7 +769,7 @@ class Migration(migrations.Migration):
                 "indexes": [],
                 "constraints": [],
             },
-            bases=(chatddx_backend.agents.admin.proxies.TrailProxy, "agents.toolmodel"),
+            bases=(repo.admin.proxies.TrailProxy, "repo.toolmodel"),
         ),
         migrations.CreateModel(
             name="ConnectionBranchModel",
@@ -791,14 +790,14 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="branches",
-                        to="agents.connectionmodel",
+                        to="repo.connectionmodel",
                     ),
                 ),
                 (
                     "owner",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
-                        to="agents.identitymodel",
+                        to="repo.identitymodel",
                     ),
                 ),
             ],

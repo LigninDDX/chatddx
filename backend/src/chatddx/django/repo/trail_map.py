@@ -1,7 +1,7 @@
-# src/chatddx_backend/agents/trail_map.py
+# src/chatddx/django/repo/trail_map.py
 from typing import Any, overload
 
-from repo.models import (
+from chatddx.django.repo.models import (
     AgentModel,
     ConnectionModel,
     OutputTypeModel,
@@ -9,7 +9,6 @@ from repo.models import (
     ToolGroupModel,
     ToolModel,
 )
-
 from chatddx.django.repo.schemas import (
     AgentSchema,
     AgentSpec,

@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/admin/forms/output_type.py
+# src/chatddx/django/repo/admin/forms/output_type.py
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
@@ -7,17 +7,16 @@ from django.forms import (
     ChoiceField,
     ModelChoiceField,
 )
+from repo.admin import proxies
+from repo.admin.forms.base import BaseForm
+from repo.admin.schemas import OutputTypeFormData
+from repo.models import CoercionChoices, ValidationChoices
 from unfold.layout import Hr
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
     UnfoldAdminTextInputWidget,
 )
-
-from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.forms.base import BaseForm
-from chatddx_backend.agents.admin.schemas import OutputTypeFormData
-from chatddx_backend.agents.models import CoercionChoices, ValidationChoices
 
 
 class OutputTypeForm(BaseForm):

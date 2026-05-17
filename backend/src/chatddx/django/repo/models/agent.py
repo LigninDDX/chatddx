@@ -1,4 +1,4 @@
-# src/chatddx_backend/models/agent.py
+# src/chatddx/django/repo/models/agent.py
 from __future__ import annotations
 
 import json
@@ -17,13 +17,14 @@ from django.db.models import (
     TextField,
     URLField,
 )
-from repo.models.choices import (
+
+from chatddx.django.repo.models.choices import (
     CoercionChoices,
     ProviderChoices,
     ToolChoices,
     ValidationChoices,
 )
-from repo.trail import RelatedArrayField, TrailModel
+from chatddx.django.repo.trail import RelatedArrayField, TrailModel
 
 if TYPE_CHECKING:
     TypedJSONField = JSONField[dict[str, Any]]

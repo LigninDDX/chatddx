@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/trail/schema.py
+# src/chatddx/django/repo/trail/schema.py
 import hashlib
 from datetime import datetime
 

@@ -1,13 +1,13 @@
-# src/chatddx_backend/agents/session.py
+# src/chatddx/django/repo/session.py
 from uuid import UUID
 
-from chatddx_backend.agents.models import IdentityModel, MessageModel, SessionModel
-from chatddx_backend.agents.schemas import (
+from chatddx.django.repo.models import IdentityModel, MessageModel, SessionModel
+from chatddx.django.repo.schemas import (
     IdentitySpec,
     MessageSpec,
     SessionSpec,
 )
-from chatddx_backend.agents.trail import resolve_related_array_fields
+from chatddx.django.repo.trail import resolve_related_array_fields
 
 
 async def get_identity(name: str) -> IdentitySpec:

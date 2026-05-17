@@ -1,15 +1,15 @@
-# src/chatddx_backend/agents/trail/loader.py
+# src/chatddx/django/repo/trail/loader.py
 from __future__ import annotations
 
 import asyncio
 from typing import Any, TypeVar
 
 from django.db.models import ForeignKey
-from repo.trail.models import (
+
+from chatddx.django.repo.trail.models import (
     TrailModel,
     resolve_related_array_fields,
 )
-
 from chatddx.django.repo.trail.schemas import (
     TrailSchema,
     TrailSpec,

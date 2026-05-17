@@ -1,5 +1,4 @@
-# src/chatddx_backend/agents/admin/forms/tool.py
-from typing import Any
+# src/chatddx/django/repo/admin/forms/tool.py
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
@@ -7,19 +6,17 @@ from django.forms import (
     CharField,
     ChoiceField,
     ModelChoiceField,
-    ModelForm,
 )
+from repo.admin import proxies
+from repo.admin.forms.base import BaseForm
+from repo.admin.schemas import ToolFormData
+from repo.models import ToolChoices
 from unfold.layout import Hr
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
     UnfoldAdminTextInputWidget,
 )
-
-from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.forms.base import BaseForm
-from chatddx_backend.agents.admin.schemas import ToolFormData
-from chatddx_backend.agents.models import ToolChoices
 
 
 class ToolForm(BaseForm):

@@ -1,12 +1,13 @@
+# src/chatddx/backend/repo/test/test_message_spec.py
 import json
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from chatddx_backend.agents.main import get_agent
-from chatddx_backend.agents.pydantic_ai.runners import run_from_spec
-from chatddx_backend.agents.schemas import TrailRegistry
+from chatddx.django.repo.main import get_agent
+from chatddx.django.repo.pydantic_ai.runners import run_from_spec
+from chatddx.django.repo.schemas import TrailRegistry
 
 registry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/test-llm-basics.toml"

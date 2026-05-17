@@ -1,13 +1,13 @@
-# chatddx_backend/agents/management/commands/init-data.py
+# src/chatddx/django/repo/management/commands/init-data.py
 import asyncio
 from pathlib import Path
 from typing import Any
 
 from django_typer.management import Typer
+from repo.models import IdentityModel
 
-from chatddx_backend.agents.branches import get_branch_model
-from chatddx_backend.agents.models import IdentityModel
-from chatddx_backend.agents.schemas import TrailRegistry
+from chatddx.django.repo.branches import get_branch_model
+from chatddx.django.repo.schemas import TrailRegistry
 
 app: Typer[Any, Any] = Typer()
 

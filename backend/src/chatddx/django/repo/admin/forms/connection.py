@@ -1,9 +1,12 @@
-# src/chatddx_backend/agents/admin/forms/connection.py
-from typing import Any
+# src/chatddx/django/repo/admin/forms/connection.py
 
 from crispy_forms.helper import FormHelper, Layout
 from crispy_forms.layout import Column, Fieldset, Row
 from django import forms
+from repo.admin import proxies
+from repo.admin.forms.base import BaseForm
+from repo.admin.schemas import ConnectionFormData
+from repo.models import ProviderChoices
 from unfold.layout import Hr
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
@@ -11,11 +14,6 @@ from unfold.widgets import (
     UnfoldAdminTextInputWidget,
     UnfoldAdminURLInputWidget,
 )
-
-from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.forms.base import BaseForm
-from chatddx_backend.agents.admin.schemas import ConnectionFormData
-from chatddx_backend.agents.models import ProviderChoices
 
 
 class ConnectionForm(BaseForm):

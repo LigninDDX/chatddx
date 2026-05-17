@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/tests/test_trail.py
+# src/chatddx/django/repo/tests/test_trail.py
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -6,9 +6,9 @@ from typing import Any
 import pytest
 from django.db import ProgrammingError
 
-from chatddx_backend.agents import trail_map
-from chatddx_backend.agents.models import AgentModel
-from chatddx_backend.agents.schemas import (
+from chatddx.django.repo import trail_map
+from chatddx.django.repo.models import AgentModel
+from chatddx.django.repo.schemas import (
     AgentSchema,
     ConnectionSchema,
     OutputTypeSchema,
@@ -17,8 +17,8 @@ from chatddx_backend.agents.schemas import (
     ToolSchema,
     TrailRegistry,
 )
-from chatddx_backend.agents.tests.field_types import identity_boundary
-from chatddx_backend.agents.trail import (
+from chatddx.django.repo.tests.field_types import identity_boundary
+from chatddx.django.repo.trail import (
     TrailModel,
     TrailSchema,
     TrailSpec,

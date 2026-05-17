@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/pydantic_ai/builder.py
+# src/chatddx/django/repo/pydantic_ai/builder.py
 from decimal import Decimal
 from typing import Any, get_args
 
@@ -17,13 +17,13 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.output import StructuredOutputMode
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from chatddx_backend.agents.models.choices import ToolChoices, ValidationChoices
-from chatddx_backend.agents.pydantic_ai import tools
-from chatddx_backend.agents.pydantic_ai.context import (
+from chatddx.django.repo.models.choices import ToolChoices, ValidationChoices
+from chatddx.django.repo.pydantic_ai import tools
+from chatddx.django.repo.pydantic_ai.context import (
     AgentContext,
     OutputType,
 )
-from chatddx_backend.agents.schemas import (
+from chatddx.django.repo.schemas import (
     AgentSpec,
     SamplingParamsSpec,
     ToolGroupSpec,

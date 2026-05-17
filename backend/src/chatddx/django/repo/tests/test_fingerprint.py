@@ -1,6 +1,7 @@
+# src/chatddx/backend/repo/test/test_fingerprint.py
 from pathlib import Path
 
-from chatddx_backend.agents.schemas import AgentSchema, TrailRegistry
+from chatddx.django.repo.schemas import AgentSchema, TrailRegistry
 
 registry: TrailRegistry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/test-registry.toml"

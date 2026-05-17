@@ -1,14 +1,14 @@
-# src/chatddx_backend/agents/pydantic_ai/runners.py
+# src/chatddx/django/repo/pydantic_ai/runners.py
 from typing import AsyncGenerator
 
 from pydantic_ai import AgentRunResult, ModelResponse
 from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
 
-from chatddx_backend.agents.models import MessageModel, RoleChoices
-from chatddx_backend.agents.pydantic_ai.context import AgentContext
-from chatddx_backend.agents.schemas import AgentSpec, SessionSpec
-from chatddx_backend.agents.utils import Dispatcher
+from chatddx.django.repo.models import MessageModel, RoleChoices
+from chatddx.django.repo.pydantic_ai.context import AgentContext
+from chatddx.django.repo.schemas import AgentSpec, SessionSpec
+from chatddx.django.repo.utils import Dispatcher
 
 from .builder import (
     OutputType,
@@ -75,8 +75,9 @@ async def stream_from_session(
         deps=agent_context,
         message_history=[m.payload for m in session.messages],
     ) as result:
-        async for chunk in result.stream_responses(debounce_by=0.1):
-            yield chunk
+        async for msg in result.stream_response(debounce_by=0.1):
+            is_last = msg.state != "incomplete"
+            yield msg, is_last
 
         await dispatcher.publish(result)
 

@@ -1,12 +1,12 @@
-# chatddx_backend/agents/test/test_branches.py
+# src/chatddx/backend/repo/test/test_branches.py
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
 
-from chatddx_backend.agents.branches import get_branch_model, get_branch_schema
-from chatddx_backend.agents.models import IdentityModel
-from chatddx_backend.agents.schemas import (
+from chatddx.django.repo.branches import get_branch_model, get_branch_schema
+from chatddx.django.repo.models import IdentityModel
+from chatddx.django.repo.schemas import (
     AgentSchema,
     BranchSchema,
     ConnectionSchema,

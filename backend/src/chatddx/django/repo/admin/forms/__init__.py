@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/admin/forms/__init__.py
+# src/chatddx/django/repo/admin/forms/__init__.py
 from .agent import AgentForm
 from .connection import ConnectionForm
 from .output_type import OutputTypeForm

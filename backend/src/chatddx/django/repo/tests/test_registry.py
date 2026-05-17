@@ -1,11 +1,12 @@
+# src/chatddx/backend/repo/test/test_message_spec.py
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
-from chatddx_backend.agents.models import ToolChoices
-from chatddx_backend.agents.registry import ParseError
-from chatddx_backend.agents.schemas import AgentSchema, ConnectionSchema, TrailRegistry
+from chatddx.django.repo.models import ToolChoices
+from chatddx.django.repo.registry import ParseError
+from chatddx.django.repo.schemas import AgentSchema, ConnectionSchema, TrailRegistry
 
 registry: TrailRegistry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/test-registry.toml"

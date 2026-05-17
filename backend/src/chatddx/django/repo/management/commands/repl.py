@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/management/commands/repl.py
+# src/chatddx/django/repo/management/commands/repl.py
 import asyncio
 from typing import Annotated, Any
 
@@ -17,13 +17,13 @@ from pydantic_ai import (
 )
 from rich.console import Console
 
-from chatddx_backend.agents.models import SessionModel
-from chatddx_backend.agents.models.history import AgentBranchModel
-from chatddx_backend.agents.pydantic_ai.runners import (
+from chatddx.django.repo.models import SessionModel
+from chatddx.django.repo.models.history import AgentBranchModel
+from chatddx.django.repo.pydantic_ai.runners import (
     stream_from_session,
 )
-from chatddx_backend.agents.schemas import AgentSpec, BranchSpec, SessionSpec
-from chatddx_backend.agents.session import (
+from chatddx.django.repo.schemas import AgentSpec, BranchSpec, SessionSpec
+from chatddx.django.repo.session import (
     get_identity,
     refresh_messages,
     resume_session,

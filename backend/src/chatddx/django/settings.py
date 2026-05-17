@@ -54,7 +54,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "chatddx_backend.urls"
+ROOT_URLCONF = "urls"
 
 TEMPLATES = [
     {
@@ -72,7 +72,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "chatddx_backend.wsgi.application"
+WSGI_APPLICATION = "wsgi.application"
 
 DATABASES = {
     "default": {
@@ -131,7 +131,7 @@ USE_I18N = True
 
 USE_TZ = True
 FORMAT_MODULE_PATH = [
-    "chatddx_backend.formats",
+    "formats",
 ]
 
 CRISPY_TEMPLATE_PACK = "unfold_crispy"

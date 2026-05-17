@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/tests/registry/test-llm-basics.toml
+# src/chatddx/django/repo/data/registry.toml
 
 [connection.openai-gpt4]
 model = "4o"

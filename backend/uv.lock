@@ -430,7 +430,7 @@ wheels = [
 ]
 
 [[package]]
-name = "chatddx-backend"
+name = "chatddx"
 version = "0.0.0+dev"
 source = { editable = "." }
 dependencies = [

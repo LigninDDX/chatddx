@@ -1,9 +1,9 @@
-# src/chatddx_backend/agents/main.py
+# src/chatddx/backend/django/main.py
 from typing import TypeVar
 
-from chatddx_backend.agents import trail_map
-from chatddx_backend.agents.schemas import AgentSpec, TrailRegistry
-from chatddx_backend.agents.trail import (
+from chatddx.django.repo import trail_map
+from chatddx.django.repo.schemas import AgentSpec, TrailRegistry
+from chatddx.django.repo.trail import (
     TrailModel,
     TrailSchema,
     TrailSpec,

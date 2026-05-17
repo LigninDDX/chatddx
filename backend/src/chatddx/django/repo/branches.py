@@ -1,9 +1,9 @@
 from typing import TypeVar
 
-from chatddx_backend.agents import trail_map
-from chatddx_backend.agents.models.history import BranchModel
-from chatddx_backend.agents.schemas import BranchSchema
-from chatddx_backend.agents.trail import TrailModel, TrailSchema, pk_from_schema
+from chatddx.django.repo import trail_map
+from chatddx.django.repo.models.history import BranchModel
+from chatddx.django.repo.schemas import BranchSchema
+from chatddx.django.repo.trail import TrailModel, TrailSchema, pk_from_schema
 
 TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
 
@@ -11,7 +11,7 @@ TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
 async def get_branch_model(
     name: str,
     owner_id: int,
-    trail_schema: TrailSchemaT,
+    trail_schema: TrailSchema,
 ) -> BranchModel:
     branch_schema = await get_branch_schema(name, owner_id, trail_schema)
     branch_model = await model_from_schema(branch_schema)
@@ -41,10 +41,10 @@ async def model_from_schema(
     schema: BranchSchema[TrailSchemaT],
 ) -> BranchModel:
     trail_model_class = trail_map.resolve(schema.target_type, TrailModel)
-    branch_model_class = trail_model_class.branches.rel.related_model  # type: ignore[attr-defined]
-    instance, _ = await branch_model_class.objects.aget_or_create(
+    branch_model_class = trail_model_class.branches.rel.related_model  # pyright: ignore
+    instance, _ = await branch_model_class.objects.aget_or_create(  # pyright: ignore
         owner_id=schema.owner_id,
         name=schema.name,
         target_id=schema.target_id,
     )
-    return instance
+    return instance  # pyright: ignore

@@ -1,15 +1,16 @@
+# src/chatddx/backend/repo/test/test_llm_basics.py
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
 
-from chatddx_backend.agents.main import get_agent
-from chatddx_backend.agents.models import IdentityModel
-from chatddx_backend.agents.models.history import AgentBranchModel
-from chatddx_backend.agents.pydantic_ai.runners import run_from_session, run_from_spec
-from chatddx_backend.agents.schemas import TrailRegistry
-from chatddx_backend.agents.session import get_identity, resume_session, start_session
-from chatddx_backend.agents.utils import Dispatcher
+from chatddx.django.repo.main import get_agent
+from chatddx.django.repo.models import IdentityModel
+from chatddx.django.repo.models.history import AgentBranchModel
+from chatddx.django.repo.pydantic_ai.runners import run_from_session, run_from_spec
+from chatddx.django.repo.schemas import TrailRegistry
+from chatddx.django.repo.session import get_identity, resume_session, start_session
+from chatddx.django.repo.utils import Dispatcher
 
 registry = TrailRegistry.from_file(
     Path(__file__).parent / "registry/test-llm-basics.toml"

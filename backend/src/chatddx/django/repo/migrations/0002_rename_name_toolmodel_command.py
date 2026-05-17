@@ -4,15 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('agents', '0001_initial'),
+        ("repo", "0001_initial"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='toolmodel',
-            old_name='name',
-            new_name='command',
+            model_name="toolmodel",
+            old_name="name",
+            new_name="command",
         ),
     ]

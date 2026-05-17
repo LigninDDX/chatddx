@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/admin/forms/super_agent.py
+# src/chatddx/django/repo/admin/forms/super_agent.py
 from copy import deepcopy
 from typing import Any
 
@@ -8,19 +8,18 @@ from django import forms
 from django.http import HttpRequest
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
-
-from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.base import get_branch_model
-from chatddx_backend.agents.admin.forms import (
+from repo.admin import proxies
+from repo.admin.base import get_branch_model
+from repo.admin.forms import (
     AgentForm,
     ConnectionForm,
     OutputTypeForm,
     SamplingParamsForm,
     ToolGroupForm,
 )
-from chatddx_backend.agents.admin.utils import flatten_dict, unflatten_dict
-from chatddx_backend.agents.models.history import AgentBranchModel
-from chatddx_backend.agents.models.loader import agent_relations
+from repo.admin.utils import flatten_dict, unflatten_dict
+from repo.models.history import AgentBranchModel
+from repo.models.loader import agent_relations
 
 OPTIONAL_FIELDS = {
     "connection_name",

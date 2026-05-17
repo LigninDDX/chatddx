@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/registry.py
+# src/chatddx/django/repo/registry.py
 from __future__ import annotations
 
 import json

@@ -64,7 +64,7 @@ def get_owned_trails(model: str, owner_name: str) -> dict[str, BaseFormData]:
     else:
         owned = directly_owned | indirectly_owned
 
-    branches = _qs_canon(BranchModel.objects.all(), owner_name)  # pyright: ignore[reportArgumentType]
+    branches = qs_canon(BranchModel.objects.all(), owner_name)  # pyright: ignore[reportArgumentType]
     branchless_trails = (
         TrailModel.objects.filter(owned).filter(branches__isnull=True).distinct()
     )
@@ -94,7 +94,7 @@ def get_template_data(owner_name: str):
 DjangoModelT = TypeVar("DjangoModelT", bound=DjangoModel)
 
 
-def _qs_canon(qs: QuerySet[DjangoModelT], owner_name: str) -> QuerySet[DjangoModelT]:
+def qs_canon(qs: QuerySet[DjangoModelT], owner_name: str) -> QuerySet[DjangoModelT]:
     return (
         qs.filter(owner__name=owner_name)
         .order_by("owner_id", "name", "-timestamp")
@@ -135,7 +135,7 @@ def get_branch_model(model_name: str, owner_name: str, data: dict[str, Any]):
         defaults=schema.model_dump(),
     )
 
-    canon = _qs_canon(
+    canon = qs_canon(
         # this is a consequence of the branch_map hack
         Proxy.objects.filter(name=name),  # pyright: ignore[reportArgumentType]
         owner_name,
@@ -306,7 +306,7 @@ class BranchModelAdmin(TypedModelAdmin[B]):
 
     def get_queryset(self, request: HttpRequest):
         qs: QuerySet[Any] = super().get_queryset(request)
-        return _qs_canon(qs, request.user.username)
+        return qs_canon(qs, request.user.username)
 
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[DjangoModel]):
         names_subquery = queryset.values_list("name", flat=True)

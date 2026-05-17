@@ -1,4 +1,6 @@
-# src/chatddx_backend/agents/admin/forms/tool_group.py
+# src/chatddx/django/repo/admin/forms/tool_group.py
+from typing import Any
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django.db.models import F
@@ -6,6 +8,10 @@ from django.forms import (
     CharField,
     ModelChoiceField,
 )
+from repo.admin import proxies
+from repo.admin.forms.base import BaseForm
+from repo.admin.schemas import ToolGroupFormData
+from repo.models import ToolModel
 from unfold.fields import ModelMultipleChoiceField
 from unfold.layout import Hr
 from unfold.widgets import (
@@ -15,11 +21,6 @@ from unfold.widgets import (
     UnfoldAdminTextInputWidget,
 )
 
-from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.forms.base import BaseForm
-from chatddx_backend.agents.admin.schemas import ToolGroupFormData
-from chatddx_backend.agents.models import ToolModel
-
 
 class ToolGroupForm(BaseForm):
     form_data = ToolGroupFormData
@@ -27,11 +28,11 @@ class ToolGroupForm(BaseForm):
     class Meta(BaseForm.Meta):
         model = proxies.ToolGroup
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         request = kwargs["request"]
         super().__init__(*args, **kwargs)
 
-        self.fields["tools"].queryset = ToolModel.objects.filter(
+        self.fields["tools"].queryset = ToolModel.objects.filter(  # pyright: ignore
             branches__owner__name=request.user.username
         ).annotate(branch_name=F("branches__name"))
 

@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/trail/models.py
+# src/chatddx/django/repo/trail/models.py
 from __future__ import annotations
 
 import asyncio

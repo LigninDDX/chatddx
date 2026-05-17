@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/schemas.py
+# src/chatddx/django/repo/schemas.py
 from __future__ import annotations
 
 import tomllib

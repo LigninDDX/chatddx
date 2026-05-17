@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/tests/test_admin_timeline.py
+# src/chatddx/django/repo/tests/test_admin_timeline.py
 from collections import defaultdict
 from pathlib import Path
 
@@ -6,17 +6,17 @@ import pytest
 from django.db.models import Q
 from django.urls import reverse
 
-from chatddx_backend.agents.admin import proxies
-from chatddx_backend.agents.admin.base import qs_super_agent
-from chatddx_backend.agents.admin.schemas import (
+from chatddx.django.repo.admin import proxies
+from chatddx.django.repo.admin.base import qs_super_agent
+from chatddx.django.repo.admin.schemas import (
     TemplateData,
     dict_to_toml,
     parse_toml_or_dict,
 )
-from chatddx_backend.agents.models import AgentModel, ConnectionModel, IdentityModel
-from chatddx_backend.agents.models.history import AgentBranchModel, ToolBranchModel
-from chatddx_backend.agents.models.loader import create_form_data
-from chatddx_backend.agents.schemas import TrailRegistry
+from chatddx.django.repo.models import AgentModel, ConnectionModel, IdentityModel
+from chatddx.django.repo.models.history import AgentBranchModel, ToolBranchModel
+from chatddx.django.repo.models.loader import create_form_data
+from chatddx.django.repo.schemas import TrailRegistry
 
 parameters = [
     (

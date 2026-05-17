@@ -1,4 +1,4 @@
-# src/chatddx_backend/agents/tests/field_types/identity_boundary.py
+# src/chatddx/django/repo/tests/field_types/identity_boundary.py
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, cast
@@ -15,7 +15,7 @@ from django.db.models import (
 )
 from pydantic import HttpUrl, JsonValue
 
-from chatddx_backend.agents.models import (
+from chatddx.django.repo.models import (
     CoercionChoices,
     ConnectionModel,
     OutputTypeModel,
@@ -26,8 +26,8 @@ from chatddx_backend.agents.models import (
     ToolModel,
     ValidationChoices,
 )
-from chatddx_backend.agents.models.agent import JSONSchemaField
-from chatddx_backend.agents.schemas import (
+from chatddx.django.repo.models.agent import JSONSchemaField
+from chatddx.django.repo.schemas import (
     ConnectionSchema,
     OutputTypeSchema,
     SamplingDecimal,
