@@ -1,35 +1,30 @@
 [project]
-name = "chatddx-backend"
+name = "chatddx"
 version = "0.0.0+dev"
 description = "chatddx backend"
 requires-python = ">=3.12"
 dependencies = [
   "Django>=6.0.2",
-  "celery>=5.6.2",
-  "django-celery-results>=2.6.0",
   "django-crispy-forms>=2.6",
   "django-fernet-encrypted-fields>=0.3.1",
-  "django-json-widget>=2.1.1",
   "django-modeltranslation>=0.19.19",
   "django-ninja>=1.6.2",
   "django-typer>=3.7.0",
   "django-unfold>=0.93.0",
-  "flower>=2.0.1",
   "gunicorn>=25.0.1",
   "jinja2>=3.1.6",
   "jsonschema>=4.26.0",
   "markdown>=3.10.2",
-  "markdown2>=2.5.5",
-  "openai>=2.16.0",
   "orjson>=3.11.7",
   "prompt-toolkit>=3.0.50",
   "psycopg[binary]>=3.3.2",
   "pydantic-ai>=1.55.0",
-  "redis>=7.1.0",
   "time-machine>=3.2.0",
-  "tomli>=2.4.0",
   "tomli-w>=1.2.0",
 ]
+
+[project.scripts]
+django = "chatddx.django.manage:main"
 
 [dependency-groups]
 dev = [
@@ -56,6 +51,7 @@ django_settings_module = "chatddx_backend.settings"
 
 [tool.pyright]
 include = ["src"]
+extraPaths = ["src/chatddx/django"]
 ignore = ["**/migrations/*"]
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false

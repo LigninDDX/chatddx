@@ -1,0 +1,29 @@
+# src/chatddx_backend/agents/trail/schema.py
+import hashlib
+from datetime import datetime
+
+import orjson
+from ninja import Schema as NinjaSchema
+from pydantic import BaseModel, computed_field
+
+from chatddx.django.repo.utils import default_parser
+
+
+class TrailSchema(BaseModel):
+    @computed_field
+    def fingerprint(self) -> str:
+        serialized = self.model_dump(
+            exclude={"fingerprint"},
+        )
+        json = orjson.dumps(
+            serialized,
+            option=orjson.OPT_SORT_KEYS,
+            default=default_parser,
+        )
+        return hashlib.sha256(json).hexdigest()
+
+
+class TrailSpec(NinjaSchema):
+    id: int
+    fingerprint: str
+    timestamp: datetime
