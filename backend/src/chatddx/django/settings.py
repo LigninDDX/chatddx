@@ -27,7 +27,8 @@ SALT_KEY = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 INSTALLED_APPS = [
     "unfold",
-    "repo",
+    "chatddx.django.portal",
+    "chatddx.django.orm.apps.OrmConfig",
     "modeltranslation",
     "unfold.contrib.filters",
     "unfold.contrib.forms",

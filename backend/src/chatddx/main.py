@@ -1,19 +1,12 @@
 # src/chatddx/main.py
 import asyncio
-import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
-import django
 import typer
 
-django_root = os.environ["DJANGO_ROOT"]
-if str(django_root) not in sys.path:
-    sys.path.insert(0, str(django_root))
-django.setup()
-
+from chatddx.django import setup  # noqa: F401 # pyright: ignore[reportUnusedImport]
 from chatddx.django.repo.branches import get_branch_model
 from chatddx.django.repo.models.history import IdentityModel
 from chatddx.django.repo.schemas import TrailRegistry
