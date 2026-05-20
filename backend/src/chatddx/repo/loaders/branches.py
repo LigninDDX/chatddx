@@ -6,7 +6,7 @@ from django.db.models import QuerySet
 from chatddx.history.models import IdentityModel
 from chatddx.repo import proxies
 from chatddx.repo.base import (
-    BaseFormData,
+    BaseFormDataIn,
     BranchModel,
     BranchSchema,
     TrailModel,
@@ -35,21 +35,17 @@ def get_branch_model(
     TS = Repo(model_name, TrailSchema)
     TSRef = Repo(model_name, TrailSchemaRef)
 
-    form_data = Repo(model_name, BaseFormData).model_validate(data)
+    form_data = Repo(model_name, BaseFormDataIn).model_validate(data)
 
-    schema_ref = TSRef.model_validate(form_data.model_dump(exclude_none=True))
+    schema_in = TS.model_validate(form_data.model_dump())
 
-    relations = {
-        field_ref: asdf(field_ref, getattr(schema_ref, field_ref))
-        for field_ref in TSRef.__annotations__
-    }
-    schema = TS.model_validate(schema_ref.model_dump() | relations)
+    schema_ref = TSRef.from_schema(schema_in)
 
     name = data.get("name", "")
 
     trail, _ = TM.objects.get_or_create(
-        fingerprint=schema.fingerprint,
-        defaults=schema.model_dump(),
+        fingerprint=schema_ref.fingerprint,
+        defaults=schema_ref.model_dump(),
     )
 
     canon = qs_canon(
@@ -57,14 +53,15 @@ def get_branch_model(
         owner_name,
     ).first()
 
-    if canon and schema.fingerprint == canon.target.fingerprint:
+    if canon and schema_ref.fingerprint == canon.target.fingerprint:
         return canon  # pyright: ignore
 
-    return Repo(model_name, proxies.BranchProxy)(
+    proxy = Proxy(
         target=trail,  # pyright: ignore
         owner=IdentityModel.objects.get(name=owner_name),  # pyright: ignore
         name=name,  # pyright: ignore
     )
+    return proxy
 
 
 DjangoModelT = TypeVar("DjangoModelT", bound=DjangoModel)

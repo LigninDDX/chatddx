@@ -4,10 +4,10 @@ from typing import Any
 from django.db.models import Model as DjangoModel
 from django.forms import ModelForm
 from django.http import HttpRequest
-from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
 from chatddx.repo import proxies
+from chatddx.repo.base import BaseFormDataOut
 from chatddx.repo.loaders.branches import get_branch_model
 from chatddx.repo.main import is_bundle_name
 
@@ -16,7 +16,7 @@ class BaseForm(ModelForm):
     class Meta:
         fields = ["name"]
 
-    form_data: type[BaseModel]
+    form_data: type[BaseFormDataOut]
     model_name: str
     request: HttpRequest
     actual_obj: proxies.BranchProxy

@@ -17,11 +17,11 @@ from unfold.widgets import (
 from chatddx.core.choices import CoercionChoices, ValidationChoices
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
-from chatddx.repo.form_data import OutputTypeFormData
+from chatddx.repo.form_data_out import OutputTypeFormDataOut
 
 
 class OutputTypeForm(BaseForm):
-    form_data = OutputTypeFormData
+    form_data = OutputTypeFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.OutputType

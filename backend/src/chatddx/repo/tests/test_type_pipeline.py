@@ -3,7 +3,7 @@ import pytest
 from chatddx.core.choices import ToolChoices
 from chatddx.core.models import IdentityModel
 from chatddx.repo import proxies
-from chatddx.repo.base import BaseFormData, TrailSchema
+from chatddx.repo.base import BaseFormDataOut, TrailSchema
 from chatddx.repo.branch_models import ToolBranchModel
 from chatddx.repo.loaders.branches import get_branch_model
 from chatddx.repo.main import Repo
@@ -18,7 +18,7 @@ def test_type_pipeline():
     )
     assert tool.command == "cmd"
 
-    assert Repo("tool", BaseFormData).model_validate
+    assert Repo("tool", BaseFormDataOut).model_validate
 
 
 @pytest.mark.django_db

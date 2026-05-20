@@ -19,12 +19,12 @@ from unfold.widgets import (
 
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
-from chatddx.repo.form_data import ToolGroupFormData
+from chatddx.repo.form_data_out import ToolGroupFormDataOut
 from chatddx.repo.trail_models import ToolTrailModel
 
 
 class ToolGroupForm(BaseForm):
-    form_data = ToolGroupFormData
+    form_data = ToolGroupFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.ToolGroup

@@ -17,11 +17,11 @@ from unfold.widgets import (
 from chatddx.core.choices import ToolChoices
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
-from chatddx.repo.form_data import ToolFormData
+from chatddx.repo.form_data_out import ToolFormDataOut
 
 
 class ToolForm(BaseForm):
-    form_data = ToolFormData
+    form_data = ToolFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.Tool

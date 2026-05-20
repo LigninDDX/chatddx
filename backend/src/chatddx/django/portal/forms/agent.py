@@ -14,7 +14,7 @@ from unfold.widgets import (
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
 from chatddx.repo.base import TrailModel
-from chatddx.repo.form_data import AgentFormData
+from chatddx.repo.form_data_out import AgentFormDataOut
 from chatddx.repo.loaders.model_loader import agent_relations
 from chatddx.repo.main import Repo
 from chatddx.repo.trail_models import (
@@ -26,7 +26,7 @@ from chatddx.repo.trail_models import (
 
 
 class AgentForm(BaseForm):
-    form_data = AgentFormData
+    form_data = AgentFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.Agent

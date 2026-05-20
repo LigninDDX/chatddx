@@ -11,31 +11,31 @@ from pydantic import BaseModel
 from unfold.admin import ModelAdmin
 
 from chatddx.django.portal.forms.base import BaseForm
-from chatddx.repo.base import BaseFormData, BranchModel, TrailModel
-from chatddx.repo.form_data import (
-    AgentFormData,
-    ConnectionFormData,
-    OutputTypeFormData,
-    SamplingParamsFormData,
-    ToolFormData,
-    ToolGroupFormData,
+from chatddx.repo.base import BaseFormDataOut, BranchModel, TrailModel
+from chatddx.repo.form_data_out import (
+    AgentFormDataOut,
+    ConnectionFormDataOut,
+    OutputTypeFormDataOut,
+    SamplingParamsFormDataOut,
+    ToolFormDataOut,
+    ToolGroupFormDataOut,
 )
 from chatddx.repo.loaders.model_loader import agent_relations
 from chatddx.repo.main import BundleName, Repo
 
 
 class TemplateData(BaseModel):
-    agent: dict[str, AgentFormData]
-    connection: dict[str, ConnectionFormData]
-    sampling_params: dict[str, SamplingParamsFormData]
-    output_type: dict[str, OutputTypeFormData]
-    tool_group: dict[str, ToolGroupFormData]
-    tool: dict[str, ToolFormData]
+    agent: dict[str, AgentFormDataOut]
+    connection: dict[str, ConnectionFormDataOut]
+    sampling_params: dict[str, SamplingParamsFormDataOut]
+    output_type: dict[str, OutputTypeFormDataOut]
+    tool_group: dict[str, ToolGroupFormDataOut]
+    tool: dict[str, ToolFormDataOut]
 
 
-def get_owned_trails(model: str, owner_name: str) -> dict[str, BaseFormData]:
+def get_owned_trails(model: str, owner_name: str) -> dict[str, BaseFormDataOut]:
     BM = Repo(model, BranchModel)
-    FD = Repo(model, BaseFormData)
+    FD = Repo(model, BaseFormDataOut)
     TM = Repo(model, TrailModel)
 
     indirectly_owned = Q(agenttrailmodel__branches__owner__name=owner_name)
@@ -51,7 +51,7 @@ def get_owned_trails(model: str, owner_name: str) -> dict[str, BaseFormData]:
         TM.objects.filter(owned).filter(branches__isnull=True).distinct()
     )
 
-    form_data: dict[str, BaseFormData] = {}
+    form_data: dict[str, BaseFormDataOut] = {}
     for branch in branches:
         form_data[str(branch.target.pk)] = FD.model_validate(
             branch.target,

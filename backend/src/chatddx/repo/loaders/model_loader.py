@@ -2,17 +2,9 @@
 from django.db import IntegrityError
 from django.db.models import Model as DjangoModel
 
-from chatddx.repo.base import BaseFormData, TrailModel, TrailSchema
+from chatddx.repo.base import BaseFormDataOut, TrailModel, TrailSchema, TrailSchemaRef
 from chatddx.repo.branch_models import BranchModel
 from chatddx.repo.main import Repo
-from chatddx.repo.trail_schema_refs import (
-    AgentSchemaRef,
-    ToolGroupSchemaRef,
-)
-from chatddx.repo.trail_schemas import (
-    AgentSchema,
-    ToolGroupSchema,
-)
 
 agent_relations: list[str] = [
     "connection",
@@ -22,34 +14,18 @@ agent_relations: list[str] = [
 ]
 
 
-def _ref_tool_group(schema: ToolGroupSchema) -> ToolGroupSchemaRef:
-    tool_ids = [create_trail(tool).pk for tool in schema.tools]
-    return ToolGroupSchemaRef(**(schema.model_dump() | {"tools": tool_ids}))
-
-
-def _ref_agent(schema: TrailSchema):
-    ref_ids = {
-        ref + "_id": create_trail(getattr(schema, ref)).pk for ref in agent_relations
-    }
-    return AgentSchemaRef(**schema.model_dump(exclude=set(agent_relations)) | ref_ids)
-
-
 def create_trail(schema: TrailSchema) -> DjangoModel:
     TM = Repo(schema, TrailModel)
-    match schema:
-        case AgentSchema():
-            schema = _ref_agent(schema)
-        case ToolGroupSchema():
-            schema = _ref_tool_group(schema)
-        case _:
-            pass
+    TSRef = Repo(schema, TrailSchemaRef)
+
+    schema_ref = TSRef.from_schema(schema)
     try:
         trail_instance, _ = TM.objects.get_or_create(
-            fingerprint=schema.fingerprint,
-            **schema.model_dump(exclude={"fingerprint"}),
+            fingerprint=schema_ref.fingerprint,
+            **schema_ref.model_dump(exclude={"fingerprint"}),
         )
     except IntegrityError:
-        trail_instance = TM.objects.get(fingerprint=schema.fingerprint)
+        trail_instance = TM.objects.get(fingerprint=schema_ref.fingerprint)
 
     return trail_instance
 
@@ -74,8 +50,8 @@ def create_form_data(
     name: str,
     owner_id: int,
     key: str = "id",
-) -> tuple[str, BaseFormData]:
-    FD = Repo(schema, BaseFormData)
+) -> tuple[str, BaseFormDataOut]:
+    FD = Repo(schema, BaseFormDataOut)
     branch = create_branch(
         schema,
         name,

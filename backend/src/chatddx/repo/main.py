@@ -4,7 +4,8 @@ from typing import Any, Literal, TypedDict, TypeGuard, get_args
 
 from chatddx.repo import proxies
 from chatddx.repo.base import (
-    BaseFormData,
+    BaseFormDataIn,
+    BaseFormDataOut,
     BranchSchema,
     BranchSpec,
     TrailModel,
@@ -21,13 +22,21 @@ from chatddx.repo.branch_models import (
     ToolBranchModel,
     ToolGroupBranchModel,
 )
-from chatddx.repo.form_data import (
-    AgentFormData,
-    ConnectionFormData,
-    OutputTypeFormData,
-    SamplingParamsFormData,
-    ToolFormData,
-    ToolGroupFormData,
+from chatddx.repo.form_data_in import (
+    AgentFormDataIn,
+    ConnectionFormDataIn,
+    OutputTypeFormDataIn,
+    SamplingParamsFormDataIn,
+    ToolFormDataIn,
+    ToolGroupFormDataIn,
+)
+from chatddx.repo.form_data_out import (
+    AgentFormDataOut,
+    ConnectionFormDataOut,
+    OutputTypeFormDataOut,
+    SamplingParamsFormDataOut,
+    ToolFormDataOut,
+    ToolGroupFormDataOut,
 )
 from chatddx.repo.trail_models import (
     AgentTrailModel,
@@ -77,7 +86,8 @@ class RepoBundle[
     BranchModel: type[BranchModel]
     BranchSpec: type[BranchSpec[TrailSpecT]]
 
-    BaseFormData: type[BaseFormData]
+    BaseFormDataIn: type[BaseFormDataIn]
+    BaseFormDataOut: type[BaseFormDataOut]
     BranchProxy: type[proxies.BranchProxy]
 
 
@@ -89,7 +99,8 @@ agent_bundle = RepoBundle(
     BranchSchema[AgentSchema],
     AgentBranchModel,
     BranchSpec[AgentSpec],
-    AgentFormData,
+    AgentFormDataIn,
+    AgentFormDataOut,
     proxies.Agent,
 )
 
@@ -101,7 +112,8 @@ connection_bundle = RepoBundle(
     BranchSchema[ConnectionSchema],
     ConnectionBranchModel,
     BranchSpec[ConnectionSpec],
-    ConnectionFormData,
+    ConnectionFormDataIn,
+    ConnectionFormDataOut,
     proxies.Connection,
 )
 
@@ -113,7 +125,8 @@ sampling_params_bundle = RepoBundle(
     BranchSchema[SamplingParamsSchema],
     SamplingParamsBranchModel,
     BranchSpec[SamplingParamsSpec],
-    SamplingParamsFormData,
+    SamplingParamsFormDataIn,
+    SamplingParamsFormDataOut,
     proxies.SamplingParams,
 )
 
@@ -125,7 +138,8 @@ output_type_bundle = RepoBundle(
     BranchSchema[OutputTypeSchema],
     OutputTypeBranchModel,
     BranchSpec[OutputTypeSpec],
-    OutputTypeFormData,
+    OutputTypeFormDataIn,
+    OutputTypeFormDataOut,
     proxies.OutputType,
 )
 
@@ -137,7 +151,8 @@ tool_group_bundle = RepoBundle(
     BranchSchema[ToolGroupSchema],
     ToolGroupBranchModel,
     BranchSpec[ToolGroupSpec],
-    ToolGroupFormData,
+    ToolGroupFormDataIn,
+    ToolGroupFormDataOut,
     proxies.ToolGroup,
 )
 
@@ -149,7 +164,8 @@ tool_bundle = RepoBundle(
     BranchSchema[ToolSchema],
     ToolBranchModel,
     BranchSpec[ToolSpec],
-    ToolFormData,
+    ToolFormDataIn,
+    ToolFormDataOut,
     proxies.Tool,
 )
 

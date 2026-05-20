@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import inspect
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -14,7 +15,7 @@ from typing import (
 
 from django.db.models import Model as DjangoModel
 from django.db.models import QuerySet
-from pydantic import HttpUrl
+from pydantic import HttpUrl, JsonValue
 
 T = TypeVar("T")
 
@@ -39,6 +40,18 @@ def default_parser(obj: Any):
             return str(obj)
         case _:
             raise TypeError(f"Unsupported type: {type(obj)}")
+
+
+def generate_fingerprint(data: dict[str, JsonValue]):
+    import orjson
+
+    json = orjson.dumps(
+        data,
+        option=orjson.OPT_SORT_KEYS,
+        default=default_parser,
+    )
+
+    return hashlib.sha256(json).hexdigest()
 
 
 def one_or_list_of(t: type[T], value: object) -> OneOf[T] | ListOf[T] | None:
@@ -94,12 +107,6 @@ def flatten_dict(d: dict[str, Any]):
         for outer, inner_dict in d.items()
         for inner, value in inner_dict.items()
     }
-
-
-def extract_django_pk(value: Any):
-    if isinstance(value, DjangoModel):
-        return value.pk
-    return value
 
 
 def unflatten_dict(

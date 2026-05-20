@@ -18,7 +18,7 @@ from ninja import Schema as NinjaSchema
 from pydantic import BaseModel, ValidationInfo, computed_field, model_validator
 
 from chatddx.core.models import IdentityModel
-from chatddx.utils import default_parser
+from chatddx.utils import generate_fingerprint
 
 
 class BranchBase(BaseModel):
@@ -30,19 +30,19 @@ class BranchBase(BaseModel):
 class TrailSchema(BaseModel):
     @computed_field
     def fingerprint(self) -> str:
-        serialized = self.model_dump(
-            exclude={"fingerprint"},
-        )
-        json = orjson.dumps(
-            serialized,
-            option=orjson.OPT_SORT_KEYS,
-            default=default_parser,
-        )
-        return hashlib.sha256(json).hexdigest()
+        return self.as_fingerprint()
+
+    def as_fingerprint(self):
+        serialized = self.model_dump(exclude={"fingerprint"})
+        return generate_fingerprint(serialized)
 
 
 class TrailSchemaRef(BaseModel):
-    pass
+    fingerprint: str
+
+    @classmethod
+    def from_schema(cls, schema: TrailSchema):
+        return cls.model_validate(schema.model_dump())
 
 
 class BranchSchema[T: TrailSchema](BranchBase):
@@ -79,15 +79,12 @@ class BranchSpec[T: TrailSpec](BranchBase, NinjaSchema):
     target: T
 
 
-class BaseFormData(NinjaSchema):
-    id: int | None = None
+class BaseFormDataIn(NinjaSchema):
     name: str | None = None
 
-    @model_validator(mode="after")
-    def add_name_from_context(self, info: ValidationInfo):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
+
+class BaseFormDataOut(NinjaSchema):
+    name: str | None = None
 
 
 class TrailModel(Model):

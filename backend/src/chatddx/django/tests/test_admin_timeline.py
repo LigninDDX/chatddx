@@ -14,7 +14,7 @@ from chatddx.core.models import IdentityModel
 from chatddx.django.portal.admin.base import TemplateData
 from chatddx.registry.schemas import TrailRegistry
 from chatddx.repo import proxies
-from chatddx.repo.base import BaseFormData
+from chatddx.repo.base import BaseFormDataOut
 from chatddx.repo.branch_models import AgentBranchModel
 from chatddx.repo.loaders.model_loader import create_form_data
 
@@ -71,7 +71,7 @@ def owner(admin_user: User):
 
 @pytest.fixture
 def template_data(owner: IdentityModel, registry: TrailRegistry):
-    form_data: dict[str, dict[str, BaseFormData]] = defaultdict(dict)
+    form_data: dict[str, dict[str, BaseFormDataOut]] = defaultdict(dict)
 
     for kind, data in registry:
         for name, schema in data.items():
@@ -412,6 +412,7 @@ def test_tool_group(template_data: TemplateData, admin_client: Client):
     some_key = "tool_group-1"
 
     post_data = data[some_key].model_dump(mode="json", exclude_none=True)
+    post_data["name"] = some_key
 
     assert isinstance(post_data["instructions"], str)
     assert post_data["instructions"] == "use these tools"

@@ -1,8 +1,20 @@
 import tomllib
 from typing import Annotated, Any
 
+import jsonschema
 import tomli_w
 from pydantic import BeforeValidator, JsonValue, PlainSerializer
+
+
+def validate_json_schema(v: Any) -> Any:
+    if v is not None:
+        try:
+            jsonschema.Draft7Validator.check_schema(v)
+        except jsonschema.SchemaError as e:
+            raise ValueError(f"Invalid JSON Schema: {e.message}")
+        check_v = tomllib.loads(tomli_w.dumps(v))
+        assert check_v == v
+    return v
 
 
 def parse_toml_or_dict(v: Any) -> Any:
@@ -36,12 +48,28 @@ def parse_text_or_list(v: Any) -> list[str] | None:
             raise ValueError(f"Unexpected input: {v}")
 
 
-def dict_to_toml(v: dict[str, Any] | None) -> str:
-    return tomli_w.dumps(v).strip() if v is not None else ""
+def dict_to_toml(v: Any) -> str:
+    match v:
+        case dict():
+            return tomli_w.dumps(v).strip()
+        case str():
+            return v
+        case None:
+            return ""
+        case _:
+            raise ValueError(f"Unexpected type: {v}")
 
 
-def list_to_text(v: list[str] | None) -> str:
-    return "\n".join(v) if v is not None else ""
+def list_to_text(v: Any) -> str:
+    match v:
+        case list():
+            return "\n".join(v)
+        case str():
+            return v
+        case None:
+            return ""
+        case _:
+            raise ValueError(f"Unexpected type: {v}")
 
 
 TomlDict = Annotated[
