@@ -6,7 +6,7 @@ from chatddx.repo import proxies
 from chatddx.repo.base import BaseFormDataOut, TrailSchema
 from chatddx.repo.branch_models import ToolBranchModel
 from chatddx.repo.form_data_in import ToolFormDataIn
-from chatddx.repo.loaders.branches import get_branch_model
+from chatddx.repo.loaders.branches import branch_from_form
 from chatddx.repo.main import Repo
 
 
@@ -31,9 +31,9 @@ def test_branch():
         "type": ToolChoices.FUNCTION,
     }
     form_data = ToolFormDataIn.model_validate(data)
-    tool = get_branch_model("tool", "alex", form_data)
+    tool = branch_from_form("tool", "alex", form_data)
     tool.save()
     ToolBranchModel.objects.get(name="tool")
     assert isinstance(tool, proxies.Tool)
-    tool = get_branch_model("tool", "alex", form_data)
+    tool = branch_from_form("tool", "alex", form_data)
     assert isinstance(tool, proxies.Tool)

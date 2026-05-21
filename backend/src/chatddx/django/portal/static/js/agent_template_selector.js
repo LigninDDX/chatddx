@@ -6,7 +6,7 @@
     const populateOptions = (model, data) => {
       const is_super_agent = form_info.name === "super_agent";
       const suffix = form_info.name === "agent" ? "_id" : "_template";
-      const template_selector_id = is_super_agent ? `#id_${model}_template` : '#id_template';
+      const template_selector_id = is_super_agent && model !== "agent" ? `#id_${model}_template` : '#id_template';
       const clear_id = `clear_${model}`;
       const $template_selector = $(template_selector_id);
 
@@ -15,7 +15,7 @@
           key = key.replace(/_id$/, suffix);
           value = String(value);
         }
-        const field_id = (is_super_agent && !key.endsWith(suffix) ?
+        const field_id = (is_super_agent && model !== "agent" && !key.endsWith(suffix) ?
           `#id_${model}_${key}` : '#id_' + key
         );
 

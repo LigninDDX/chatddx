@@ -17,6 +17,7 @@ from pydantic import (
     BaseModel,
     ValidationInfo,
     computed_field,
+    field_serializer,
     model_validator,
 )
 
@@ -93,13 +94,18 @@ class BaseFormDataIn(NinjaSchema):
 
 
 class BaseFormDataOut(NinjaSchema):
-    name: str | None = None
+    id: int
+    name: str = ""
 
     @model_validator(mode="after")
     def add_name_from_context(self, info: ValidationInfo):
         if info.context:
             self.name = info.context.get("name")
         return self
+
+    @field_serializer("id")
+    def serialize_id_to_str(self, v: Any) -> str:
+        return str(v)
 
 
 class TrailModel(Model):

@@ -1,7 +1,7 @@
 # src/chatddx/repo/form_data_out.py
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import BeforeValidator, Field
+from pydantic import BeforeValidator, Field, field_validator
 
 from chatddx.core.fields import dict_to_toml, list_to_text
 from chatddx.repo.base import BaseFormDataOut
@@ -37,7 +37,7 @@ class OutputTypeFormDataOut(OutputTypeBasePrimitives, BaseFormDataOut):
 
 
 class ToolGroupFormDataOut(ToolGroupBase, BaseFormDataOut):
-    tools: list[int]
+    tools: list[str | int]
 
 
 class SubAgentFormDataOut(AgentBase, BaseFormDataOut):
@@ -45,10 +45,23 @@ class SubAgentFormDataOut(AgentBase, BaseFormDataOut):
 
 
 class AgentFormDataOut(AgentBase, BaseFormDataOut):
-    connection_id: int = Field(serialization_alias="connection")
-    sampling_params_id: int = Field(serialization_alias="sampling_params")
-    output_type_id: int = Field(serialization_alias="output_type")
-    tool_group_id: int = Field(serialization_alias="tool_group")
+    connection_id: str = Field(serialization_alias="connection")
+    sampling_params_id: str = Field(serialization_alias="sampling_params")
+    output_type_id: str = Field(serialization_alias="output_type")
+    tool_group_id: str = Field(serialization_alias="tool_group")
+
+    @field_validator(
+        "connection_id",
+        "sampling_params_id",
+        "output_type_id",
+        "tool_group_id",
+        mode="before",
+    )
+    @classmethod
+    def coerce_int_to_str(cls, v: Any):
+        if isinstance(v, int):
+            return str(v)
+        return v
 
 
 class SuperAgentFormDataOut(AgentBase, BaseFormDataOut):

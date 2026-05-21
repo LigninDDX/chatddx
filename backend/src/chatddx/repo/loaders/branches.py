@@ -1,4 +1,4 @@
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from django.db.models import Model as DjangoModel
 from django.db.models import QuerySet
@@ -19,25 +19,33 @@ from chatddx.repo.trail_schema_refs import TrailSchemaRef
 TrailSchemaT = TypeVar("TrailSchemaT", bound=TrailSchema)
 
 
-def asdf(model_name: str, pk: int) -> TrailSchema:
-    model = Repo(model_name, TrailModel).objects.select_related().get(pk=pk)
-    return Repo(model_name, TrailSchema).model_validate(model)
-
-
-def get_branch_model(
+def branch_from_form(
     model_name: BundleName,
     owner_name: str,
     form_data: BaseFormDataIn,
 ) -> proxies.BranchProxy:
-
-    Proxy = Repo(model_name, proxies.BranchProxy)
-    TM = Repo(model_name, TrailModel)
+    pass
     TS = Repo(model_name, TrailSchema)
-    TSRef = Repo(model_name, TrailSchemaRef)
+    schema = TS.model_validate(form_data.model_dump())
+    return branch_from_trail(
+        model_name,
+        form_data.name,
+        owner_name,
+        schema,
+    )
 
-    schema_in = TS.model_validate(form_data.model_dump())
 
-    schema_ref = TSRef.from_schema(schema_in)
+def branch_from_trail(
+    bundle_name: BundleName,
+    branch_name: str,
+    owner_name: str,
+    schema: TrailSchema,
+) -> proxies.BranchProxy:
+    Proxy = Repo(bundle_name, proxies.BranchProxy)
+    TM = Repo(bundle_name, TrailModel)
+    TSRef = Repo(bundle_name, TrailSchemaRef)
+
+    schema_ref = TSRef.from_schema(schema)
 
     trail, _ = TM.objects.get_or_create(
         fingerprint=schema_ref.fingerprint,
@@ -45,7 +53,7 @@ def get_branch_model(
     )
 
     canon = qs_canon(
-        Proxy.objects.filter(name=form_data.name),
+        Proxy.objects.filter(name=branch_name),
         owner_name,
     ).first()
 
@@ -55,7 +63,7 @@ def get_branch_model(
     proxy = Proxy(
         target=trail,  # pyright: ignore
         owner=IdentityModel.objects.get(name=owner_name),  # pyright: ignore
-        name=form_data.name,  # pyright: ignore
+        name=branch_name,  # pyright: ignore
     )
     return proxy
 

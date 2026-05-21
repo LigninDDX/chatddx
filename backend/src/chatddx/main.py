@@ -1,15 +1,16 @@
 # src/chatddx/main.py
-import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
+import django
 import typer
 
-from chatddx.django import setup  # noqa: F401 # pyright: ignore[reportUnusedImport]
-from chatddx.django.repo.branches import get_branch_model
-from chatddx.django.repo.models.history import IdentityModel
-from chatddx.django.repo.schemas import TrailRegistry
+django.setup()
+
+from chatddx.core.models import IdentityModel
+from chatddx.registry.schemas import TrailRegistry
+from chatddx.repo.loaders.branches import branch_from_trail
 
 app = typer.Typer()
 
@@ -54,9 +55,8 @@ def init_data_(
 
     for kind, registry_dict in trail_registry:
         for name, schema in registry_dict.items():
-            branch_model = asyncio.run(
-                get_branch_model(name, owner_instance.pk, schema)
-            )
+            branch_model = branch_from_trail(kind, name, owner_instance.name, schema)
+            branch_model.save()
             print(
                 f"{kind} {name} {branch_model.pk} ({branch_model.target.fingerprint})"
             )

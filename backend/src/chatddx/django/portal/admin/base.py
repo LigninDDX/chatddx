@@ -17,10 +17,11 @@ from chatddx.repo.form_data_out import (
     ConnectionFormDataOut,
     OutputTypeFormDataOut,
     SamplingParamsFormDataOut,
+    SuperAgentFormDataOut,
     ToolFormDataOut,
     ToolGroupFormDataOut,
 )
-from chatddx.repo.loaders.branches import get_branch_model
+from chatddx.repo.loaders.branches import branch_from_form
 from chatddx.repo.loaders.model_loader import agent_relations
 from chatddx.repo.main import BundleName, Repo
 
@@ -67,11 +68,11 @@ def get_owned_trails(model: str, owner_name: str) -> dict[str, BaseFormDataOut]:
 
 
 def get_template_data(owner_name: str):
-    payload: dict[str, Any] = {
+    payload: dict[BundleName, Any] = {
         model: get_owned_trails(model, owner_name) for model in get_args(BundleName)
     }
-    td = TemplateData(**payload)
-    return td.model_dump_json()
+    td = TemplateData.model_validate(payload)
+    return td.model_dump_json(by_alias=True)
 
 
 DjangoModelT = TypeVar("DjangoModelT", bound=DjangoModel)
@@ -150,7 +151,10 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         form: BaseForm,
         change: bool,
     ):
-        obj = get_branch_model(
+        if form.validated_data is None:
+            raise ValueError("form.validated_data is unexpectedly None")
+
+        obj = branch_from_form(
             self.name,
             self.request.user.username,
             form.validated_data,
@@ -200,7 +204,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
             "form_info": json.dumps(
                 {
                     "name": self.name,
-                    self.name: obj.target.pk if obj else None,
+                    self.name: str(obj.target.pk) if obj else None,
                 }
             ),
         }

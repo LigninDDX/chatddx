@@ -13,9 +13,11 @@
     };
     pyproject-build-systems = {
       url = "github:pyproject-nix/build-system-pkgs";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-      inputs.uv2nix.follows = "uv2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        pyproject-nix.follows = "pyproject-nix";
+        uv2nix.follows = "uv2nix";
+        nixpkgs.follows = "nixpkgs";
+      };
     };
   };
 
@@ -30,8 +32,6 @@
     let
       name = "chatddx";
       inherit (nixpkgs) lib;
-      pyprojectToml = fromTOML (builtins.readFile ./backend/pyproject.toml);
-      djangoApp = builtins.replaceStrings [ "-" ] [ "_" ] pyprojectToml.project.name;
       version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
       forAllSystems = lib.genAttrs lib.systems.flakeExposed;
       workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./backend; };
@@ -107,7 +107,7 @@
           django-manage = pkgs.writeShellApplication {
             name = "${name}-django-manage-${version}";
             # manage is also a stand-alone script
-            text = builtins.readFile ./backend/src/${djangoApp}/bin/manage;
+            text = builtins.readFile ./backend/src/${name}/django/bin/manage;
           };
 
           django-static = pkgs.stdenv.mkDerivation {
@@ -116,7 +116,7 @@
             src = ./backend;
             buildPhase = ''
               export STATIC_ROOT=$out
-              export DJANGO_SETTINGS_MODULE=${djangoApp}.settings
+              export DJANGO_SETTINGS_MODULE=${name}.django.settings
               ${django-app}/bin/django-admin collectstatic --no-input
             '';
             installPhase = ":";
@@ -151,6 +151,7 @@
             shellHook = ''
               unset PYTHONPATH
               export BACKEND_ROOT=$(git rev-parse --show-toplevel)/backend
+              export DJANGO_ROOT="$BACKEND_ROOT/src/${name}/django"
               set -a
               [ -f backend/.env ] && source backend/.env
               [ -f client/.env ] && source client/.env

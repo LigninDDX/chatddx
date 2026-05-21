@@ -95,9 +95,9 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     ) -> dict[str, Any]:
         form_info: dict[str, Any] = {
             "name": "super_agent",
-            "agent": obj.target.pk if obj else None,
+            "agent": str(obj.target.pk) if obj else None,
         } | (
-            {model: getattr(obj.target, model).pk for model in agent_relations}
+            {model: str(getattr(obj.target, model).pk) for model in agent_relations}
             if obj
             else {}
         )
