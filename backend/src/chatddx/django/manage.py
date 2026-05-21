@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 
-import os
 import sys
 
 
 def main():
-    django_root = os.environ["DJANGO_ROOT"]
-    if str(django_root) not in sys.path:
-        sys.path.insert(0, str(django_root))
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

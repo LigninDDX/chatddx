@@ -110,17 +110,6 @@
             text = builtins.readFile ./backend/src/${name}/django/bin/manage;
           };
 
-          django-static = pkgs.stdenv.mkDerivation {
-            pname = "${name}-django-static";
-            inherit version;
-            src = ./backend;
-            buildPhase = ''
-              export STATIC_ROOT=$out
-              export DJANGO_SETTINGS_MODULE=${name}.django.settings
-              ${django-app}/bin/django-admin collectstatic --no-input
-            '';
-            installPhase = ":";
-          };
         }
       );
 
@@ -151,7 +140,6 @@
             shellHook = ''
               unset PYTHONPATH
               export BACKEND_ROOT=$(git rev-parse --show-toplevel)/backend
-              export DJANGO_ROOT="$BACKEND_ROOT/src/${name}/django"
               set -a
               [ -f backend/.env ] && source backend/.env
               [ -f client/.env ] && source client/.env
