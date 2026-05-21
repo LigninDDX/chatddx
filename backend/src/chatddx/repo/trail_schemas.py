@@ -49,7 +49,7 @@ class SamplingParamsBasePrimitives(BaseModel):
 
 
 class SamplingParamsBase(SamplingParamsBasePrimitives):
-    stop_sequences: list[str] | None = None
+    stop_sequences: list[str] = Field(default_factory=list)
     logit_bias: dict[str, SamplingDecimal] = Field(default_factory=dict)
     provider_params: dict[str, JsonValue] = Field(default_factory=dict)
 

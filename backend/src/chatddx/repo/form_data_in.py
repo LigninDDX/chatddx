@@ -1,4 +1,10 @@
 # src/chatddx/repo/form_data_in.py
+from typing import Annotated, Any
+
+from pydantic import BeforeValidator, Field, JsonValue, model_validator
+
+from chatddx.core.decimals import SamplingDecimal
+from chatddx.core.fields import parse_text_or_list, parse_toml_or_dict
 from chatddx.repo.base import BaseFormDataIn
 from chatddx.repo.trail_schemas import (
     AgentBase,
@@ -11,27 +17,68 @@ from chatddx.repo.trail_schemas import (
 
 
 class ToolFormDataIn(ToolBase, BaseFormDataIn):
-    pass
+    parameters: Annotated[
+        dict[str, JsonValue],
+        BeforeValidator(parse_toml_or_dict),
+    ] = Field(default_factory=dict)
 
 
 class ConnectionFormDataIn(ConnectionBase, BaseFormDataIn):
-    pass
+    profile: Annotated[
+        dict[str, JsonValue],
+        BeforeValidator(parse_toml_or_dict),
+    ] = Field(default_factory=dict)
 
 
 class SamplingParamsFormDataIn(SamplingParamsBase, BaseFormDataIn):
-    pass
+    stop_sequences: Annotated[
+        list[str],
+        BeforeValidator(parse_text_or_list),
+    ] = Field(default_factory=list)
+    logit_bias: Annotated[
+        dict[str, SamplingDecimal],
+        BeforeValidator(parse_toml_or_dict),
+    ] = Field(default_factory=dict)
+
+    provider_params: Annotated[
+        dict[str, JsonValue],
+        BeforeValidator(parse_toml_or_dict),
+    ] = Field(default_factory=dict)
 
 
 class OutputTypeFormDataIn(OutputTypeBase, BaseFormDataIn):
-    pass
+    definition: Annotated[
+        dict[str, JsonValue],
+        BeforeValidator(parse_toml_or_dict),
+    ] = Field(default_factory=dict)
 
 
 class ToolGroupFormDataIn(ToolGroupBase, BaseFormDataIn):
-    tools: list[ToolFormDataIn]
+    tools: list[ToolFormDataIn] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_tools(cls, v: Any):
+        from chatddx.repo.trail_models import ToolTrailModel
+
+        if v.tools and isinstance(v.tools[0], int):
+            v.tools = ToolTrailModel.objects.filter(pk__in=v.tools)
+        return v
+
+
+class SubAgentFormDataIn(AgentBase, BaseFormDataIn):
+    pass
 
 
 class AgentFormDataIn(AgentBase, BaseFormDataIn):
     connection: ConnectionFormDataIn
-    sampling_params: ConnectionFormDataIn
-    output_type: ConnectionFormDataIn
-    tool_group: ConnectionFormDataIn
+    sampling_params: SamplingParamsFormDataIn
+    output_type: OutputTypeFormDataIn
+    tool_group: ToolGroupFormDataIn
+
+
+class SuperAgentFormDataIn(AgentBase, BaseFormDataIn):
+    connection: ConnectionFormDataIn
+    sampling_params: SamplingParamsFormDataIn
+    output_type: OutputTypeFormDataIn
+    tool_group: ToolGroupFormDataIn

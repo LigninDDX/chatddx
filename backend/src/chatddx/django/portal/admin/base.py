@@ -20,6 +20,7 @@ from chatddx.repo.form_data_out import (
     ToolFormDataOut,
     ToolGroupFormDataOut,
 )
+from chatddx.repo.loaders.branches import get_branch_model
 from chatddx.repo.loaders.model_loader import agent_relations
 from chatddx.repo.main import BundleName, Repo
 
@@ -115,7 +116,7 @@ class TrailModelAdmin[T: TrailModel](TypedModelAdmin[T]):
 
 
 class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
-    name: str
+    name: BundleName
     change_form_template = "admin/agents/branch_change_form.html"
     add_form_template = "admin/agents/branch_change_form.html"
     list_display = [
@@ -139,7 +140,6 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         class FormWithRequest(Form):
             def __new__(cls, *args: Any, **fkwargs: Any):
                 fkwargs["request"] = request
-                fkwargs["model_name"] = self.name
                 return Form(*args, **fkwargs)
 
         return FormWithRequest
@@ -150,7 +150,11 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         form: BaseForm,
         change: bool,
     ):
-        obj = form.actual_obj
+        obj = get_branch_model(
+            self.name,
+            self.request.user.username,
+            form.validated_data,
+        )
         if obj.pk:
             self.message_user(  # pyright: ignore[reportUnknownMemberType]
                 request,

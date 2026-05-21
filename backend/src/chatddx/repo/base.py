@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import hashlib
 from datetime import datetime
 from typing import Any, override
 
-import orjson
 from django.db.models import (
     PROTECT,
     CharField,
@@ -15,7 +13,12 @@ from django.db.models import (
     Model,
 )
 from ninja import Schema as NinjaSchema
-from pydantic import BaseModel, ValidationInfo, computed_field, model_validator
+from pydantic import (
+    BaseModel,
+    ValidationInfo,
+    computed_field,
+    model_validator,
+)
 
 from chatddx.core.models import IdentityModel
 from chatddx.utils import generate_fingerprint
@@ -82,9 +85,21 @@ class BranchSpec[T: TrailSpec](BranchBase, NinjaSchema):
 class BaseFormDataIn(NinjaSchema):
     name: str | None = None
 
+    @model_validator(mode="after")
+    def add_name_from_context(self, info: ValidationInfo):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
+
 
 class BaseFormDataOut(NinjaSchema):
     name: str | None = None
+
+    @model_validator(mode="after")
+    def add_name_from_context(self, info: ValidationInfo):
+        if info.context:
+            self.name = info.context.get("name")
+        return self
 
 
 class TrailModel(Model):

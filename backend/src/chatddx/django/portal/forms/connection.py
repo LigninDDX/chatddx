@@ -14,11 +14,13 @@ from unfold.widgets import (
 from chatddx.core.choices import ProviderChoices
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
+from chatddx.repo.form_data_in import ConnectionFormDataIn
 from chatddx.repo.form_data_out import ConnectionFormDataOut
 
 
 class ConnectionForm(BaseForm):
-    form_data = ConnectionFormDataOut
+    form_data_in = ConnectionFormDataIn
+    form_data_out = ConnectionFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.Connection

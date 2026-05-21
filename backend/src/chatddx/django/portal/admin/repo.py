@@ -33,7 +33,7 @@ def _get_branch_link(obj: BranchModel, field_name: str):
     if branch_id:
         url = (
             reverse(
-                f"admin:agents_{field_name.replace('_', '')}_change",
+                f"admin:orm_{field_name.replace('_', '')}_change",
                 args=[branch_id],
             )
             + f"?from_agent={obj.pk}"
@@ -41,7 +41,7 @@ def _get_branch_link(obj: BranchModel, field_name: str):
     else:
         url = (
             reverse(
-                f"admin:agents_{field_name.replace('_', '')}_add",
+                f"admin:orm_{field_name.replace('_', '')}_add",
             )
             + f"?from_agent={obj.pk}&target={target.id}"
         )

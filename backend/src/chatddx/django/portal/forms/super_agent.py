@@ -3,22 +3,26 @@ from copy import deepcopy
 from typing import Any
 
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, LayoutObject
+from crispy_forms.layout import Column, Fieldset, Layout, LayoutObject, Row
 from django import forms
-from django.http import HttpRequest
-from pydantic import BaseModel
-from pydantic import ValidationError as PydanticValidationError
+from django.http.request import QueryDict
+from unfold.widgets import (
+    UnfoldAdminExpandableTextareaWidget,
+    UnfoldAdminSelect2Widget,
+    UnfoldAdminTextInputWidget,
+)
 
-from chatddx.django.portal.forms.agent import AgentForm
+from chatddx.django.portal.forms.base import BaseForm
 from chatddx.django.portal.forms.connection import ConnectionForm
 from chatddx.django.portal.forms.output_type import OutputTypeForm
 from chatddx.django.portal.forms.sampling_params import SamplingParamsForm
 from chatddx.django.portal.forms.tool_group import ToolGroupForm
 from chatddx.repo import proxies
 from chatddx.repo.branch_models import AgentBranchModel
-from chatddx.repo.loaders.branches import get_branch_model
+from chatddx.repo.form_data_in import SuperAgentFormDataIn
+from chatddx.repo.form_data_out import SuperAgentFormDataOut
 from chatddx.repo.loaders.model_loader import agent_relations
-from chatddx.utils import flatten_dict, unflatten_dict
+from chatddx.repo.main import BundleName
 
 OPTIONAL_FIELDS = {
     "connection_name",
@@ -27,94 +31,78 @@ OPTIONAL_FIELDS = {
     "tool_group_name",
 }
 
-SUB_FORMS: list[
-    tuple[
-        str,
-        type[
-            AgentForm
-            | ConnectionForm
-            | SamplingParamsForm
-            | OutputTypeForm
-            | ToolGroupForm
-        ],
-    ]
-] = [
-    ("agent_", AgentForm),
-    ("connection_", ConnectionForm),
-    ("sampling_params_", SamplingParamsForm),
-    ("output_type_", OutputTypeForm),
-    ("tool_group_", ToolGroupForm),
+SUBFORMS: list[tuple[BundleName, type[BaseForm]]] = [
+    ("connection", ConnectionForm),
+    ("sampling_params", SamplingParamsForm),
+    ("output_type", OutputTypeForm),
+    ("tool_group", ToolGroupForm),
 ]
 
 
 def apply_prefix_to_layout(layout_node: LayoutObject, prefix: str):
     for i, item in enumerate(layout_node.fields):
         if isinstance(item, str):
-            layout_node.fields[i] = f"{prefix}{item}"
+            layout_node.fields[i] = prefixed(item, prefix)
         elif hasattr(item, "fields"):
             apply_prefix_to_layout(item, prefix)
 
     return layout_node
 
 
-class SuperAgentForm(forms.ModelForm):
-    class Meta:
-        model = proxies.Agent
-        fields = []
+def prefixed(name: str, prefix: str):
+    return f"{prefix}_{name}"
 
-    form_data: BaseModel
-    model_name: str
-    request: HttpRequest
+
+def unprefixed(name: str, prefix: str):
+    return name[len(prefix) + 1 :]
+
+
+def get_subform_data(data: QueryDict, prefix: str) -> QueryDict | None:
+    if not data:
+        return None
+    result = QueryDict(mutable=True)
+    for k, vals in data.lists():
+        if k.startswith(prefix):
+            result.setlist(unprefixed(k, prefix), vals)
+    return result
+
+
+def flatten_form_data(data: dict[str, Any]):
+    return {
+        prefixed(field_name, prefix): value
+        for prefix, subform in data.items()
+        for field_name, value in subform.items()
+    }
+
+
+class SuperAgentForm(BaseForm):
+    class Meta(BaseForm.Meta):
+        model = proxies.Agent
+
+    form_data_in = SuperAgentFormDataIn
+    form_data_out = SuperAgentFormDataOut
+
+    subforms: dict[BundleName, BaseForm]
 
     def clean(self):
-        cleaned_data = super().clean()
+        for subform_name, subform_instance in self.subforms.items():
+            is_valid = subform_instance.is_valid()
+            self.cleaned_data[subform_name] = subform_instance.clean()
+            if not is_valid:
+                for field_name, error_messages in subform_instance.errors.items():
+                    for error_msg in error_messages:
+                        self.add_error(prefixed(field_name, subform_name), error_msg)
 
-        data = unflatten_dict(cleaned_data, agent_relations + ["agent"])
-        agent_data = data.pop("agent")
-        owner_name = self.request.user.username
-
-        for relation_name, relation_data in data.items():
-            try:
-                relation_obj = get_branch_model(
-                    relation_name, owner_name, relation_data
-                )
-            except PydanticValidationError as e:
-                for error in e.errors():
-                    self.add_error(
-                        f"{relation_name}_{error['loc'][0]}",
-                        error["msg"],
-                    )
-                return
-
-            if not relation_obj.pk and relation_obj.name:
-                relation_obj.save()
-
-            agent_data[relation_name + "_id"] = relation_obj.target.pk
-
-        try:
-            self.actual_obj = get_branch_model(
-                "agent",
-                self.request.user.username,
-                agent_data,
-            )
-        except PydanticValidationError as e:
-            for error in e.errors():
-                self.add_error(
-                    f"agent_{error['loc'][0]}",
-                    error["msg"],
-                )
-            return
-
-        return agent_data
+        cleaned = super().clean()
+        return cleaned
 
     def __init__(self, *args: Any, **kwargs: Any):
         instance = kwargs.get("instance")
-        self.request = kwargs.pop("request")
-        self.model_name = kwargs.pop("model_name")
-        self.sub_forms = {}
+        self.subforms = {}
+        self._request = kwargs["request"]
 
         if instance:
-            kwargs["initial"] = self.get_initial(instance)
+            kwargs["initial"] = self.get_super_initial(instance)
 
         super().__init__(*args, **kwargs)
 
@@ -124,18 +112,14 @@ class SuperAgentForm(forms.ModelForm):
             for field_name in agent_relations:
                 self.data.pop(f"{field_name}_template", None)
 
-        ignore_fields = [f"agent_{relation}_id" for relation in agent_relations]
-
-        for prefix, cls in SUB_FORMS:
-            self.sub_forms[prefix] = cls(
-                is_subform=True,
-                request=self.request,
+        for prefix, cls in SUBFORMS:
+            sub_form_data = get_subform_data(self.data, prefix)
+            self.subforms[prefix] = cls(
+                data=sub_form_data,
+                request=self._request,
             )
-
-            for _name, _field in self.sub_forms[prefix].fields.items():
-                name = f"{prefix}{_name}"
-                if name in ignore_fields:
-                    continue
+            for _name, _field in self.subforms[prefix].fields.items():
+                name = prefixed(_name, prefix)
                 field = deepcopy(_field)
 
                 if name in OPTIONAL_FIELDS:
@@ -143,47 +127,75 @@ class SuperAgentForm(forms.ModelForm):
 
                 self.fields[name] = field
 
+    name = forms.CharField(
+        max_length=255,
+        widget=UnfoldAdminTextInputWidget(),
+        label="Agent name",
+        help_text="Create a new agent, or enter an existing name to update it. The latest save becomes the active version.",
+    )
+    template = forms.ModelChoiceField(
+        queryset=proxies.Agent.objects.none(),
+        required=False,
+        empty_label="--- Start from scratch ---",
+        widget=UnfoldAdminSelect2Widget(),
+        label="Base Template",
+        help_text="Optional. Select a pre-configured template to quickly populate the settings below.",
+    )
+    instructions = forms.CharField(
+        required=False,
+        widget=UnfoldAdminExpandableTextareaWidget(
+            attrs={"placeholder": "No instructions provided"}
+        ),
+        label="System instructions",
+        help_text="The core system prompt that dictates the agent's persona, rules, and boundaries.",
+    )
+
     @classmethod
-    def get_initial(cls, agent_model: AgentBranchModel):
-        agent_dict = {
-            "agent_": AgentForm.get_initial(
-                agent_model.target,
-                agent_model.name,
-            ),
-            "connection_": ConnectionForm.get_initial(
-                agent_model.target.connection,
-                agent_model.connection_name,
-            ),
-            "sampling_params_": SamplingParamsForm.get_initial(
-                agent_model.target.sampling_params,
-                agent_model.sampling_params_name,
-            ),
-            "output_type_": OutputTypeForm.get_initial(
-                agent_model.target.output_type,
-                agent_model.output_type_name,
-            ),
-            "tool_group_": ToolGroupForm.get_initial(
-                agent_model.target.tool_group,
-                agent_model.tool_group_name,
-            ),
+    def get_super_initial(cls, super_agent: AgentBranchModel):
+        agent_dict = super().get_initial(super_agent.target, super_agent.name)
+        relations_dict = {
+            prefix: cls.get_initial(
+                getattr(super_agent.target, prefix),
+                getattr(super_agent, f"{prefix}_name"),
+            )
+            for prefix, cls in SUBFORMS
         }
 
-        return flatten_dict(agent_dict)
+        return agent_dict | flatten_form_data(relations_dict)
 
     @property
     def helper(self):
         helper = FormHelper()
 
-        helper.layout = Layout()
         helper.form_tag = False
         helper.include_media = False
 
-        for prefix, _ in SUB_FORMS:
-            sub_form_instance = self.sub_forms[prefix]
+        main_section = Fieldset(
+            "Agent Settings",
+            Row(
+                Column(
+                    "name",
+                    css_class="w-1/2",
+                ),
+                Column(
+                    "template",
+                    css_class="w-1/2",
+                ),
+            ),
+            Row(
+                Column("instructions"),
+                css_class="w-1/2",
+            ),
+            css_class="mb-8",
+        )
+
+        helper.layout = Layout(main_section)
+        for prefix, _ in SUBFORMS:
+            subform_instance = self.subforms[prefix]
 
             helper.layout.append(
                 apply_prefix_to_layout(
-                    deepcopy(sub_form_instance.helper.layout[0]),
+                    deepcopy(subform_instance.helper.layout[0]),
                     prefix,
                 )
             )

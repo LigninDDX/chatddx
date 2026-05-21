@@ -175,7 +175,7 @@ def _test_list_str(value: list[str]):
     if len(value) == 1:
         return value, _test_str(value[0])[1]
 
-    return deepcopy(value), reversed(value)
+    return deepcopy(value), list(reversed(value))
 
 
 def _test_optional_list_str(value: list[str] | None):

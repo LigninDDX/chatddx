@@ -17,17 +17,12 @@ def validate_json_schema(v: Any) -> Any:
     return v
 
 
-def parse_toml_or_dict(v: Any) -> Any:
+def parse_toml_or_dict(v: Any) -> dict[str, Any] | None:
     match v:
-        case None:
-            return None
         case str():
             if not v.strip():
-                return None
-            try:
-                return tomllib.loads(v)
-            except Exception as e:
-                raise ValueError(e)
+                return {}
+            return tomllib.loads(v)
         case dict():
             return v  # pyright: ignore[reportUnknownVariableType]
         case _:
@@ -36,11 +31,9 @@ def parse_toml_or_dict(v: Any) -> Any:
 
 def parse_text_or_list(v: Any) -> list[str] | None:
     match v:
-        case None:
-            return None
         case str():
             if not v.strip():
-                return None
+                return []
             return [line.strip() for line in v.splitlines() if line.strip()]
         case list():
             return v  # pyright: ignore[reportUnknownVariableType]

@@ -27,7 +27,7 @@ def asdf(model_name: str, pk: int) -> TrailSchema:
 def get_branch_model(
     model_name: BundleName,
     owner_name: str,
-    data: dict[str, Any],
+    form_data: BaseFormDataIn,
 ) -> proxies.BranchProxy:
 
     Proxy = Repo(model_name, proxies.BranchProxy)
@@ -35,13 +35,9 @@ def get_branch_model(
     TS = Repo(model_name, TrailSchema)
     TSRef = Repo(model_name, TrailSchemaRef)
 
-    form_data = Repo(model_name, BaseFormDataIn).model_validate(data)
-
     schema_in = TS.model_validate(form_data.model_dump())
 
     schema_ref = TSRef.from_schema(schema_in)
-
-    name = data.get("name", "")
 
     trail, _ = TM.objects.get_or_create(
         fingerprint=schema_ref.fingerprint,
@@ -49,7 +45,7 @@ def get_branch_model(
     )
 
     canon = qs_canon(
-        Proxy.objects.filter(name=name),
+        Proxy.objects.filter(name=form_data.name),
         owner_name,
     ).first()
 
@@ -59,7 +55,7 @@ def get_branch_model(
     proxy = Proxy(
         target=trail,  # pyright: ignore
         owner=IdentityModel.objects.get(name=owner_name),  # pyright: ignore
-        name=name,  # pyright: ignore
+        name=form_data.name,  # pyright: ignore
     )
     return proxy
 

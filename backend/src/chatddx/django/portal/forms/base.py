@@ -1,46 +1,38 @@
-# src/chatddx/django/repo/admin/forms/base.py
+# src/chatddx/django/portal/forms/base.py
 from typing import Any
 
-from django.db.models import Model as DjangoModel
 from django.forms import ModelForm
-from django.http import HttpRequest
 from pydantic import ValidationError as PydanticValidationError
 
-from chatddx.repo import proxies
-from chatddx.repo.base import BaseFormDataOut
-from chatddx.repo.loaders.branches import get_branch_model
-from chatddx.repo.main import is_bundle_name
+from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, TrailModel
 
 
 class BaseForm(ModelForm):
     class Meta:
         fields = ["name"]
 
-    form_data: type[BaseFormDataOut]
-    model_name: str
-    request: HttpRequest
-    actual_obj: proxies.BranchProxy
+    form_data_out: type[BaseFormDataOut]
+    form_data_in: type[BaseFormDataIn]
 
-    def clean(self):
-        if not is_bundle_name(self.model_name):
-            raise ValueError(f"Not a valid bundle '{self.model_name}'")
+    validated_data: BaseFormDataIn | None
+
+    def validate(self, data: dict[str, Any]):
         try:
-            self.actual_obj = get_branch_model(
-                self.model_name,
-                self.request.user.username,
-                self.cleaned_data,
-            )
+            validated_data = self.form_data_in.model_validate(data)
+            return validated_data
         except PydanticValidationError as e:
             for error in e.errors():
                 self.add_error(str(error["loc"][0]), error["msg"])
 
-        return self.cleaned_data
+    def clean(self):
+        cleaned = super().clean()
+        self.validated_data = self.validate(cleaned)
+        return cleaned
 
     def __init__(self, *args: Any, **kwargs: Any):
         instance = kwargs.get("instance")
-        self.request = kwargs.pop("request", None)
-        self.model_name = kwargs.pop("model_name", None)
-        _ = kwargs.pop("is_subform", None)
+        del kwargs["request"]
+        self.validated_data = None
 
         if instance:
             kwargs["initial"] = self.get_initial(instance.target, instance.name)
@@ -52,11 +44,8 @@ class BaseForm(ModelForm):
             self.data.pop("template", None)
 
     @classmethod
-    def get_initial(cls, trail_model: DjangoModel, name: str | None = None):
-        return cls.form_data.model_validate(
+    def get_initial(cls, trail_model: TrailModel, name: str | None = None):
+        return cls.form_data_out.model_validate(
             trail_model,
             context={"name": name},
-        ).model_dump(
-            mode="json",
-            exclude_none=True,
-        )
+        ).model_dump()

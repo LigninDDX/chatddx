@@ -19,11 +19,13 @@ from unfold.widgets import (
 
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
+from chatddx.repo.form_data_in import SamplingParamsFormDataIn
 from chatddx.repo.form_data_out import SamplingParamsFormDataOut
 
 
 class SamplingParamsForm(BaseForm):
-    form_data = SamplingParamsFormDataOut
+    form_data_in = SamplingParamsFormDataIn
+    form_data_out = SamplingParamsFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.SamplingParams

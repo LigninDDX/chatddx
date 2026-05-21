@@ -19,23 +19,29 @@ from unfold.widgets import (
 
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
+from chatddx.repo.form_data_in import ToolGroupFormDataIn
 from chatddx.repo.form_data_out import ToolGroupFormDataOut
 from chatddx.repo.trail_models import ToolTrailModel
 
 
 class ToolGroupForm(BaseForm):
-    form_data = ToolGroupFormDataOut
+    form_data_in = ToolGroupFormDataIn
+    form_data_out = ToolGroupFormDataOut
 
     class Meta(BaseForm.Meta):
         model = proxies.ToolGroup
 
     def __init__(self, *args: Any, **kwargs: Any):
         request = kwargs["request"]
-        super().__init__(*args, **kwargs)
 
+        super().__init__(*args, **kwargs)
         self.fields["tools"].queryset = ToolTrailModel.objects.filter(  # pyright: ignore
             branches__owner__name=request.user.username
         ).annotate(branch_name=F("branches__name"))
+
+    def clean(self):
+        cleaned = super().clean()
+        return cleaned
 
     name = CharField(
         max_length=255,

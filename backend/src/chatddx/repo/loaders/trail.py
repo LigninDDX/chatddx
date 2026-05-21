@@ -62,13 +62,8 @@ async def pk_from_schema(
                     ]
                 )
 
-            case None:
-                new_values[field_name] = field_value
-
             case _:
-                raise ValueError(
-                    f"'{field_value}' is a relation but lacks associated model"
-                )
+                new_values[field_name] = field_value
 
     model, _ = await Model.objects.aget_or_create(
         fingerprint=schema.fingerprint,
