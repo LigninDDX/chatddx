@@ -21,8 +21,9 @@ from chatddx.core.choices import (
     ToolChoices,
     ValidationChoices,
 )
+from chatddx.core.decimals import SamplingDecimal
 from chatddx.core.django_fields import JSONSchemaField
-from chatddx.registry.schemas import TrailRegistry
+from chatddx.registry.main import parse_registry
 from chatddx.repo.trail_models import (
     ConnectionTrailModel,
     OutputTypeTrailModel,
@@ -33,14 +34,15 @@ from chatddx.repo.trail_models import (
 from chatddx.repo.trail_schemas import (
     ConnectionSchema,
     OutputTypeSchema,
-    SamplingDecimal,
     SamplingParamsSchema,
     ToolGroupSchema,
     ToolSchema,
+    TrailRegistry,
 )
 
-registry: TrailRegistry = TrailRegistry.from_file(
-    Path(__file__).parent / "data/some.toml"
+registry: TrailRegistry = parse_registry(
+    Path(__file__).parent / "data/some.toml",
+    schema=TrailRegistry,
 )
 
 
@@ -50,11 +52,7 @@ def _test_ToolGroup(value: ToolGroupSchema):
 
 
 def _test_optional_ToolGroup(value: ToolGroupSchema | None):
-    altered_value = (
-        registry.get_by_type(ToolGroupSchema, "some-tool_group")
-        if value is None
-        else None
-    )
+    altered_value = registry.tool_group["some-tool_group"] if value is None else None
     return deepcopy(value), altered_value
 
 
@@ -66,11 +64,7 @@ def _test_OutputType(value: OutputTypeSchema):
 
 
 def _test_optional_OutputType(value: OutputTypeSchema | None):
-    altered_value = (
-        registry.get_by_type(OutputTypeSchema, "some-output_type")
-        if value is None
-        else None
-    )
+    altered_value = registry.output_type["some-output_type"] if value is None else None
     return deepcopy(value), altered_value
 
 
@@ -84,9 +78,7 @@ def _test_SamplingParams(value: SamplingParamsSchema):
 
 def _test_optional_SamplingParams(value: SamplingParamsSchema | None):
     altered_value = (
-        registry.get_by_type(SamplingParamsSchema, "some-sampling_params")
-        if value is None
-        else None
+        registry.sampling_params["some-sampling_params"] if value is None else None
     )
     return deepcopy(value), altered_value
 
@@ -102,11 +94,7 @@ def _test_url(value: HttpUrl):
 
 
 def _test_optional_Connection(value: ConnectionSchema | None):
-    altered_value = (
-        registry.get_by_type(ConnectionSchema, "some-connection")
-        if value is None
-        else None
-    )
+    altered_value = registry.connection["some-connection"] if value is None else None
     return deepcopy(value), altered_value
 
 
@@ -135,9 +123,7 @@ def _test_tool(value: ToolSchema):
 
 
 def _test_optional_tool(value: ToolSchema | None):
-    altered_value = (
-        registry.get_by_type(ToolSchema, "some-tool") if value is None else None
-    )
+    altered_value = registry.tool["some-tool"] if value is None else None
     return deepcopy(value), altered_value
 
 

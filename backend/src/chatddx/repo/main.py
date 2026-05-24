@@ -6,6 +6,7 @@ from chatddx.repo import proxies
 from chatddx.repo.base import (
     BaseFormDataIn,
     BaseFormDataOut,
+    BranchModel,
     BranchSchema,
     BranchSpec,
     TrailModel,
@@ -15,12 +16,19 @@ from chatddx.repo.base import (
 )
 from chatddx.repo.branch_models import (
     AgentBranchModel,
-    BranchModel,
     ConnectionBranchModel,
     OutputTypeBranchModel,
     SamplingParamsBranchModel,
     ToolBranchModel,
     ToolGroupBranchModel,
+)
+from chatddx.repo.branch_spec import (
+    AgentBranchSpec,
+    ConnectionBranchSpec,
+    OutputTypeBranchSpec,
+    SamplingParamsBranchSpec,
+    ToolBranchSpec,
+    ToolGroupBranchSpec,
 )
 from chatddx.repo.form_data_in import (
     AgentFormDataIn,
@@ -98,7 +106,7 @@ agent_bundle = RepoBundle(
     AgentSpec,
     BranchSchema[AgentSchema],
     AgentBranchModel,
-    BranchSpec[AgentSpec],
+    AgentBranchSpec,
     AgentFormDataIn,
     AgentFormDataOut,
     proxies.Agent,
@@ -111,7 +119,7 @@ connection_bundle = RepoBundle(
     ConnectionSpec,
     BranchSchema[ConnectionSchema],
     ConnectionBranchModel,
-    BranchSpec[ConnectionSpec],
+    ConnectionBranchSpec,
     ConnectionFormDataIn,
     ConnectionFormDataOut,
     proxies.Connection,
@@ -124,7 +132,7 @@ sampling_params_bundle = RepoBundle(
     SamplingParamsSpec,
     BranchSchema[SamplingParamsSchema],
     SamplingParamsBranchModel,
-    BranchSpec[SamplingParamsSpec],
+    SamplingParamsBranchSpec,
     SamplingParamsFormDataIn,
     SamplingParamsFormDataOut,
     proxies.SamplingParams,
@@ -137,7 +145,7 @@ output_type_bundle = RepoBundle(
     OutputTypeSpec,
     BranchSchema[OutputTypeSchema],
     OutputTypeBranchModel,
-    BranchSpec[OutputTypeSpec],
+    OutputTypeBranchSpec,
     OutputTypeFormDataIn,
     OutputTypeFormDataOut,
     proxies.OutputType,
@@ -150,7 +158,7 @@ tool_group_bundle = RepoBundle(
     ToolGroupSpec,
     BranchSchema[ToolGroupSchema],
     ToolGroupBranchModel,
-    BranchSpec[ToolGroupSpec],
+    ToolGroupBranchSpec,
     ToolGroupFormDataIn,
     ToolGroupFormDataOut,
     proxies.ToolGroup,
@@ -163,7 +171,7 @@ tool_bundle = RepoBundle(
     ToolSpec,
     BranchSchema[ToolSchema],
     ToolBranchModel,
-    BranchSpec[ToolSpec],
+    ToolBranchSpec,
     ToolFormDataIn,
     ToolFormDataOut,
     proxies.Tool,
@@ -205,7 +213,7 @@ def is_bundle_name(val: str) -> TypeGuard[BundleName]:
 _TYPE_TO_BUNDLE_REGISTRY: dict[type, RepoBundle[Any, Any]] = {}
 
 bundle_obj: RepoBundle[Any, Any]
-for bundle_obj in repo.values():  # type: ignore[assignment]
+for bundle_obj in repo.values():  # pyright: ignore[reportAssignmentType]
     for field_meta in fields(bundle_obj):
         cls_type = getattr(bundle_obj, field_meta.name)
         if isinstance(cls_type, type):
@@ -216,7 +224,7 @@ def get_bundle(identifier: BundleName | type | object) -> RepoBundle[Any, Any]:
     match identifier:
         case str():
             if identifier in repo:
-                return repo[identifier]  # type: ignore
+                return repo[identifier]  # pyright: ignore[reportUnknownVariableType]
             raise KeyError(f"Bundle string '{identifier}' not found.")
         case type():
             if identifier in _TYPE_TO_BUNDLE_REGISTRY:

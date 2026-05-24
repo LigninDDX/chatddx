@@ -1,5 +1,7 @@
 # src/chatddx/django/repo/admin/forms/connection.py
 
+from typing import Any, final
+
 from crispy_forms.helper import FormHelper, Layout
 from crispy_forms.layout import Column, Fieldset, Row
 from django import forms
@@ -16,12 +18,15 @@ from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
 from chatddx.repo.form_data_in import ConnectionFormDataIn
 from chatddx.repo.form_data_out import ConnectionFormDataOut
+from chatddx.repo.shufflers.main import qs_canon
 
 
+@final
 class ConnectionForm(BaseForm):
     form_data_in = ConnectionFormDataIn
     form_data_out = ConnectionFormDataOut
 
+    @final
     class Meta(BaseForm.Meta):
         model = proxies.Connection
 
@@ -32,10 +37,8 @@ class ConnectionForm(BaseForm):
         label="Connection name",
         help_text="Create a new connection, or enter an existing name to update it. The latest save becomes the active version.",
     )
-    template = forms.ModelChoiceField(
-        queryset=proxies.Connection.objects.none(),
+    template = forms.ChoiceField(
         required=False,
-        empty_label="--- Start from scratch ---",
         widget=UnfoldAdminSelect2Widget(),
         label="Prefill from existing",
         help_text="Optional. Select a pre-configured connection to quickly populate the API settings below.",

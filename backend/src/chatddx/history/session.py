@@ -4,7 +4,7 @@ from uuid import UUID
 from chatddx.core.models import IdentityModel
 from chatddx.history.models import MessageModel, SessionModel
 from chatddx.history.schemas import IdentitySpec, MessageSpec, SessionSpec
-from chatddx.repo.loaders.related_array_fields import resolve_related_array_fields
+from chatddx.repo.shufflers.main import resolve_related_array_fields_async
 
 
 async def get_identity(name: str) -> IdentitySpec:
@@ -40,7 +40,7 @@ async def resume_session(
             owner_id=owner_id,
         )
     )
-    await resolve_related_array_fields(session_model.default_agent.target)
+    await resolve_related_array_fields_async(session_model.default_agent.target)
 
     return SessionSpec.model_validate(session_model)
 

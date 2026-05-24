@@ -7,22 +7,37 @@ from django.db.models import (
     PROTECT,
     CharField,
     DateTimeField,
-    Field,
     ForeignKey,
     Index,
-    Model,
+    Manager,
 )
+from django.db.models import Field as DjangoField
+from django.db.models import Model as DjangoModel
+from django.forms import model_to_dict
 from ninja import Schema as NinjaSchema
 from pydantic import (
     BaseModel,
+    PrivateAttr,
     ValidationInfo,
     computed_field,
-    field_serializer,
     model_validator,
 )
 
+from chatddx.core.fields import CoercedStr, NullableStr
 from chatddx.core.models import IdentityModel
+from chatddx.registry.schemas import RegistryInstance
 from chatddx.utils import generate_fingerprint
+
+
+class BranchProxy:
+    pk: int
+    name: str
+    objects: Manager[BranchModel]
+    target: TrailModel
+
+    @override
+    def __str__(self) -> str:
+        return self.name
 
 
 class BranchBase(BaseModel):
@@ -31,7 +46,9 @@ class BranchBase(BaseModel):
     timestamp: datetime | None = None
 
 
-class TrailSchema(BaseModel):
+class TrailSchema(RegistryInstance):
+    _name: str | None = PrivateAttr()
+
     @computed_field
     def fingerprint(self) -> str:
         return self.as_fingerprint()
@@ -44,17 +61,13 @@ class TrailSchema(BaseModel):
 class TrailSchemaRef(BaseModel):
     fingerprint: str
 
-    @classmethod
-    def from_schema(cls, schema: TrailSchema):
-        return cls.model_validate(schema.model_dump())
-
 
 class BranchSchema[T: TrailSchema](BranchBase):
     target_type: type[T]
     target_id: int
 
 
-class BranchModel(Model):
+class BranchModel(DjangoModel):
     owner = ForeignKey(
         IdentityModel,
         on_delete=PROTECT,
@@ -63,13 +76,20 @@ class BranchModel(Model):
     timestamp = DateTimeField(
         auto_now_add=True,
     )
-    target: Field[Any, Any]
+    target: DjangoField[Any, Any]
 
     class Meta:
         abstract = True
         indexes = [
             Index(fields=["owner", "name", "-timestamp"]),
         ]
+
+    def as_proxy(self, proxy_model: type[BranchProxy]):
+        return proxy_model.from_db(
+            db=self._state.db,
+            field_names=[f.name for f in self._meta.fields],
+            values=[getattr(self, f.name) for f in self._meta.fields],
+        )
 
 
 class TrailSpec(NinjaSchema):
@@ -84,17 +104,21 @@ class BranchSpec[T: TrailSpec](BranchBase, NinjaSchema):
 
 
 class BaseFormDataIn(NinjaSchema):
-    name: str | None = None
+    name: NullableStr = None
 
-    @model_validator(mode="after")
-    def add_name_from_context(self, info: ValidationInfo):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
+    @model_validator(mode="before")
+    def merge_target(v: Any):
+        if hasattr(v, "target"):
+            branch = model_to_dict(v)
+            trail = model_to_dict(v.target)
+
+            return branch | trail
+
+        return v
 
 
 class BaseFormDataOut(NinjaSchema):
-    id: int
+    id: CoercedStr
     name: str = ""
 
     @model_validator(mode="after")
@@ -103,12 +127,8 @@ class BaseFormDataOut(NinjaSchema):
             self.name = info.context.get("name")
         return self
 
-    @field_serializer("id")
-    def serialize_id_to_str(self, v: Any) -> str:
-        return str(v)
 
-
-class TrailModel(Model):
+class TrailModel(DjangoModel):
     fingerprint = CharField(
         max_length=64,
         db_index=True,

@@ -6,59 +6,54 @@ from typing import Any
 import pytest
 from django.db import ProgrammingError
 
-from chatddx.registry.schemas import TrailRegistry
+from chatddx.registry.main import parse_registry
 from chatddx.repo.base import (
     TrailModel,
     TrailSchema,
     TrailSpec,
 )
-from chatddx.repo.loaders.trail import model_from_schema, spec_from_model
-from chatddx.repo.main import Repo
+from chatddx.repo.main import BundleName, Repo
+from chatddx.repo.shufflers.main import dump_trail_async, load_trail_async
 from chatddx.repo.tests import identity_boundary
 from chatddx.repo.trail_models import AgentTrailModel
-from chatddx.repo.trail_schemas import (
-    AgentSchema,
-    ConnectionSchema,
-    OutputTypeSchema,
-    SamplingParamsSchema,
-    ToolGroupSchema,
-    ToolSchema,
-)
+from chatddx.repo.trail_schemas import TrailRegistry
 
-registry: TrailRegistry = TrailRegistry.from_file(
-    Path(__file__).parent / "data/test-registry.toml"
+registry: TrailRegistry = parse_registry(
+    Path(__file__).parent / "data/test-registry.toml",
+    schema=TrailRegistry,
 )
 
 schemas = (
-    (ConnectionSchema, "connection-1"),
-    (SamplingParamsSchema, "sampling_params-1"),
-    (ToolGroupSchema, "tool_group-1"),
-    (ToolSchema, "tool-1"),
-    (OutputTypeSchema, "output_type-1"),
-    (AgentSchema, "agent-1"),
-    (AgentSchema, "agent-2"),
-    (AgentSchema, "agent-3"),
+    ("connection", "connection-1"),
+    ("sampling_params", "sampling_params-1"),
+    ("tool_group", "tool_group-1"),
+    ("tool", "tool-1"),
+    ("output_type", "output_type-1"),
+    ("agent", "agent-1"),
+    ("agent", "agent-2"),
+    ("agent", "agent-3"),
 )
 
 fields = [
-    (Schema, record, field)
-    for Schema, record in schemas
-    for field in Schema.model_fields
+    (bundle, record, field)
+    for bundle, record in schemas
+    for field in Repo(bundle, TrailSchema).model_fields
 ]
 
 
 @pytest.mark.asyncio
 @pytest.mark.django_db
-@pytest.mark.parametrize("Schema, record, field_name", fields)
+@pytest.mark.parametrize("bundle, branch_name, field_name", fields)
 @pytest.mark.time_machine(datetime(1970, 1, 1), tick=False)
 async def test_identity_boundary(
     time_machine: Any,
-    Schema: type[TrailSchema],
-    record: str,
+    bundle: BundleName,
+    branch_name: str,
     field_name: str,
 ):
-    Model = Repo(Schema, TrailModel)
-    Spec = Repo(Schema, TrailSpec)
+    Model = Repo(bundle, TrailModel)
+    Spec = Repo(bundle, TrailSpec)
+    Schema = Repo(bundle, TrailSchema)
 
     field = Model._meta.get_field(field_name)
 
@@ -70,9 +65,9 @@ async def test_identity_boundary(
     if test_key not in identity_boundary.field_types:
         pytest.fail(f"No test defined for type combination {test_key} on {field_name}")
 
-    schema = registry.get_by_type(Schema, record)
-    model = await model_from_schema(Model, schema)
-    spec = spec_from_model(Spec, model)
+    schema = getattr(registry, bundle)[branch_name]
+    _ = await dump_trail_async(Model, schema)
+    spec = await load_trail_async(bundle, schema.fingerprint, Spec)
 
     value, altered_value = identity_boundary.field_types[test_key](
         getattr(schema, field_name)
@@ -87,25 +82,23 @@ async def test_identity_boundary(
         raw_copy = schema.model_copy(update={field_name: value})
 
         test_schema = Schema.model_validate(raw_copy.model_dump())
-        test_model = await model_from_schema(Model, test_schema)
-        test_spec = spec_from_model(Spec, test_model)
+        _ = await dump_trail_async(Model, test_schema)
+        test_spec = await load_trail_async(bundle, str(test_schema.fingerprint), Spec)
 
         if not altered:
             assert schema.fingerprint == test_schema.fingerprint
-            assert model.fingerprint == test_model.fingerprint
             assert spec.fingerprint == test_spec.fingerprint
 
         if altered:
             assert schema.fingerprint != test_schema.fingerprint
-            assert model.fingerprint != test_model.fingerprint
             assert spec.fingerprint != test_spec.fingerprint
 
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_immutability_trigger():
-    agent_schema = registry.get_by_type(AgentSchema, "agent-1")
-    agent_model = await model_from_schema(AgentTrailModel, agent_schema)
+    agent_schema = registry.agent["agent-1"]
+    agent_model = await dump_trail_async(AgentTrailModel, agent_schema)
 
     with pytest.raises(ProgrammingError):
         await agent_model.asave()

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, TypeVar
+from typing import Any
 
 from django.db.models import ForeignKey
 
@@ -18,15 +18,11 @@ from chatddx.utils import (
     one_or_list_of,
 )
 
-SchemaT = TypeVar("SchemaT", bound=TrailSchema)
-ModelT = TypeVar("ModelT", bound=TrailModel)
-SpecT = TypeVar("SpecT", bound=TrailSpec)
 
-
-async def model_from_schema(
-    Model: type[ModelT],
+async def model_from_schema[T: TrailModel](
+    Model: type[T],
     schema: TrailSchema,
-) -> ModelT:
+) -> T:
     pk = await pk_from_schema(Model, schema)
     model = await model_from_pk(Model, pk)
     return model
@@ -73,18 +69,18 @@ async def pk_from_schema(
     return model.pk
 
 
-async def model_from_pk(
-    Model: type[ModelT],
+async def model_from_pk[T: TrailModel](
+    Model: type[T],
     pk: int,
-) -> ModelT:
+) -> T:
     related = [f.name for f in Model._meta.get_fields() if isinstance(f, ForeignKey)]
     model = await Model.objects.select_related(*related).aget(pk=pk)
-    await resolve_related_array_fields(model)
+    _ = await resolve_related_array_fields(model)
     return model
 
 
-def spec_from_model(
-    Spec: type[SpecT],
+def spec_from_model[T: TrailSpec](
+    Spec: type[T],
     model: TrailModel,
-) -> SpecT:
+) -> T:
     return Spec.model_validate(model)

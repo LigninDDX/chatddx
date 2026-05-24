@@ -2,12 +2,61 @@ import pytest
 
 from chatddx.core.choices import ToolChoices
 from chatddx.core.models import IdentityModel
-from chatddx.repo import proxies
-from chatddx.repo.base import BaseFormDataOut, TrailSchema
-from chatddx.repo.branch_models import ToolBranchModel
+from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, TrailSchema
 from chatddx.repo.form_data_in import ToolFormDataIn
-from chatddx.repo.loaders.branches import branch_from_form
 from chatddx.repo.main import Repo
+from chatddx.repo.shufflers.main import dump_branch
+from chatddx.repo.trail_schemas import ToolSchema
+
+
+def test_pydantic_jsonschema():
+    jsonschema = Repo("agent", BaseFormDataOut).model_json_schema(mode="serialization")
+    assert jsonschema["properties"]["instructions"]["type"] == "string"
+    assert jsonschema["properties"]["connection"]["type"] == "string"
+    # assert jsonschema["properties"]["connection"]["selector"] == "connection_template"
+    # assert jsonschema["properties"]["connection"]["fields"] == [
+    #    "id",
+    #    "name",
+    #    "provider",
+    #    "model",
+    #    "endpoint",
+    #    "profile",
+    # ]
+
+    jsonschema = Repo("agent", BaseFormDataIn).model_json_schema()
+    assert list(jsonschema.keys()) == [
+        "$defs",
+        "properties",
+        "required",
+        "title",
+        "type",
+    ]
+    assert list(jsonschema["$defs"].keys()) == [
+        "CoercionChoices",
+        "ConnectionFormDataIn",
+        "JsonValue",
+        "OutputTypeFormDataIn",
+        "ProviderChoices",
+        "SamplingParamsFormDataIn",
+        "ToolChoices",
+        "ToolFormDataIn",
+        "ToolGroupFormDataIn",
+        "ValidationChoices",
+    ]
+    assert list(jsonschema["properties"].keys()) == [
+        "name",
+        "instructions",
+        "connection",
+        "sampling_params",
+        "output_type",
+        "tool_group",
+    ]
+    assert jsonschema["properties"]["connection"] == {
+        "$ref": "#/$defs/ConnectionFormDataIn"
+    }
+    assert jsonschema["properties"]["tool_group"] == {
+        "$ref": "#/$defs/ToolGroupFormDataIn"
+    }
 
 
 def test_type_pipeline():
@@ -24,16 +73,34 @@ def test_type_pipeline():
 
 @pytest.mark.django_db
 def test_branch():
-    IdentityModel.objects.get_or_create(name="alex")
+    owner_name = "alex"
+    _, _ = IdentityModel.objects.get_or_create(name=owner_name)
+
     data = {
         "name": "tool",
         "command": "cmd",
         "type": ToolChoices.FUNCTION,
     }
+
     form_data = ToolFormDataIn.model_validate(data)
-    tool = branch_from_form("tool", "alex", form_data)
-    tool.save()
-    ToolBranchModel.objects.get(name="tool")
-    assert isinstance(tool, proxies.Tool)
-    tool = branch_from_form("tool", "alex", form_data)
-    assert isinstance(tool, proxies.Tool)
+    schema = ToolSchema.model_validate(form_data.model_dump())
+    name = form_data.name or ""
+
+    tool, created = dump_branch(
+        "tool",
+        name,
+        owner_name,
+        schema,
+    )
+
+    assert created
+    assert tool.name == data["name"]
+
+    tool, created = dump_branch(
+        "tool",
+        name,
+        owner_name,
+        schema,
+    )
+    assert not created
+    assert tool.name == data["name"]

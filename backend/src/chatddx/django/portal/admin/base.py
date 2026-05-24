@@ -1,108 +1,23 @@
 # src/chatddx/django/repo/admin/base.py
 import json
-from typing import Any, TypeVar, cast, get_args, no_type_check
+from typing import Any, cast, no_type_check, override
 
 from django.contrib import admin, messages
 from django.db.models import Model as DjangoModel
-from django.db.models import OuterRef, Q, QuerySet, Subquery
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponseRedirect
 from django.urls import reverse
-from pydantic import BaseModel
 from unfold.admin import ModelAdmin
 
 from chatddx.django.portal.forms.base import BaseForm
-from chatddx.repo.base import BaseFormDataOut, BranchModel, TrailModel
-from chatddx.repo.form_data_out import (
-    AgentFormDataOut,
-    ConnectionFormDataOut,
-    OutputTypeFormDataOut,
-    SamplingParamsFormDataOut,
-    SuperAgentFormDataOut,
-    ToolFormDataOut,
-    ToolGroupFormDataOut,
-)
-from chatddx.repo.loaders.branches import branch_from_form
-from chatddx.repo.loaders.model_loader import agent_relations
+from chatddx.repo.base import BranchModel, BranchProxy, TrailModel, TrailSchema
 from chatddx.repo.main import BundleName, Repo
-
-
-class TemplateData(BaseModel):
-    agent: dict[str, AgentFormDataOut]
-    connection: dict[str, ConnectionFormDataOut]
-    sampling_params: dict[str, SamplingParamsFormDataOut]
-    output_type: dict[str, OutputTypeFormDataOut]
-    tool_group: dict[str, ToolGroupFormDataOut]
-    tool: dict[str, ToolFormDataOut]
-
-
-def get_owned_trails(model: str, owner_name: str) -> dict[str, BaseFormDataOut]:
-    BM = Repo(model, BranchModel)
-    FD = Repo(model, BaseFormDataOut)
-    TM = Repo(model, TrailModel)
-
-    indirectly_owned = Q(agenttrailmodel__branches__owner__name=owner_name)
-    directly_owned = Q(branches__owner__name=owner_name)
-
-    if model in ("tool", "agent"):
-        owned = directly_owned
-    else:
-        owned = directly_owned | indirectly_owned
-
-    branches = qs_canon(BM.objects.all(), owner_name)  # pyright: ignore[reportArgumentType]
-    branchless_trails = (
-        TM.objects.filter(owned).filter(branches__isnull=True).distinct()
-    )
-
-    form_data: dict[str, BaseFormDataOut] = {}
-    for branch in branches:
-        form_data[str(branch.target.pk)] = FD.model_validate(
-            branch.target,
-            context={"name": branch.name},
-        )
-    for trail in branchless_trails:
-        form_data[str(trail.pk)] = FD.model_validate(
-            trail,
-            context={"name": trail.fingerprint[:6]},
-        )
-    return form_data
-
-
-def get_template_data(owner_name: str):
-    payload: dict[BundleName, Any] = {
-        model: get_owned_trails(model, owner_name) for model in get_args(BundleName)
-    }
-    td = TemplateData.model_validate(payload)
-    return td.model_dump_json(by_alias=True)
-
-
-DjangoModelT = TypeVar("DjangoModelT", bound=DjangoModel)
-
-
-def qs_canon(qs: QuerySet[DjangoModelT], owner_name: str) -> QuerySet[DjangoModelT]:
-    return (
-        qs.filter(owner__name=owner_name)
-        .order_by("owner_id", "name", "-timestamp")
-        .distinct("owner_id", "name")
-    )
-
-
-def qs_super_agent(qs: QuerySet[DjangoModelT], owner_name: str):
-    def subquery(owner_name: str, model: str, column: str):
-        BM = Repo(model, BranchModel)
-
-        return BM.objects.filter(
-            target=OuterRef(f"target__{model}"),
-            owner__name=owner_name,
-        ).values(column)[:1]
-
-    branch_annotations = {
-        f"{model}_{field}": Subquery(subquery(owner_name, model, field))
-        for field in ("name", "id")
-        for model in agent_relations
-    }
-    return qs.select_related(
-        *[f"target__{model}" for model in agent_relations]
-    ).annotate(**branch_annotations)
+from chatddx.repo.shufflers.main import (
+    dump_branch,
+    load_template_data,
+    qs_canon,
+    resolve_related_array_fields,
+)
 
 
 class TypedModelAdmin[T: DjangoModel](ModelAdmin):
@@ -145,32 +60,38 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
 
         return FormWithRequest
 
+    @override
     def save_form(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         request: HttpRequest,
         form: BaseForm,
         change: bool,
-    ):
+    ) -> BranchProxy:
         if form.validated_data is None:
             raise ValueError("form.validated_data is unexpectedly None")
 
-        obj = branch_from_form(
+        schema_cls = Repo(self.name, TrailSchema)
+        proxy_cls = Repo(self.name, BranchProxy)
+        schema = schema_cls.model_validate(form.validated_data.model_dump())
+
+        obj, created = dump_branch(
             self.name,
+            form.validated_data.name or "",
             self.request.user.username,
-            form.validated_data,
+            schema,
         )
-        if obj.pk:
+
+        if not created:
             self.message_user(  # pyright: ignore[reportUnknownMemberType]
                 request,
                 "No changes detected. The current version is up to date.",
                 level=messages.INFO,
             )
             request._skip_success_message = True  # pyright: ignore[reportAttributeAccessIssue]
-        else:
-            obj.save()
 
-        return obj
+        return obj.as_proxy(proxy_cls)
 
+    @override
     def save_related(self, request, form, formsets, change):  # pyright: ignore[reportMissingParameterType]
         pass
 
@@ -199,8 +120,9 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         return HttpResponseRedirect(redirect_url)
 
     def get_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
+        owner = request.user.username
         return {
-            "template_data": get_template_data(request.user.username),
+            "template_data": load_template_data(owner).model_dump_json(by_alias=True),
             "form_info": json.dumps(
                 {
                     "name": self.name,

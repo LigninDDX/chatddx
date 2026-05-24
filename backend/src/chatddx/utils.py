@@ -1,34 +1,35 @@
 import asyncio
 import hashlib
 import inspect
+from collections.abc import Awaitable, Coroutine
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import (
     Any,
-    Awaitable,
     Callable,
-    Generic,
-    TypeVar,
     cast,
     get_type_hints,
 )
 
+from asgiref.sync import sync_to_async
 from django.db.models import Model as DjangoModel
 from django.db.models import QuerySet
 from pydantic import HttpUrl, JsonValue
 
-T = TypeVar("T")
+type Observer[T] = Callable[[T], None | Awaitable[None]]
 
-Observer = Callable[[T], None | Awaitable[None]]
+
+def make_async[**P, R](func: Callable[P, R]) -> Callable[P, Coroutine[None, None, R]]:
+    return sync_to_async(func)
 
 
 @dataclass
-class OneOf(Generic[T]):
+class OneOf[T]:
     value: T
 
 
 @dataclass
-class ListOf(Generic[T]):
+class ListOf[T]:
     values: list[T]
 
 
@@ -54,12 +55,12 @@ def generate_fingerprint(data: dict[str, JsonValue]):
     return hashlib.sha256(json).hexdigest()
 
 
-def one_or_list_of(t: type[T], value: object) -> OneOf[T] | ListOf[T] | None:
+def one_or_list_of[T](t: type[T], value: object) -> OneOf[T] | ListOf[T] | None:
     if isinstance(value, t):
         return OneOf(value)
 
     if isinstance(value, list):
-        if not value or all(isinstance(x, t) for x in value):  # type: ignore
+        if not value or all(isinstance(x, t) for x in value):  # pyright: ignore[reportUnknownVariableType]
             return ListOf(cast(list[T], value))
 
 
@@ -67,7 +68,7 @@ class Dispatcher:
     def __init__(self):
         self._handlers: dict[type[Any], list[Observer[Any]]] = {}
 
-    def subscribe(self, fn: Observer[T]) -> Observer[T]:
+    def subscribe[T](self, fn: Observer[T]) -> Observer[T]:
         target = fn if inspect.isroutine(fn) else fn.__call__
 
         hints = get_type_hints(target)
@@ -98,7 +99,7 @@ class Dispatcher:
                         tasks.append(handler(data))
                     else:
                         tasks.append(asyncio.to_thread(handler, data))
-        await asyncio.gather(*tasks)
+        _ = await asyncio.gather(*tasks)
 
 
 @dataclass

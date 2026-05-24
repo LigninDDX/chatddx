@@ -1,20 +1,50 @@
-from pydantic.fields import Field
+from typing import Any
 
-from chatddx.registry.main import Registry
-from chatddx.repo.trail_schemas import (
-    AgentSchema,
-    ConnectionSchema,
-    OutputTypeSchema,
-    SamplingParamsSchema,
-    ToolGroupSchema,
-    ToolSchema,
-)
+from pydantic import BaseModel, ValidationInfo, model_validator
+
+Record = dict[str, Any]
+DictRegistry = dict[str, Record]
 
 
-class TrailRegistry(Registry):
-    agent: dict[str, AgentSchema] = Field(default_factory=dict)
-    connection: dict[str, ConnectionSchema] = Field(default_factory=dict)
-    sampling_params: dict[str, SamplingParamsSchema] = Field(default_factory=dict)
-    tool_group: dict[str, ToolGroupSchema] = Field(default_factory=dict)
-    tool: dict[str, ToolSchema] = Field(default_factory=dict)
-    output_type: dict[str, OutputTypeSchema] = Field(default_factory=dict)
+class ParseError(Exception):
+    pass
+
+
+class RegistryInstance(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def parse_instance(cls, v: Any, info: ValidationInfo) -> Any:
+        if info.context is None:
+            return v
+
+        record = info.context.get_record(cls, info.context)
+
+        match v:
+            case str():
+                return {"name": v} | record[v]
+            case list():
+                base_data = record[v[0]] | {
+                    "name": v[0],
+                    "extends": v[1:],
+                }
+            case dict():
+                base_data = v
+            case _:
+                raise ParseError(f"unexpected data type {type(v)}")
+
+        if not base_data.get("extends"):
+            return base_data
+
+        if isinstance(base_data["extends"], str):
+            base_data["extends"] = [base_data["extends"]]
+
+        for ext_name in base_data["extends"]:
+            ext_data = record[ext_name]
+            base_data["name"] += "|" + ext_name
+            base_data = ext_data | base_data
+
+        return base_data
+
+
+class BaseRegistry(BaseModel):
+    pass

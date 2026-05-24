@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Awaitable
+from collections.abc import Awaitable
+from typing import Any
 
 from django.db.models import ForeignKey, OneToOneField
 
@@ -19,7 +20,7 @@ async def resolve_related_array_fields(model: TrailModel):
         queryset = field.associated_model.objects.filter(pk__in=value)
         resolved_value = [obj async for obj in queryset]
 
-        await asyncio.gather(
+        _ = await asyncio.gather(
             *(resolve_related_array_fields(obj) for obj in resolved_value)
         )
 
@@ -36,7 +37,7 @@ async def resolve_related_array_fields(model: TrailModel):
                 tasks.append(resolve_related_array_fields(associated_model))
 
     if tasks:
-        await asyncio.gather(*tasks)
+        _ = await asyncio.gather(*tasks)
 
     return model
 
@@ -54,13 +55,13 @@ def resolve_related_array_fields_sync(model: TrailModel):
             resolved_value = list(queryset)
 
             for obj in resolved_value:
-                resolve_related_array_fields_sync(obj)
+                _ = resolve_related_array_fields_sync(obj)
 
             setattr(model, field.name, resolved_value)
 
         elif isinstance(field, (ForeignKey, OneToOneField)):
             associated_model = getattr(model, field.name, None)
             if associated_model is not None:
-                resolve_related_array_fields_sync(associated_model)
+                _ = resolve_related_array_fields_sync(associated_model)
 
     return model

@@ -5,6 +5,7 @@ from django.forms import ModelForm
 from pydantic import ValidationError as PydanticValidationError
 
 from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, TrailModel
+from chatddx.repo.shufflers.main import qs_canon
 
 
 class BaseForm(ModelForm):
@@ -31,13 +32,17 @@ class BaseForm(ModelForm):
 
     def __init__(self, *args: Any, **kwargs: Any):
         instance = kwargs.get("instance")
-        del kwargs["request"]
+        request = kwargs.pop("request")
         self.validated_data = None
 
         if instance:
             kwargs["initial"] = self.get_initial(instance.target, instance.name)
 
         super().__init__(*args, **kwargs)
+        owner = request.user.username
+        owned = qs_canon(self._meta.model.objects.all(), owner)
+
+        self.fields["template"].choices = [(model.pk, model.name) for model in owned]
 
         if self.data:
             self.data = self.data.copy()
@@ -48,4 +53,4 @@ class BaseForm(ModelForm):
         return cls.form_data_out.model_validate(
             trail_model,
             context={"name": name},
-        ).model_dump()
+        ).model_dump(by_alias=True)

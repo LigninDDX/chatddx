@@ -1,9 +1,8 @@
 # src/chatddx/django/repo/admin/forms/tool_group.py
-from typing import Any
+from typing import Any, final, override
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
-from django.db.models import F
 from django.forms import (
     CharField,
     ModelChoiceField,
@@ -21,13 +20,16 @@ from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
 from chatddx.repo.form_data_in import ToolGroupFormDataIn
 from chatddx.repo.form_data_out import ToolGroupFormDataOut
+from chatddx.repo.shufflers.main import qs_owned_trails
 from chatddx.repo.trail_models import ToolTrailModel
 
 
+@final
 class ToolGroupForm(BaseForm):
     form_data_in = ToolGroupFormDataIn
     form_data_out = ToolGroupFormDataOut
 
+    @final
     class Meta(BaseForm.Meta):
         model = proxies.ToolGroup
 
@@ -35,10 +37,11 @@ class ToolGroupForm(BaseForm):
         request = kwargs["request"]
 
         super().__init__(*args, **kwargs)
-        self.fields["tools"].queryset = ToolTrailModel.objects.filter(  # pyright: ignore
-            branches__owner__name=request.user.username
-        ).annotate(branch_name=F("branches__name"))
+        self.fields["tools"].queryset = qs_owned_trails(  # pyright: ignore[reportAttributeAccessIssue]
+            ToolTrailModel.objects.all(), request.user.username
+        )
 
+    @override
     def clean(self):
         cleaned = super().clean()
         return cleaned

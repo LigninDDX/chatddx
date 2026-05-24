@@ -1,16 +1,12 @@
 import json
-from typing import Any
+from typing import Any, final, override
 
 from django.contrib import admin
 from django.http import HttpRequest
 from django.urls import reverse
 from unfold.utils import format_html
 
-from chatddx.django.portal.admin.base import (
-    BranchModelAdmin,
-    get_template_data,
-    qs_super_agent,
-)
+from chatddx.django.portal.admin.base import BranchModelAdmin
 from chatddx.django.portal.forms import (
     AgentForm,
     ConnectionForm,
@@ -22,7 +18,11 @@ from chatddx.django.portal.forms import (
 from chatddx.django.portal.forms.tool import ToolForm
 from chatddx.repo import proxies
 from chatddx.repo.base import BranchModel
-from chatddx.repo.loaders.model_loader import agent_relations
+from chatddx.repo.shufflers.main import (
+    agent_relations,
+    load_template_data,
+    qs_super_agent,
+)
 
 
 def _get_branch_link(obj: BranchModel, field_name: str):
@@ -49,6 +49,7 @@ def _get_branch_link(obj: BranchModel, field_name: str):
     return format_html('<a href="{}">{}</a>', url, label)
 
 
+@final
 @admin.register(proxies.Agent)
 class AgentAdmin(BranchModelAdmin[proxies.Agent]):
     form = AgentForm
@@ -56,6 +57,7 @@ class AgentAdmin(BranchModelAdmin[proxies.Agent]):
     list_display = BranchModelAdmin.list_display + []  # pyright: ignore
 
 
+@final
 @admin.register(proxies.SuperAgent)
 class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     form = SuperAgentForm
@@ -88,6 +90,7 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     def tool_group(self, obj: proxies.Agent):
         return _get_branch_link(obj, "tool_group")
 
+    @override
     def get_form_context(
         self,
         request: HttpRequest,
@@ -102,16 +105,20 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
             else {}
         )
 
+        owner = request.user.username
+
         return {
-            "template_data": get_template_data(request.user.username),
+            "template_data": load_template_data(owner).model_dump_json(by_alias=True),
             "form_info": json.dumps(form_info),
         }
 
+    @override
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
         return qs_super_agent(qs, request.user.username)
 
 
+@final
 @admin.register(proxies.Connection)
 class ConnectionAdmin(BranchModelAdmin[proxies.Connection]):
     form = ConnectionForm
@@ -137,6 +144,7 @@ class ConnectionAdmin(BranchModelAdmin[proxies.Connection]):
         return obj.target.get_provider_display()  # pyright: ignore
 
 
+@final
 @admin.register(proxies.SamplingParams)
 class SamplingParamsAdmin(BranchModelAdmin[proxies.SamplingParams]):
     form = SamplingParamsForm
@@ -162,6 +170,7 @@ class SamplingParamsAdmin(BranchModelAdmin[proxies.SamplingParams]):
         return str(obj.target.top_p)  # pyright: ignore
 
 
+@final
 @admin.register(proxies.OutputType)
 class OutputTypeAdmin(BranchModelAdmin[proxies.OutputType]):
     form = OutputTypeForm
@@ -196,6 +205,7 @@ class OutputTypeAdmin(BranchModelAdmin[proxies.OutputType]):
         return obj.target.get_validation_strategy_display()  # pyright: ignore
 
 
+@final
 @admin.register(proxies.ToolGroup)
 class ToolGroupAdmin(BranchModelAdmin[proxies.ToolGroup]):
     form = ToolGroupForm
@@ -203,6 +213,7 @@ class ToolGroupAdmin(BranchModelAdmin[proxies.ToolGroup]):
     list_display = BranchModelAdmin.list_display + []  # pyright: ignore
 
 
+@final
 @admin.register(proxies.Tool)
 class ToolAdmin(BranchModelAdmin[proxies.Tool]):
     form = ToolForm

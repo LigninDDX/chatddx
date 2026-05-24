@@ -4,22 +4,42 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
-from chatddx.registry.schemas import TrailRegistry
-from chatddx.repo.loaders.nonsense import get_agent
+from chatddx.core.models import IdentityModel
+from chatddx.repo.branch_spec import AgentBranchSpec
+from chatddx.repo.shufflers.main import (
+    dump_trail_registry_async,
+    load_branch_async,
+)
 from chatddx.runtime.runners import run_from_spec
 
-registry = TrailRegistry.from_file(Path(__file__).parent / "data/test-llm-basics.toml")
+
+@pytest_asyncio.fixture(autouse=True)
+async def dump_registry(owner: IdentityModel):
+    path = Path(__file__).parent / "data/test-llm-basics.toml"
+    return await dump_trail_registry_async(path, owner_name=owner.name)
+
+
+@pytest_asyncio.fixture
+async def owner():
+    owner, _created = await IdentityModel.objects.aget_or_create(name="alex")
+    return owner
 
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_message_spec():
-    spec = await get_agent("no-thinking", registry)
-    assert spec.connection
+async def test_message_spec(owner: IdentityModel):
+    spec = await load_branch_async(
+        "agent",
+        "no-thinking",
+        owner.name,
+        as_schema=AgentBranchSpec,
+    )
+    assert spec.target.connection
 
     prompt = "hello"
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     messages = json.loads(result.new_messages_json())
 
@@ -88,8 +108,8 @@ async def test_message_spec():
     assert res_part["provider_name"] is None
     assert res_part["provider_details"] is None
     assert res_msg["provider_name"] == "openai"
-    assert res_msg["provider_url"] == str(spec.connection.endpoint)
-    assert res_msg["model_name"] == spec.connection.model
+    assert res_msg["provider_url"] == str(spec.target.connection.endpoint)
+    assert res_msg["model_name"] == spec.target.connection.model
     assert res_msg["finish_reason"] == "stop"
 
     res_usage = res_msg["usage"]

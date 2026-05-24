@@ -7,10 +7,10 @@ import django
 import typer
 
 django.setup()
-
-from chatddx.core.models import IdentityModel
-from chatddx.registry.schemas import TrailRegistry
-from chatddx.repo.loaders.branches import branch_from_trail
+from chatddx.repo.shufflers.main import (
+    dump_trail_registry,
+    ensure_identity,
+)
 
 app = typer.Typer()
 
@@ -50,13 +50,8 @@ def init_data_(
         ),
     ],
 ):
-    trail_registry = TrailRegistry.from_file(registry)
-    owner_instance, _created = IdentityModel.objects.get_or_create(name=owner)
+    _ = ensure_identity(owner)
 
-    for kind, registry_dict in trail_registry:
-        for name, schema in registry_dict.items():
-            branch_model = branch_from_trail(kind, name, owner_instance.name, schema)
-            branch_model.save()
-            print(
-                f"{kind} {name} {branch_model.pk} ({branch_model.target.fingerprint})"
-            )
+    for bundle, branches in dump_trail_registry(registry, owner).items():
+        for branch_idx, branch in branches.items():
+            print(f"{bundle} {branch_idx} {branch}:")

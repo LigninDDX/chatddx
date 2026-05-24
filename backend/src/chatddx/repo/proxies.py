@@ -2,28 +2,16 @@
 from functools import cached_property
 
 import tomli_w
-from django.db.models import Manager
 
-from chatddx.repo.base import TrailModel
+from chatddx.repo.base import BranchProxy
 from chatddx.repo.branch_models import (
     AgentBranchModel,
-    BranchModel,
     ConnectionBranchModel,
     OutputTypeBranchModel,
     SamplingParamsBranchModel,
     ToolBranchModel,
     ToolGroupBranchModel,
 )
-
-
-class BranchProxy:
-    pk: int
-    name: str
-    objects: Manager[BranchModel]
-    target: TrailModel
-
-    def __str__(self) -> str:
-        return self.name
 
 
 class SuperAgent(BranchProxy, AgentBranchModel):

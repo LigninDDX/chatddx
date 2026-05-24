@@ -1,5 +1,7 @@
 # src/chatddx/django/repo/admin/forms/sampling_params.py
 
+from typing import final
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django.forms import (
@@ -23,10 +25,12 @@ from chatddx.repo.form_data_in import SamplingParamsFormDataIn
 from chatddx.repo.form_data_out import SamplingParamsFormDataOut
 
 
+@final
 class SamplingParamsForm(BaseForm):
     form_data_in = SamplingParamsFormDataIn
     form_data_out = SamplingParamsFormDataOut
 
+    @final
     class Meta(BaseForm.Meta):
         model = proxies.SamplingParams
 

@@ -1,6 +1,6 @@
 # src/chatddx/django/portal/forms/super_agent.py
 from copy import deepcopy
-from typing import Any
+from typing import Any, final, override
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, LayoutObject, Row
@@ -21,8 +21,8 @@ from chatddx.repo import proxies
 from chatddx.repo.branch_models import AgentBranchModel
 from chatddx.repo.form_data_in import SuperAgentFormDataIn
 from chatddx.repo.form_data_out import SuperAgentFormDataOut
-from chatddx.repo.loaders.model_loader import agent_relations
 from chatddx.repo.main import BundleName
+from chatddx.repo.shufflers.main import agent_relations
 
 OPTIONAL_FIELDS = {
     "connection_name",
@@ -75,7 +75,9 @@ def flatten_form_data(data: dict[str, Any]):
     }
 
 
+@final
 class SuperAgentForm(BaseForm):
+    @final
     class Meta(BaseForm.Meta):
         model = proxies.Agent
 
@@ -84,6 +86,7 @@ class SuperAgentForm(BaseForm):
 
     subforms: dict[BundleName, BaseForm]
 
+    @override
     def clean(self):
         for subform_name, subform_instance in self.subforms.items():
             is_valid = subform_instance.is_valid()
@@ -127,6 +130,19 @@ class SuperAgentForm(BaseForm):
 
                 self.fields[name] = field
 
+    @classmethod
+    def get_super_initial(cls, super_agent: AgentBranchModel):
+        agent_dict = super().get_initial(super_agent.target, super_agent.name)
+        relations_dict = {
+            prefix: cls.get_initial(
+                getattr(super_agent.target, prefix),
+                getattr(super_agent, prefixed("name", prefix)),
+            )
+            for prefix, cls in SUBFORMS
+        }
+
+        return agent_dict | flatten_form_data(relations_dict)
+
     name = forms.CharField(
         max_length=255,
         widget=UnfoldAdminTextInputWidget(),
@@ -149,19 +165,6 @@ class SuperAgentForm(BaseForm):
         label="System instructions",
         help_text="The core system prompt that dictates the agent's persona, rules, and boundaries.",
     )
-
-    @classmethod
-    def get_super_initial(cls, super_agent: AgentBranchModel):
-        agent_dict = super().get_initial(super_agent.target, super_agent.name)
-        relations_dict = {
-            prefix: cls.get_initial(
-                getattr(super_agent.target, prefix),
-                getattr(super_agent, f"{prefix}_name"),
-            )
-            for prefix, cls in SUBFORMS
-        }
-
-        return agent_dict | flatten_form_data(relations_dict)
 
     @property
     def helper(self):

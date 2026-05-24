@@ -1,5 +1,7 @@
 # src/chatddx/django/repo/admin/forms/tool.py
 
+from typing import final
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django.forms import (
@@ -21,10 +23,12 @@ from chatddx.repo.form_data_in import ToolFormDataIn
 from chatddx.repo.form_data_out import ToolFormDataOut
 
 
+@final
 class ToolForm(BaseForm):
     form_data_in = ToolFormDataIn
     form_data_out = ToolFormDataOut
 
+    @final
     class Meta(BaseForm.Meta):
         model = proxies.Tool
 

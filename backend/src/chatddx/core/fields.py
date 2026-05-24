@@ -5,6 +5,17 @@ import jsonschema
 import tomli_w
 from pydantic import BeforeValidator, JsonValue, PlainSerializer
 
+CoercedStr = Annotated[str, BeforeValidator(str)]
+
+
+def empty_str_to_none(v: Any):
+    if v == "":
+        return None
+    return v
+
+
+NullableStr = Annotated[str | None, BeforeValidator(empty_str_to_none)]
+
 
 def validate_json_schema(v: Any) -> Any:
     if v is not None:

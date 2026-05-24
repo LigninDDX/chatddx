@@ -3,138 +3,105 @@ from __future__ import annotations
 
 import json
 import tomllib
-from functools import reduce
+from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     IO,
     Any,
     Callable,
-    TypeVar,
-    cast,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
 from pydantic import (
     BaseModel,
     JsonValue,
-    PrivateAttr,
     ValidationError,
-    ValidationInfo,
-    model_validator,
+)
+
+from chatddx.registry.schemas import (
+    BaseRegistry,
+    DictRegistry,
+    ParseError,
+    Record,
 )
 
 FileLoaders = dict[str, Callable[[IO[bytes]], JsonValue]]
 
-T = TypeVar("T", bound=BaseModel)
+
+@dataclass
+class InstanceValidationContext:
+    get_record: Callable[[type[BaseModel], InstanceValidationContext], Record]
+    data: DictRegistry
+    schema: type[BaseRegistry]
 
 
-class ParseError(Exception):
-    pass
+def get_record_from_context(
+    schema_class: type[BaseModel],
+    context: InstanceValidationContext,
+):
+    bundle = None
+
+    resolved_hints = get_type_hints(context.schema)
+
+    for field_name, field_type in resolved_hints.items():
+        if get_origin(field_type) is dict:
+            args = get_args(field_type)
+            if len(args) == 2 and args[0] is str and args[1] is schema_class:
+                bundle = field_name
+                break
+
+    if bundle is None:
+        raise TypeError(
+            f"Could not find a field of type dict[str, {schema_class.__name__}] in schema '{context.schema.__name__}'"
+        )
+
+    try:
+        return context.data[bundle]
+    except KeyError:
+        raise KeyError(f"bundle '{bundle}' has no data")
 
 
-class RegistryRecord(BaseModel):
-    @model_validator(mode="before")
-    @classmethod
-    def resolve(cls, data: Any, info: ValidationInfo) -> Any:
-        if not info.context:
-            return data
+def parse_registry[T: BaseRegistry](
+    path: Path,
+    schema: type[T],
+    patch: dict[str, Any] | None = None,
+) -> T:
+    cleaned_data: dict[str, Any] = {}
+    data = _from_file(path)
 
-        record_type = info.context["cls"].get_field_by_type(cls)
-        record = info.context["input"][record_type]
+    if patch is None:
+        patch = {}
 
-        base_data: dict[str, Any] = {}
+    for bundle, record in data.items():
+        cleaned_data[bundle] = {}
 
-        match data:
-            case str():
-                return {"name": data} | record[data]
-            case list():
-                base_data = record[data[0]] | {
-                    "name": data[0],
-                    "extends": data[1:],
-                }
-            case dict():
-                base_data = cast(dict[str, Any], data.copy())
-            case _:
-                raise ParseError(f"bad data {data}")
-
-        if not base_data.get("extends"):
-            return base_data
-
-        if isinstance(base_data["extends"], str):
-            base_data["extends"] = [base_data["extends"]]
-
-        for ext_name in base_data["extends"]:
-            ext_data = record[ext_name]
-            base_data["name"] += "|" + ext_name
-            base_data = ext_data | base_data
-
-        return base_data
-
-
-class Registry(BaseModel):
-    _path: Path | None = PrivateAttr(default=None)
-
-    def get_by_type(self, RecordType: type[T], name: str) -> T:
-        record_type = self.__class__.get_field_by_type(RecordType)
-        try:
-            return getattr(self, record_type)[name]
-        except KeyError:
-            raise KeyError(f"'{record_type}.{name}' doesn't exist in '{self._path}':")
-
-    @model_validator(mode="before")
-    @classmethod
-    def attach_names_and_filter_out_partials(cls, data: Any) -> Any:
-        result: dict[str, Any] = {}
-
-        for record_type in cls.model_fields:
-            if record_type not in data:
+        for field, instance in record.items():
+            if isinstance(instance, dict) and instance.get("partial"):
                 continue
 
-            result[record_type] = {}
-
-            for name, values in data[record_type].items():
-                if values.get("partial"):
-                    continue
-                result[record_type][name] = {"name": name} | values
-
-        return result
-
-    @classmethod
-    def get_field_by_type(cls, schema_type: type[BaseModel]) -> str:
-        if not hasattr(cls, "_cached_type_map"):
-            cls._cached_type_map = {
-                get_args(f.annotation)[-1]: name
-                for name, f in cls.model_fields.items()
-                if get_origin(f.annotation)
-            }
-        return cls._cached_type_map[schema_type]
-
-    @classmethod
-    def from_file(cls, path: Path):
-        data = _from_file(path)
-        try:
-            instance = cls.model_validate(
-                data,
-                context={
-                    "cls": cls,
-                    "input": data,
-                },
-            )
-        except ValidationError as e:
-            for err in e.errors():
-                loc = " -> ".join(str(e) for e in err["loc"])
-                print(f"{loc}: {err['msg']} (got {err.get('input')!r})")
-            raise
-
-        instance._path = path
-        return instance
+            cleaned_data[bundle][field] = {"name": field} | instance | patch
+    try:
+        return schema.model_validate(
+            cleaned_data,
+            context=InstanceValidationContext(
+                get_record=get_record_from_context,
+                schema=schema,
+                data=data,
+            ),
+        )
+    except ValidationError as e:
+        for err in e.errors():
+            loc = " -> ".join(str(e) for e in err["loc"])
+            print(f"{loc}: {err['msg']} (got {err.get('input')!r})")
+        raise
 
 
 def _from_file(
     path: Path,
     seen: list[Path] | None = None,
-) -> JsonValue:
+) -> DictRegistry:
     if seen is None:
         seen = list()
 
@@ -163,30 +130,26 @@ def _from_file(
     if not isinstance(data, dict):
         return data
 
-    extends = cast(list[str] | str, data.get("extends", []))
-    if isinstance(extends, str):
-        extends = [extends]
+    extends = data.pop("extends", [])
+    match extends:
+        case str():
+            extends = [extends]
+        case list():
+            pass
+        case _:
+            raise ValueError(f"unexpected type {type(extends)}")
 
-    return reduce(
-        extend_registries,
-        [_from_file(path.parent / p, current_seen) for p in extends],
-        data,
-    )
+    for extend_path in extends:
+        extend_dict = _from_file(path.parent / extend_path, current_seen)
+        data = extend_registries(data, extend_dict)
+
+    return data
 
 
-def extend_registries(base: JsonValue, update: JsonValue):
-    if not isinstance(base, dict) or not isinstance(update, dict):
-        return base
-
+def extend_registries(base: DictRegistry, update: DictRegistry):
     for key, value in update.items():
-        if not isinstance(value, dict):
-            continue
         base_val = base.get(key, {})
-        if not isinstance(base_val, dict):
-            raise ValueError(f"unexpected value in '{base}'")
-
         base[key] = value | base_val
-
     return base
 
 

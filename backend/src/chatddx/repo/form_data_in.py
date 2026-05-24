@@ -1,7 +1,9 @@
 # src/chatddx/repo/form_data_in.py
-from typing import Annotated, Any
+from __future__ import annotations
 
-from pydantic import BeforeValidator, Field, JsonValue, model_validator
+from typing import Annotated
+
+from pydantic import BeforeValidator, Field, JsonValue
 
 from chatddx.core.decimals import SamplingDecimal
 from chatddx.core.fields import parse_text_or_list, parse_toml_or_dict
@@ -55,15 +57,6 @@ class OutputTypeFormDataIn(OutputTypeBase, BaseFormDataIn):
 
 class ToolGroupFormDataIn(ToolGroupBase, BaseFormDataIn):
     tools: list[ToolFormDataIn] = Field(default_factory=list)
-
-    @model_validator(mode="before")
-    @classmethod
-    def resolve_tools(cls, v: Any):
-        from chatddx.repo.trail_models import ToolTrailModel
-
-        if v.tools and isinstance(v.tools[0], int):
-            v.tools = ToolTrailModel.objects.filter(pk__in=v.tools)
-        return v
 
 
 class SubAgentFormDataIn(AgentBase, BaseFormDataIn):

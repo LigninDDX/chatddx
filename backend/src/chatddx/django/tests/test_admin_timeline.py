@@ -11,13 +11,16 @@ from django.urls import get_resolver, reverse
 
 from chatddx.core.fields import dict_to_toml, parse_toml_or_dict
 from chatddx.core.models import IdentityModel
-from chatddx.django.portal.admin.base import TemplateData, qs_super_agent
-from chatddx.registry.schemas import TrailRegistry
 from chatddx.repo import proxies
-from chatddx.repo.base import BaseFormDataOut
+from chatddx.repo.base import BaseFormDataOut, BranchModel
 from chatddx.repo.branch_models import AgentBranchModel, ToolBranchModel
 from chatddx.repo.form_data_in import SamplingParamsFormDataIn
-from chatddx.repo.loaders.model_loader import create_form_data
+from chatddx.repo.form_data_out import TemplateData
+from chatddx.repo.shufflers.main import (
+    dump_trail_registry,
+    load_form_data,
+    qs_super_agent,
+)
 from chatddx.repo.trail_models import AgentTrailModel, ConnectionTrailModel
 
 parameters: list[
@@ -67,9 +70,10 @@ parameters: list[
 ]
 
 
-@pytest.fixture
-def registry():
-    return TrailRegistry.from_file(Path(__file__).parent / "data/test-registry.toml")
+@pytest.fixture(autouse=True)
+def branch_registry(owner: IdentityModel):
+    path = Path(__file__).parent / "data/test-registry.toml"
+    return dump_trail_registry(path, owner_name=owner.name)
 
 
 @pytest.fixture
@@ -79,13 +83,15 @@ def owner(admin_user: User):
 
 
 @pytest.fixture
-def template_data(owner: IdentityModel, registry: TrailRegistry):
+def template_data(branch_registry: dict[str, dict[int, BranchModel]]):
     form_data: dict[str, dict[str, BaseFormDataOut]] = defaultdict(dict)
 
-    for kind, data in registry:
-        for name, schema in data.items():
-            branch_id, data = create_form_data(schema, name, owner.pk, key="name")
-            form_data[kind][str(branch_id)] = data
+    for bundle, branches in branch_registry.items():
+        for branch_model in branches.values():
+            form_data[bundle][branch_model.name] = load_form_data(
+                branch_model.target,
+                name=branch_model.name,
+            )
 
     return TemplateData.model_validate(form_data)
 
@@ -135,7 +141,7 @@ def test_super_agent(
 
     assert post_data["instructions"] == "some instructions"
     assert len(post_data["tool_group_tools"]) == 2
-    assert isinstance(post_data["tool_group_tools"][0], int)
+    assert isinstance(post_data["tool_group_tools"][0], str)
 
     existing = AgentBranchModel.objects.filter(
         owner__name=owner.name,
@@ -446,7 +452,7 @@ def test_tool_group(template_data: TemplateData, admin_client: Client):
 
 
 @pytest.mark.django_db
-def test_agent_qs(template_data: TemplateData, owner: IdentityModel):
+def test_agent_qs(owner: IdentityModel):
     qs = proxies.Agent.objects.filter(name="some-agent", owner_id=owner.pk)
     agent = qs_super_agent(qs, owner.name).first()
     assert agent is not None

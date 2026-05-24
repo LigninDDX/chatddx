@@ -5,12 +5,13 @@ from pathlib import Path
 import pytest
 
 from chatddx.core.choices import ToolChoices
-from chatddx.registry.main import ParseError
-from chatddx.registry.schemas import TrailRegistry
-from chatddx.repo.trail_schemas import AgentSchema, ConnectionSchema
+from chatddx.registry.main import parse_registry
+from chatddx.registry.schemas import ParseError
+from chatddx.repo.trail_schemas import TrailRegistry
 
-registry: TrailRegistry = TrailRegistry.from_file(
-    Path(__file__).parent / "data/test-registry.toml"
+registry: TrailRegistry = parse_registry(
+    path=Path(__file__).parent / "data/test-registry.toml",
+    schema=TrailRegistry,
 )
 
 
@@ -19,7 +20,7 @@ def test_loader():
 
 
 def test_properties():
-    agent_1 = registry.get_by_type(AgentSchema, "agent-1")
+    agent_1 = registry.agent["agent-1"]
     assert agent_1.instructions == "hello 1"
     assert agent_1.tool_group
     assert agent_1.tool_group.instructions == "use these tools"
@@ -27,18 +28,18 @@ def test_properties():
 
 
 def test_some_properties():
-    some_connection = registry.get_by_type(ConnectionSchema, "some-connection")
+    some_connection = registry.connection["some-connection"]
     assert some_connection.model == "Some/model"
 
 
 def test_extended_registries():
-    agent_1 = registry.get_by_type(AgentSchema, "some-agent")
+    agent_1 = registry.agent["some-agent"]
     assert agent_1.instructions == "some instructions"
     assert agent_1.tool_group.instructions == "some tool group instructions"
 
 
 def test_merged_properties():
-    agent_2 = registry.get_by_type(AgentSchema, "agent-2")
+    agent_2 = registry.agent["agent-2"]
     assert agent_2.instructions == "hello 2"
     assert agent_2.sampling_params
     assert agent_2.sampling_params.temperature == Decimal("0.7")
@@ -48,7 +49,7 @@ def test_merged_properties():
 
 
 def test_extended_records():
-    agent_3 = registry.get_by_type(AgentSchema, "agent-3")
+    agent_3 = registry.agent["agent-3"]
     assert agent_3.instructions == "hello 3"
     assert agent_3.sampling_params
     assert agent_3.tool_group
@@ -58,16 +59,18 @@ def test_extended_records():
 
 def test_infrec_file():
     with pytest.raises(ParseError):
-        infrec_registry: TrailRegistry = TrailRegistry.from_file(
-            Path(__file__).parent / "data/infrec-1.toml"
+        infrec_registry: TrailRegistry = parse_registry(
+            path=Path(__file__).parent / "data/infrec-1.toml",
+            schema=TrailRegistry,
         )
         assert infrec_registry
 
 
 def test_infrec_record():
-    infrec_registry: TrailRegistry = TrailRegistry.from_file(
-        Path(__file__).parent / "data/infrec-4.toml"
+    infrec_registry: TrailRegistry = parse_registry(
+        path=Path(__file__).parent / "data/infrec-4.toml",
+        schema=TrailRegistry,
     )
 
-    infrec_1 = infrec_registry.get_by_type(AgentSchema, "agent-1")
+    infrec_1 = infrec_registry.agent["agent-1"]
     assert infrec_1.instructions == "agent 1"

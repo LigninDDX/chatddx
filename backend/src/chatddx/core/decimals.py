@@ -1,11 +1,17 @@
 import json
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Annotated, Any, override
 
-from pydantic import GetCoreSchemaHandler
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, WithJsonSchema
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
 PRECISION = Decimal("0.01")
+
+decimal_json_schema = {
+    "type": "number",
+    "description": "A decimal with sampling constraints",
+}
 
 
 class SamplingDecimal(Decimal):
@@ -21,8 +27,17 @@ class SamplingDecimal(Decimal):
     def _validate(cls, v: Any) -> "SamplingDecimal":
         return cls(Decimal(str(v)).quantize(PRECISION, rounding=ROUND_HALF_UP))
 
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        core_schema: GetCoreSchemaHandler,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        return decimal_json_schema
+
 
 class DecimalEncoder(json.JSONEncoder):
+    @override
     def default(self, o: Any):
         if isinstance(o, Decimal):
             return str(o)

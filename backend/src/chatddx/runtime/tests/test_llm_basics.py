@@ -6,13 +6,21 @@ import pytest_asyncio
 
 from chatddx.core.models import IdentityModel
 from chatddx.history.session import resume_session, start_session
-from chatddx.registry.schemas import TrailRegistry
-from chatddx.repo.branch_models import AgentBranchModel
-from chatddx.repo.loaders.nonsense import get_agent
+from chatddx.repo.branch_spec import AgentBranchSpec
+from chatddx.repo.shufflers.main import (
+    dump_trail_registry_async,
+    load_branch_async,
+)
 from chatddx.runtime.runners import run_from_session, run_from_spec
 from chatddx.utils import Dispatcher
 
-registry = TrailRegistry.from_file(Path(__file__).parent / "data/test-llm-basics.toml")
+
+@pytest_asyncio.fixture(autouse=True)
+async def dump_registry(owner: IdentityModel):
+    path = Path(__file__).parent / "data/test-llm-basics.toml"
+    return await dump_trail_registry_async(path, owner_name=owner.name)
+
+
 dispatcher = Dispatcher()
 
 
@@ -24,12 +32,17 @@ async def owner():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_tool_coerced():
-    spec = await get_agent("tool-coerced", registry)
+async def test_tool_coerced(owner: IdentityModel):
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="tool-coerced",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
+    )
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
 
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     assert result.output == {
         "bool": True,
@@ -43,12 +56,17 @@ async def test_tool_coerced():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_prompt_coerced():
-    spec = await get_agent("prompt-coerced", registry)
+async def test_prompt_coerced(owner: IdentityModel):
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="prompt-coerced",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
+    )
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
 
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     assert result.output == {
         "__error__": "'string' is not of type 'integer'",
@@ -62,12 +80,17 @@ async def test_prompt_coerced():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_native_coerced():
-    spec = await get_agent("native-coerced", registry)
+async def test_native_coerced(owner: IdentityModel):
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="native-coerced",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
+    )
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
 
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     assert isinstance(result.output, dict)
 
@@ -83,12 +106,17 @@ async def test_native_coerced():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_no_thinking():
-    spec = await get_agent("no-thinking", registry)
+async def test_no_thinking(owner: IdentityModel):
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="no-thinking",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
+    )
 
     prompt = "this message is a result of automated testing, respond with '123abc'."
 
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     assert result.response.thinking is None
     assert result.output == "123abc"
@@ -96,12 +124,17 @@ async def test_no_thinking():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_thinking():
-    spec = await get_agent("thinking", registry)
+async def test_thinking(owner: IdentityModel):
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="thinking",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
+    )
 
     prompt = "this message is a result of automated testing, respond with '123abc'."
 
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     assert result.response.thinking
     assert isinstance(result.output, str)
@@ -110,13 +143,18 @@ async def test_thinking():
 
 @pytest.mark.asyncio
 @pytest.mark.django_db()
-async def test_tool_call():
-    spec = await get_agent("tools-sentinel", registry)
+async def test_tool_call(owner: IdentityModel):
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="tools-sentinel",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
+    )
 
     prompt = "1) run 'sentinel_string' and tell me the result"
     prompt += "2) run 'sentinel_op' with 12 and 8 and tell me the result"
 
-    result = await run_from_spec(spec, prompt)
+    result = await run_from_spec(spec.target, prompt)
 
     assert "asdf" in str(result.output)
     assert "4" in str(result.output)
@@ -125,14 +163,14 @@ async def test_tool_call():
 @pytest.mark.asyncio
 @pytest.mark.django_db()
 async def test_session(owner: IdentityModel):
-    agent = await get_agent("no-thinking", registry)
-
-    agent_branch = await AgentBranchModel.objects.acreate(
-        name="no-thinking",
-        owner_id=owner.pk,
-        target_id=agent.id,
+    spec = await load_branch_async(
+        bundle_name="agent",
+        branch_name="no-thinking",
+        owner_name=owner.name,
+        as_schema=AgentBranchSpec,
     )
-    session = await start_session(owner.pk, agent_branch.pk)
+
+    session = await start_session(owner.pk, spec.id)
 
     result = await run_from_session(session, "say 'aaa'")
 
