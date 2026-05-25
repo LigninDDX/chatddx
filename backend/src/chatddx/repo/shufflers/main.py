@@ -23,6 +23,7 @@ from chatddx.repo.base import (
     TrailSchema,
     TrailSpec,
 )
+from chatddx.repo.branch_models import BranchModelRegistry
 from chatddx.repo.form_data_out import TemplateData
 from chatddx.repo.main import BundleName, Repo
 from chatddx.repo.trail_schemas import TrailRegistry
@@ -64,8 +65,11 @@ def qs_super_agent[T: TrailModel](qs: QuerySet[T], owner_name: str):
 
 
 def qs_owned_trails[T: TrailModel](qs: QuerySet[T], owner_name: str) -> QuerySet[T]:
-    return qs.filter(branches__owner__name=owner_name).annotate(
-        branch_name=F("branches__name")
+    return (
+        qs.filter(branches__owner__name=owner_name)
+        .annotate(branch_name=F("branches__name"))
+        .order_by("id")
+        .distinct("id")
     )
 
 
@@ -83,7 +87,7 @@ def dump_trail_registry(registry_path: Path, owner_name: str):
         schema=TrailRegistry,
     )
 
-    dumped_registry: dict[str, dict[int, BranchModel]] = {}
+    dumped_registry: BranchModelRegistry = {}
 
     for bundle_name, record in registry:
         dumped_registry[bundle_name] = {}
@@ -93,7 +97,7 @@ def dump_trail_registry(registry_path: Path, owner_name: str):
                 bundle_name=bundle_name,
                 branch_name=branch_name,
                 owner_name=owner_name,
-                trail_schema=schema,
+                trail=schema,
             )
 
             dumped_registry[bundle_name][branch_model.pk] = branch_model
@@ -102,62 +106,86 @@ def dump_trail_registry(registry_path: Path, owner_name: str):
 
 
 def load_template_data(owner_name: str):
+
     payload: dict[BundleName, dict[str, BaseFormDataOut]] = defaultdict(dict)
+
     for bundle in get_args(BundleName):
-        payload[bundle] = {
-            str(branch.id): branch
-            for branch in load_branches(
-                bundle,
-                owner_name,
-                Repo(bundle, BaseFormDataOut),
+        form_data_cls = Repo(bundle, BaseFormDataOut)
+        branch_specs = load_branches(bundle, owner_name)
+
+        for branch_spec in branch_specs:
+            branch_dict = branch_spec.model_dump()
+            payload[bundle][str(branch_spec.id)] = form_data_cls.model_validate(
+                branch_dict["target"] | branch_dict
             )
-        }
 
     return TemplateData.model_validate(payload)
+
+
+def load_form_data(
+    branch: BranchModel | BranchSpec,
+) -> BaseFormDataOut:
+
+    match branch:
+        case BranchModel():
+            branch.target = resolve_related_array_fields(branch.target)
+            branch_spec = Repo(branch, BranchSpec).model_validate(branch)
+        case BranchSpec():
+            branch_spec = branch
+
+    branch_dict = branch_spec.model_dump()
+    form_data = Repo(branch, BaseFormDataOut).model_validate(
+        branch_dict["target"] | branch_dict
+    )
+    return form_data
 
 
 dump_trail_registry_async = make_async(dump_trail_registry)
 
 
-def load_branches[T: BaseFormDataOut | BranchSpec](  # pyright: ignore[reportMissingTypeArgument]
+def load_branches(
     bundle_name: str,
     owner_name: str,
-    as_schema: type[T],
-) -> list[T]:
-    branch_model_cls = Repo(bundle_name, BranchModel)
+) -> list[BranchSpec[TrailSpec]]:
+    model_cls = Repo(bundle_name, BranchModel)
+    spec_cls = Repo(bundle_name, BranchSpec)
 
     qs = qs_canon(
-        branch_model_cls.objects.all(),
+        model_cls.objects.all(),
         owner_name,
     )
+    specs: list[BranchSpec[TrailSpec]] = []
+    for model in qs:
+        model.target = resolve_related_array_fields(model.target)
+        specs.append(spec_cls.model_validate(model))
 
-    return [
-        as_schema.model_validate(
-            resolve_related_array_fields(branch.target),
-            context={"name": branch.name},
-        )
-        for branch in qs
-    ]
+    return specs
 
 
-def load_branch[T: BaseFormDataOut | BranchSpec](  # pyright: ignore[reportMissingTypeArgument]
+def load_branch(
     bundle_name: str,
-    branch_name: str,
     owner_name: str,
-    as_schema: type[T],
-) -> T:
-    branch_model_cls = Repo(bundle_name, BranchModel)
-    qs = qs_canon(
-        branch_model_cls.objects.filter(name=branch_name),
-        owner_name,
-    )
+    branch_name: str | None = None,
+    trail: TrailModel | TrailSchema | None = None,
+) -> BranchSpec[TrailSpec] | None:
+    model_cls = Repo(bundle_name, BranchModel)
+    spec_cls = Repo(bundle_name, BranchSpec)
+
+    qs = model_cls.objects.all()
+
+    if trail:
+        qs = qs.filter(target__fingerprint=trail.fingerprint)
+    if branch_name:
+        qs = qs.filter(name=branch_name)
+
+    qs = qs_canon(qs, owner_name)
 
     if (branch := qs.first()) is None:
-        raise ValueError(f"Branch '{bundle_name}.{branch_name}' not found.")
+        return branch
 
     branch.target = resolve_related_array_fields(branch.target)
 
-    return as_schema.model_validate(branch)  # pyright: ignore[reportUnknownVariableType]
+    return spec_cls.model_validate(branch)
 
 
 load_branch_async = make_async(load_branch)
@@ -167,7 +195,7 @@ def dump_branch(
     bundle_name: str,
     branch_name: str,
     owner_name: str,
-    trail_schema: TrailSchema,
+    trail: TrailSchema | TrailModel,
 ) -> tuple[BranchModel, bool]:
     branch_model_cls = Repo(bundle_name, BranchModel)
     trail_model_cls = Repo(bundle_name, TrailModel)
@@ -179,10 +207,14 @@ def dump_branch(
         owner.name,
     ).first()
 
-    if canon and trail_schema.fingerprint == canon.target.fingerprint:
+    if canon and trail.fingerprint == canon.target.fingerprint:
         return canon, False
 
-    trail_model = dump_trail(trail_model_cls, trail_schema)
+    match trail:
+        case TrailSchema():
+            trail_model = dump_trail(trail_model_cls, trail)
+        case TrailModel():
+            trail_model = trail
 
     branch_instance = branch_model_cls(
         target_id=trail_model.pk,
@@ -212,19 +244,6 @@ def load_trail[T: TrailSpec](
 
 
 load_trail_async = make_async(load_trail)
-
-
-def load_form_data(
-    trail_schema: TrailSchema,
-    name: str,
-) -> BaseFormDataOut:
-
-    form_data_cls = Repo(trail_schema, BaseFormDataOut)
-
-    return form_data_cls.model_validate(
-        trail_schema,
-        context={"name": name},
-    )
 
 
 def dump_trail[T: TrailModel](

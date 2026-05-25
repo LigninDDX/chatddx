@@ -1,6 +1,6 @@
 # src/chatddx/django/repo/admin/base.py
 import json
-from typing import Any, cast, no_type_check, override
+from typing import Any, cast, final, no_type_check, override
 
 from django.contrib import admin, messages
 from django.db.models import Model as DjangoModel
@@ -16,16 +16,17 @@ from chatddx.repo.shufflers.main import (
     dump_branch,
     load_template_data,
     qs_canon,
-    resolve_related_array_fields,
 )
 
 
 class TypedModelAdmin[T: DjangoModel](ModelAdmin):
+    @override
     def get_queryset(self, request: HttpRequest) -> QuerySet[T]:
         return cast(QuerySet[T], super().get_queryset(request))
 
 
 class TrailModelAdmin[T: TrailModel](TypedModelAdmin[T]):
+    @override
     def get_queryset(self, request: HttpRequest) -> QuerySet[T]:
         qs: QuerySet[T] = super().get_queryset(request)
         return qs
@@ -42,7 +43,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
 
     @admin.display(description="Versions")
     def versions(self, obj: DjangoModel) -> int:
-        return self.model.objects.filter(name=obj.name).count()  # pyright: ignore
+        return self.model.objects.filter(name=obj.name).count()
 
     def get_form(
         self,
@@ -51,7 +52,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         change: bool = False,
         **kwargs: Any,
     ):
-        Form = super().get_form(request, obj, **kwargs)  # pyright: ignore
+        Form = super().get_form(request, obj, **kwargs)
 
         class FormWithRequest(Form):
             def __new__(cls, *args: Any, **fkwargs: Any):
@@ -125,8 +126,13 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
             "template_data": load_template_data(owner).model_dump_json(by_alias=True),
             "form_info": json.dumps(
                 {
-                    "name": self.name,
-                    self.name: str(obj.target.pk) if obj else None,
+                    "template_selectors": [
+                        {
+                            "key": self.name,
+                            "target": "#id_template",
+                            "field_prefix": "",
+                        }
+                    ]
                 }
             ),
         }

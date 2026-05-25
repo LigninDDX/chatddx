@@ -7,6 +7,7 @@ from chatddx.repo.base import (
     BaseFormDataIn,
     BaseFormDataOut,
     BranchModel,
+    BranchProxy,
     BranchSchema,
     BranchSpec,
     TrailModel,
@@ -96,7 +97,7 @@ class RepoBundle[
 
     BaseFormDataIn: type[BaseFormDataIn]
     BaseFormDataOut: type[BaseFormDataOut]
-    BranchProxy: type[proxies.BranchProxy]
+    BranchProxy: type[BranchProxy]
 
 
 agent_bundle = RepoBundle(

@@ -1,11 +1,14 @@
 # src/chatddx/django/portal/forms/base.py
-from typing import Any
+from typing import Any, override
 
 from django.forms import ModelForm
 from pydantic import ValidationError as PydanticValidationError
 
-from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, TrailModel
-from chatddx.repo.shufflers.main import qs_canon
+from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, BranchModel
+from chatddx.repo.shufflers.main import (
+    load_form_data,
+    qs_canon,
+)
 
 
 class BaseForm(ModelForm):
@@ -25,32 +28,31 @@ class BaseForm(ModelForm):
             for error in e.errors():
                 self.add_error(str(error["loc"][0]), error["msg"])
 
+    @override
     def clean(self):
         cleaned = super().clean()
         self.validated_data = self.validate(cleaned)
         return cleaned
 
+    def get_initial(self, instance: BranchModel):
+        return load_form_data(instance).model_dump(by_alias=True)
+
     def __init__(self, *args: Any, **kwargs: Any):
         instance = kwargs.get("instance")
-        request = kwargs.pop("request")
+        self.request = kwargs.pop("request")
         self.validated_data = None
 
         if instance:
-            kwargs["initial"] = self.get_initial(instance.target, instance.name)
+            kwargs["initial"] = self.get_initial(instance)
 
         super().__init__(*args, **kwargs)
-        owner = request.user.username
+        owner = self.request.user.username
         owned = qs_canon(self._meta.model.objects.all(), owner)
 
-        self.fields["template"].choices = [(model.pk, model.name) for model in owned]
+        self.fields["template"].choices = [("", "=== clear ===")] + [
+            (model.pk, model.name) for model in owned
+        ]
 
         if self.data:
             self.data = self.data.copy()
             self.data.pop("template", None)
-
-    @classmethod
-    def get_initial(cls, trail_model: TrailModel, name: str | None = None):
-        return cls.form_data_out.model_validate(
-            trail_model,
-            context={"name": name},
-        ).model_dump(by_alias=True)

@@ -12,8 +12,12 @@ from django.urls import get_resolver, reverse
 from chatddx.core.fields import dict_to_toml, parse_toml_or_dict
 from chatddx.core.models import IdentityModel
 from chatddx.repo import proxies
-from chatddx.repo.base import BaseFormDataOut, BranchModel
-from chatddx.repo.branch_models import AgentBranchModel, ToolBranchModel
+from chatddx.repo.branch_models import (
+    AgentBranchModel,
+    BranchModelRegistry,
+    ConnectionBranchModel,
+    ToolBranchModel,
+)
 from chatddx.repo.form_data_in import SamplingParamsFormDataIn
 from chatddx.repo.form_data_out import TemplateData
 from chatddx.repo.shufflers.main import (
@@ -22,6 +26,7 @@ from chatddx.repo.shufflers.main import (
     qs_super_agent,
 )
 from chatddx.repo.trail_models import AgentTrailModel, ConnectionTrailModel
+from chatddx.repo.trail_schemas import ConnectionSchema
 
 parameters: list[
     tuple[
@@ -83,15 +88,12 @@ def owner(admin_user: User):
 
 
 @pytest.fixture
-def template_data(branch_registry: dict[str, dict[int, BranchModel]]):
-    form_data: dict[str, dict[str, BaseFormDataOut]] = defaultdict(dict)
+def template_data(branch_registry: BranchModelRegistry):
+    form_data: dict[str, Any] = defaultdict(dict)
 
     for bundle, branches in branch_registry.items():
         for branch_model in branches.values():
-            form_data[bundle][branch_model.name] = load_form_data(
-                branch_model.target,
-                name=branch_model.name,
-            )
+            form_data[bundle][branch_model.name] = load_form_data(branch_model)
 
     return TemplateData.model_validate(form_data)
 
@@ -110,6 +112,42 @@ def debug_admin_route(admin_client: Client):
             if hasattr(url_pattern, "name") and url_pattern.name:
                 print(f"Name: {url_pattern.name} -> Pattern: {url_pattern.pattern}")
     assert True
+
+
+@pytest.mark.django_db
+def test_super_agent_2(
+    branch_registry: BranchModelRegistry,
+    admin_client: Client,
+):
+    agent = next(iter(branch_registry["agent"].values()))
+    fingerprint = agent.target.connection.fingerprint
+
+    change_url = reverse("admin:orm_superagent_change", args=[agent.id])
+    response = admin_client.get(change_url)
+    assert response.status_code == 200
+
+    assert not response.context["messages"]
+
+    _ = ConnectionBranchModel.objects.filter(target=agent.target.connection).delete()
+
+    change_url = reverse("admin:orm_superagent_change", args=[agent.id])
+    response = admin_client.get(change_url)
+    assert response.status_code == 200
+
+    messages = list(response.context["messages"])
+
+    assert any(fingerprint[:6] in str(m.message) for m in messages), (
+        f"'{fingerprint}' not found in: {[m.message for m in messages]}"
+    )
+
+    agent = branch_registry["agent"][1]
+    fingerprint = agent.target.connection.fingerprint
+
+    change_url = reverse("admin:orm_superagent_change", args=[agent.id])
+    response = admin_client.get(change_url)
+    assert response.status_code == 200
+
+    assert not response.context["messages"]
 
 
 @pytest.mark.django_db
@@ -464,7 +502,7 @@ def test_agent(template_data: TemplateData, admin_client: Client):
     data = template_data.agent
     some_key = "some-agent"
 
-    post_data = data[some_key].model_dump(by_alias=True, exclude_none=True)
+    post_data = data[some_key].model_dump(by_alias=True)
 
     assert isinstance(post_data["instructions"], str)
     assert post_data["instructions"] == "some instructions"

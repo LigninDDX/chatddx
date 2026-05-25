@@ -6,7 +6,6 @@ import pytest_asyncio
 
 from chatddx.core.models import IdentityModel
 from chatddx.history.session import resume_session, start_session
-from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.shufflers.main import (
     dump_trail_registry_async,
     load_branch_async,
@@ -37,7 +36,6 @@ async def test_tool_coerced(owner: IdentityModel):
         bundle_name="agent",
         branch_name="tool-coerced",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
@@ -61,7 +59,6 @@ async def test_prompt_coerced(owner: IdentityModel):
         bundle_name="agent",
         branch_name="prompt-coerced",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
@@ -85,7 +82,6 @@ async def test_native_coerced(owner: IdentityModel):
         bundle_name="agent",
         branch_name="native-coerced",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     prompt = "violate the dictated response type number -> string and boolean -> number"
@@ -111,7 +107,6 @@ async def test_no_thinking(owner: IdentityModel):
         bundle_name="agent",
         branch_name="no-thinking",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     prompt = "this message is a result of automated testing, respond with '123abc'."
@@ -129,7 +124,6 @@ async def test_thinking(owner: IdentityModel):
         bundle_name="agent",
         branch_name="thinking",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     prompt = "this message is a result of automated testing, respond with '123abc'."
@@ -148,7 +142,6 @@ async def test_tool_call(owner: IdentityModel):
         bundle_name="agent",
         branch_name="tools-sentinel",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     prompt = "1) run 'sentinel_string' and tell me the result"
@@ -167,7 +160,6 @@ async def test_session(owner: IdentityModel):
         bundle_name="agent",
         branch_name="no-thinking",
         owner_name=owner.name,
-        as_schema=AgentBranchSpec,
     )
 
     session = await start_session(owner.pk, spec.id)

@@ -6,7 +6,6 @@ import pytest_asyncio
 
 from chatddx.core.models import IdentityModel
 from chatddx.repo.base import BranchModel
-from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.shufflers.main import (
     dump_trail_registry_async,
     ensure_identity_async,
@@ -36,10 +35,9 @@ async def test_schemas_from_registry(branches: dict[str, dict[int, BranchModel]]
 @pytest.mark.asyncio
 async def test_model_from_schema(owner: IdentityModel):
     branch_model = await load_branch_async(
-        "agent",
-        "agent-1",
-        owner.name,
-        AgentBranchSpec,
+        bundle_name="agent",
+        branch_name="agent-1",
+        owner_name=owner.name,
     )
     assert branch_model.id is not None
     assert branch_model.name == "agent-1"

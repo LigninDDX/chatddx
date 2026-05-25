@@ -7,7 +7,6 @@ import pytest
 import pytest_asyncio
 
 from chatddx.core.models import IdentityModel
-from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.shufflers.main import (
     dump_trail_registry_async,
     load_branch_async,
@@ -31,10 +30,9 @@ async def owner():
 @pytest.mark.django_db()
 async def test_message_spec(owner: IdentityModel):
     spec = await load_branch_async(
-        "agent",
-        "no-thinking",
-        owner.name,
-        as_schema=AgentBranchSpec,
+        bundle_name="agent",
+        branch_name="no-thinking",
+        owner_name=owner.name,
     )
     assert spec.target.connection
 

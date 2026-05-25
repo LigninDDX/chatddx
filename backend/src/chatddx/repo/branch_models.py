@@ -13,6 +13,8 @@ from chatddx.repo.trail_models import (
     ToolTrailModel,
 )
 
+BranchModelRegistry = dict[str, dict[int, BranchModel]]
+
 
 class AgentBranchModel(BranchModel):
     class Meta(BranchModel.Meta):

@@ -22,6 +22,7 @@ from chatddx.repo.shufflers.main import (
     agent_relations,
     load_template_data,
     qs_super_agent,
+    resolve_related_array_fields,
 )
 
 
@@ -96,21 +97,36 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
         request: HttpRequest,
         obj: Any,
     ) -> dict[str, Any]:
-        form_info: dict[str, Any] = {
-            "name": "super_agent",
-            "agent": str(obj.target.pk) if obj else None,
-        } | (
-            {model: str(getattr(obj.target, model).pk) for model in agent_relations}
-            if obj
-            else {}
-        )
-
         owner = request.user.username
+
+        form_info: dict[str, Any] = {
+            "template_selectors": [
+                {
+                    "key": "agent",
+                    "target": "#id_template",
+                    "field_prefix": "",
+                }
+            ]
+            + [
+                {
+                    "key": model,
+                    "target": f"#id_{model}_template",
+                    "field_prefix": model + "_",
+                }
+                for model in agent_relations
+            ]
+        }
 
         return {
             "template_data": load_template_data(owner).model_dump_json(by_alias=True),
             "form_info": json.dumps(form_info),
         }
+
+    @override
+    def get_object(self, request: HttpRequest, object_id: str, from_field: None = None):
+        obj = super().get_object(request, object_id, from_field)
+        # obj.target = resolve_related_array_fields(obj.target)
+        return obj
 
     @override
     def get_queryset(self, request: HttpRequest):

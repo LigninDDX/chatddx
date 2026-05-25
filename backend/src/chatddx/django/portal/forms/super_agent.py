@@ -6,6 +6,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Fieldset, Layout, LayoutObject, Row
 from django import forms
 from django.http.request import QueryDict
+from unfold.admin import messages
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
@@ -18,11 +19,17 @@ from chatddx.django.portal.forms.output_type import OutputTypeForm
 from chatddx.django.portal.forms.sampling_params import SamplingParamsForm
 from chatddx.django.portal.forms.tool_group import ToolGroupForm
 from chatddx.repo import proxies
-from chatddx.repo.branch_models import AgentBranchModel
+from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.form_data_in import SuperAgentFormDataIn
-from chatddx.repo.form_data_out import SuperAgentFormDataOut
+from chatddx.repo.form_data_out import AgentFormDataOut, SuperAgentFormDataOut
 from chatddx.repo.main import BundleName
-from chatddx.repo.shufflers.main import agent_relations
+from chatddx.repo.shufflers.main import (
+    agent_relations,
+    dump_branch,
+    load_branch,
+    load_form_data,
+)
+from chatddx.repo.trail_models import ToolTrailModel
 
 OPTIONAL_FIELDS = {
     "connection_name",
@@ -91,6 +98,7 @@ class SuperAgentForm(BaseForm):
         for subform_name, subform_instance in self.subforms.items():
             is_valid = subform_instance.is_valid()
             self.cleaned_data[subform_name] = subform_instance.clean()
+
             if not is_valid:
                 for field_name, error_messages in subform_instance.errors.items():
                     for error_msg in error_messages:
@@ -100,12 +108,8 @@ class SuperAgentForm(BaseForm):
         return cleaned
 
     def __init__(self, *args: Any, **kwargs: Any):
-        instance = kwargs.get("instance")
         self.subforms = {}
-        self._request = kwargs["request"]
-
-        if instance:
-            kwargs["initial"] = self.get_super_initial(instance)
+        self.request = kwargs["request"]
 
         super().__init__(*args, **kwargs)
 
@@ -119,7 +123,7 @@ class SuperAgentForm(BaseForm):
             sub_form_data = get_subform_data(self.data, prefix)
             self.subforms[prefix] = cls(
                 data=sub_form_data,
-                request=self._request,
+                request=self.request,
             )
             for _name, _field in self.subforms[prefix].fields.items():
                 name = prefixed(_name, prefix)
@@ -130,18 +134,49 @@ class SuperAgentForm(BaseForm):
 
                 self.fields[name] = field
 
-    @classmethod
-    def get_super_initial(cls, super_agent: AgentBranchModel):
-        agent_dict = super().get_initial(super_agent.target, super_agent.name)
-        relations_dict = {
-            prefix: cls.get_initial(
-                getattr(super_agent.target, prefix),
-                getattr(super_agent, prefixed("name", prefix)),
-            )
-            for prefix, cls in SUBFORMS
-        }
+    def get_initial(self, instance: proxies.SuperAgent):
 
-        return agent_dict | flatten_form_data(relations_dict)
+        instance.target.tool_group.tools = list(
+            ToolTrailModel.objects.filter(pk__in=instance.target.tool_group.tools)
+        )
+
+        agent_spec_dict = AgentBranchSpec.model_validate(instance).model_dump()
+
+        agent_dict = SuperAgentFormDataOut.model_validate(
+            agent_spec_dict["target"] | agent_spec_dict
+        ).model_dump(by_alias=True)
+
+        relations_dict: dict[str, Any] = {}
+        owner_name = self.request.user.username
+
+        for relation, _ in SUBFORMS:
+            agent_trail = instance.target
+            branch_model = load_branch(
+                bundle_name=relation,
+                owner_name=owner_name,
+                trail=getattr(agent_trail, relation),
+            )
+            if branch_model is None:
+                relation_trail = getattr(agent_trail, relation)
+                branch_name = str(relation_trail.fingerprint)[:6]
+                branch_model, _ = dump_branch(
+                    relation,
+                    branch_name,
+                    owner_name,
+                    relation_trail,
+                )
+                messages.info(
+                    self.request,
+                    f"Recreated a branch for trail '{relation}' with fingerprint '{relation_trail.fingerprint[:6]}' fyi 👇",
+                )
+
+            relations_dict[relation] = load_form_data(branch_model).model_dump(
+                by_alias=True
+            )
+
+        initial = agent_dict | flatten_form_data(relations_dict)
+        print(initial)
+        return initial
 
     name = forms.CharField(
         max_length=255,

@@ -17,6 +17,7 @@ from django.forms import model_to_dict
 from ninja import Schema as NinjaSchema
 from pydantic import (
     BaseModel,
+    ConfigDict,
     PrivateAttr,
     ValidationInfo,
     computed_field,
@@ -47,6 +48,7 @@ class BranchBase(BaseModel):
 
 
 class TrailSchema(RegistryInstance):
+    model_config = ConfigDict(from_attributes=True)
     _name: str | None = PrivateAttr()
 
     @computed_field
@@ -106,26 +108,10 @@ class BranchSpec[T: TrailSpec](BranchBase, NinjaSchema):
 class BaseFormDataIn(NinjaSchema):
     name: NullableStr = None
 
-    @model_validator(mode="before")
-    def merge_target(v: Any):
-        if hasattr(v, "target"):
-            branch = model_to_dict(v)
-            trail = model_to_dict(v.target)
 
-            return branch | trail
-
-        return v
-
-
-class BaseFormDataOut(NinjaSchema):
+class BaseFormDataOut(BaseModel):
     id: CoercedStr
     name: str = ""
-
-    @model_validator(mode="after")
-    def add_name_from_context(self, info: ValidationInfo):
-        if info.context:
-            self.name = info.context.get("name")
-        return self
 
 
 class TrailModel(DjangoModel):

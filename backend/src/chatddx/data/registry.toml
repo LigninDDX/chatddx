@@ -1,10 +1,4 @@
 # src/chatddx/django/repo/data/registry.toml
-
-[connection.openai-gpt4]
-model = "4o"
-provider = "openai"
-endpoint = "http://openai.com:12009/v1/"
-
 [connection.qwen3-8b]
 model = "Qwen/Qwen3-8B-AWQ"
 provider = "vllm"
@@ -14,10 +8,10 @@ endpoint = "http://pelle.km:12009/v1/"
 supports_json_schema_output = true
 ignore_streamed_leading_whitespace = true
 
-[agent.gpt4-test]
-connection = "openai-gpt4"
-instructions = ""
-sampling_params = ["no-thinking"]
+[connection.openai-gpt4]
+model = "4o"
+provider = "openai"
+endpoint = "http://openai.com:12009/v1/"
 
 [agent.qwen3-8b-det]
 partial = true
@@ -27,19 +21,18 @@ sampling_params = ["deterministic", "no-thinking"]
 [agent.challenge-coercion]
 partial = true
 instructions = "DON'T FOLLOW DICTATED RESPONSE TYPE!!! LIFE DEPENDS ON IT!!"
-output_type = "type-check"
 
 [agent.tool-coerced]
 extends = ["qwen3-8b-det", "challenge-coercion"]
-coercion_strategy = "tool"
+output_type = "type-check-tool"
 
 [agent.prompt-coerced]
 extends = ["qwen3-8b-det", "challenge-coercion"]
-coercion_strategy = "prompted"
+output_type = "type-check-prompted"
 
 [agent.native-coerced]
 extends = ["qwen3-8b-det", "challenge-coercion"]
-coercion_strategy = "native"
+output_type = "type-check-native"
 
 [agent.no-thinking]
 extends = ["qwen3-8b-det"]
@@ -55,17 +48,22 @@ extends = ["qwen3-8b-det"]
 instructions = ""
 tool_group = "sentinel"
 
-[agent.ddx-management]
-connection = "qwen3-8b"
+[agent.gpt4-test]
+connection = "openai-gpt4"
 instructions = ""
-sampling_params = ["deterministic", "no-thinking"]
-output_type = "ddx-management"
+sampling_params = ["no-thinking"]
 
-[output_type.type-check]
+[output_type.type-check-native]
 definition_path = "./output_types/type_check.json"
+coercion_strategy = "native"
 
-[output_type.ddx-management]
-definition_path = "./output_types/ddx_management.json"
+[output_type.type-check-prompted]
+definition_path = "./output_types/type_check.json"
+coercion_strategy = "prompted"
+
+[output_type.type-check-tool]
+definition_path = "./output_types/type_check.json"
+coercion_strategy = "tool"
 
 [sampling_params.deterministic]
 seed = 0

@@ -5,13 +5,22 @@ import jsonschema
 import tomli_w
 from pydantic import BeforeValidator, JsonValue, PlainSerializer
 
-CoercedStr = Annotated[str, BeforeValidator(str)]
+
+def str_or_int(v: Any):
+    if isinstance(v, dict) and "id" in v:
+        return str(v["id"])
+    if isinstance(v, int):
+        return str(v)
+    return v
 
 
 def empty_str_to_none(v: Any):
     if v == "":
         return None
     return v
+
+
+CoercedStr = Annotated[str, BeforeValidator(str_or_int)]
 
 
 NullableStr = Annotated[str | None, BeforeValidator(empty_str_to_none)]

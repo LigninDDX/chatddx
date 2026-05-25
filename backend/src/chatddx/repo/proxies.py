@@ -1,5 +1,6 @@
 # src/chatddx/django/repo/admin/proxies.py
 from functools import cached_property
+from typing import final
 
 import tomli_w
 
@@ -15,6 +16,7 @@ from chatddx.repo.branch_models import (
 
 
 class SuperAgent(BranchProxy, AgentBranchModel):
+    @final
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         proxy = True
         app_label = "orm"

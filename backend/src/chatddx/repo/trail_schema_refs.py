@@ -2,13 +2,11 @@ from chatddx.registry.schemas import RegistryInstance
 from chatddx.repo.base import TrailSchemaRef
 from chatddx.repo.trail_schemas import (
     AgentBase,
-    AgentSchema,
     ConnectionBase,
     OutputTypeBase,
     SamplingParamsBase,
     ToolBase,
     ToolGroupBase,
-    ToolGroupSchema,
 )
 
 

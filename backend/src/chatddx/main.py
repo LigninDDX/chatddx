@@ -54,4 +54,4 @@ def init_data_(
 
     for bundle, branches in dump_trail_registry(registry, owner).items():
         for branch_idx, branch in branches.items():
-            print(f"{bundle} {branch_idx} {branch}:")
+            print(f"{branch.target.fingerprint}: {branch_idx} {bundle} {branch.name}:")

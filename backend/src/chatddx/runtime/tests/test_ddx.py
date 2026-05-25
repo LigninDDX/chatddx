@@ -6,7 +6,6 @@ import pytest
 import pytest_asyncio
 
 from chatddx.core.models import IdentityModel
-from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.shufflers.main import dump_trail_registry_async, load_branch_async
 from chatddx.runtime.runners import run_from_spec
 
@@ -36,10 +35,9 @@ async def test_ddx_management(owner: IdentityModel):
         data = json.load(f)
 
     spec = await load_branch_async(
-        "agent",
-        "ddx-management",
-        owner.name,
-        as_schema=AgentBranchSpec,
+        bundle_name="agent",
+        branch_name="ddx-management",
+        owner_name=owner.name,
     )
     result = await run_from_spec(spec.target, case_a)
 
