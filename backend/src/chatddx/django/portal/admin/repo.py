@@ -105,6 +105,12 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
                     "key": "agent",
                     "target": "#id_template",
                     "field_prefix": "",
+                    "maps": {
+                        "connection": "connection_template",
+                        "sampling_params": "sampling_params_template",
+                        "output_type": "output_type_template",
+                        "tool_group": "tool_group_template",
+                    },
                 }
             ]
             + [
@@ -125,7 +131,6 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     @override
     def get_object(self, request: HttpRequest, object_id: str, from_field: None = None):
         obj = super().get_object(request, object_id, from_field)
-        # obj.target = resolve_related_array_fields(obj.target)
         return obj
 
     @override

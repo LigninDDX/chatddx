@@ -1,7 +1,7 @@
 (function($) {
   $(document).ready(function() {
-    const template_data = JSON.parse($('#template-data').html());
-    const form_info = JSON.parse($('#form-info').html());
+    const registry = JSON.parse($('#template-data').html());
+    const formInfo = JSON.parse($('#form-info').html());
 
     const populateField = ($field, value) => {
       if ($field.length) {
@@ -13,36 +13,29 @@
       }
     }
     const attachTemplateSelector = (_, selector) => {
-      const $target = $(selector.target);
-      const target_data = template_data[selector.key];
+      const selectorData = registry[selector.key];
+      const maps = selector.maps || {}
 
-      const get_field_id = (prefix, key) => `#id_${prefix}${key}`;
+      const getFieldId = (prefix, key) => `#id_${prefix || ""}${maps[key] || key}`;
 
-      $target.on('change', function() {
-        const value = $(this).val();
+      $(selector.target).on('change', function() {
+        let clear = false;
+        let choice = $(this).val();
 
-        if (value === "") {
-          const some_target = Object.keys(target_data)[0]; // boldly expect at least one row exists
-
-          $.each(target_data[some_target], function(key) {
-            const field_id = get_field_id(selector.field_prefix, key);
-            if (field_id === selector.target) return;
-            populateField($(field_id), '');
-          });
-
-          return;
+        if (choice === "") {
+          clear = true;
+          choice = Object.keys(selectorData)[0]; // boldly expect at least one row exists
         }
 
-        $.each(target_data[value], function(key, value) {
-          const field_id = get_field_id(selector.field_prefix, key)
-          if (field_id === selector.target) return;
-          console.log(field_id)
-          populateField($(field_id), value);
+        $.each(selectorData[choice] || {}, function(key, value) {
+          const fieldId = getFieldId(selector.field_prefix, key);
+          if (fieldId === selector.target) return;
+          populateField($(fieldId), clear ? "" : value);
         });
 
       });
     }
 
-    $.each(form_info.template_selectors, attachTemplateSelector);
+    $.each(formInfo.template_selectors, attachTemplateSelector);
   });
 })(django.jQuery);

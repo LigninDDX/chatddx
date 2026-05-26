@@ -115,8 +115,9 @@ def load_template_data(owner_name: str):
 
         for branch_spec in branch_specs:
             branch_dict = branch_spec.model_dump()
-            payload[bundle][str(branch_spec.id)] = form_data_cls.model_validate(
-                branch_dict["target"] | branch_dict
+            form_data = branch_dict | branch_dict["target"]
+            payload[bundle][str(form_data["id"])] = form_data_cls.model_validate(
+                form_data
             )
 
     return TemplateData.model_validate(payload)
@@ -135,7 +136,7 @@ def load_form_data(
 
     branch_dict = branch_spec.model_dump()
     form_data = Repo(branch, BaseFormDataOut).model_validate(
-        branch_dict["target"] | branch_dict
+        branch_dict | branch_dict["target"]
     )
     return form_data
 

@@ -50,7 +50,7 @@ class BaseForm(ModelForm):
         owned = qs_canon(self._meta.model.objects.all(), owner)
 
         self.fields["template"].choices = [("", "=== clear ===")] + [
-            (model.pk, model.name) for model in owned
+            (model.target.pk, model.name) for model in owned
         ]
 
         if self.data:

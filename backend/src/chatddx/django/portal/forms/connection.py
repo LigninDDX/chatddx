@@ -1,6 +1,6 @@
 # src/chatddx/django/repo/admin/forms/connection.py
 
-from typing import Any, final
+from typing import final
 
 from crispy_forms.helper import FormHelper, Layout
 from crispy_forms.layout import Column, Fieldset, Row
@@ -18,7 +18,6 @@ from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
 from chatddx.repo.form_data_in import ConnectionFormDataIn
 from chatddx.repo.form_data_out import ConnectionFormDataOut
-from chatddx.repo.shufflers.main import qs_canon
 
 
 @final

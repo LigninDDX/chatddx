@@ -52,7 +52,7 @@ class AgentForm(BaseForm):
         owned = qs_canon(proxies.Agent.objects.all(), owner)
 
         self.fields["template"].choices = [("", "=== clear ===")] + [
-            (model.pk, model.name) for model in owned
+            (model.target.pk, model.name) for model in owned
         ]
 
         self.fields["connection"].queryset = qs_owned_trails(  # pyright: ignore[reportAttributeAccessIssue]
@@ -76,7 +76,7 @@ class AgentForm(BaseForm):
         agent_spec_dict = AgentBranchSpec.model_validate(instance).model_dump()
 
         agent_dict = AgentFormDataOut.model_validate(
-            agent_spec_dict["target"] | agent_spec_dict
+            agent_spec_dict | agent_spec_dict["target"]
         ).model_dump(by_alias=True)
 
         relations_dict: dict[str, Any] = {}

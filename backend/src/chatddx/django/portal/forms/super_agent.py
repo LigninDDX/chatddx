@@ -143,7 +143,7 @@ class SuperAgentForm(BaseForm):
         agent_spec_dict = AgentBranchSpec.model_validate(instance).model_dump()
 
         agent_dict = SuperAgentFormDataOut.model_validate(
-            agent_spec_dict["target"] | agent_spec_dict
+            agent_spec_dict | agent_spec_dict["target"]
         ).model_dump(by_alias=True)
 
         relations_dict: dict[str, Any] = {}
@@ -175,7 +175,6 @@ class SuperAgentForm(BaseForm):
             )
 
         initial = agent_dict | flatten_form_data(relations_dict)
-        print(initial)
         return initial
 
     name = forms.CharField(
