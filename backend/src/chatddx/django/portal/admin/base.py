@@ -1,6 +1,6 @@
 # src/chatddx/django/repo/admin/base.py
 import json
-from typing import Any, cast, final, no_type_check, override
+from typing import Any, cast, no_type_check, override
 
 from django.contrib import admin, messages
 from django.db.models import Model as DjangoModel
@@ -78,7 +78,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         obj, created = dump_branch(
             self.name,
             form.validated_data.name or "",
-            self.request.user.username,
+            request.user.username,
             schema,
         )
 
@@ -89,6 +89,8 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
                 level=messages.INFO,
             )
             request._skip_success_message = True  # pyright: ignore[reportAttributeAccessIssue]
+
+        form.save()
 
         return obj.as_proxy(proxy_cls)
 

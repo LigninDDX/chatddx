@@ -8,11 +8,13 @@ DJANGO_MODE = os.environ["DJANGO_MODE"]
 
 match DJANGO_MODE:
     case "main":
-        from chatddx.django.settings_base import *
-        from chatddx.django.settings_main import *
+        from chatddx.django.settings.base import *
+        from chatddx.django.settings.prod import *
+        from chatddx.django.settings.unfold import *
     case "dev":
-        from chatddx.django.settings_base import *
-        from chatddx.django.settings_dev import *
+        from chatddx.django.settings.base import *
+        from chatddx.django.settings.dev import *
+        from chatddx.django.settings.unfold import *
     case "collectstatic":
         pass
     case _:

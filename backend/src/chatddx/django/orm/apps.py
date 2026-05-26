@@ -1,4 +1,3 @@
-# type: ignore
 from pathlib import Path
 
 from django.apps import AppConfig
@@ -7,6 +6,7 @@ from django.db.models.signals import post_migrate
 
 class OrmConfig(AppConfig):
     name = "chatddx.django.orm"
+    verbose_name = "Database"
 
     def ready(self):
         post_migrate.connect(install_trail_triggers, sender=self)

@@ -21,7 +21,7 @@ from chatddx.django.portal.forms.tool_group import ToolGroupForm
 from chatddx.repo import proxies
 from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.form_data_in import SuperAgentFormDataIn
-from chatddx.repo.form_data_out import AgentFormDataOut, SuperAgentFormDataOut
+from chatddx.repo.form_data_out import SuperAgentFormDataOut
 from chatddx.repo.main import BundleName
 from chatddx.repo.shufflers.main import (
     agent_relations,

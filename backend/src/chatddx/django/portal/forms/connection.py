@@ -1,10 +1,10 @@
 # src/chatddx/django/repo/admin/forms/connection.py
-
-from typing import final
+from typing import Any, final, override
 
 from crispy_forms.helper import FormHelper, Layout
 from crispy_forms.layout import Column, Fieldset, Row
 from django import forms
+from unfold.admin import messages
 from unfold.layout import Hr
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
@@ -14,6 +14,7 @@ from unfold.widgets import (
 )
 
 from chatddx.core.choices import ProviderChoices
+from chatddx.core.models import IdentityModel
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
 from chatddx.repo.form_data_in import ConnectionFormDataIn
@@ -28,6 +29,30 @@ class ConnectionForm(BaseForm):
     @final
     class Meta(BaseForm.Meta):
         model = proxies.Connection
+
+    @override
+    def save(self, commit: bool = True) -> Any:
+        instance = super().save(commit=commit)
+        if instance and instance.get("api_key") and self.validated_data:
+            owner = IdentityModel.objects.get(name=self.request.user.username)
+            owner_api_keys = owner.secrets.get("api-keys", {})
+            connection_name = self.validated_data.name
+            current_api_key = owner_api_keys.get(connection_name, None)
+
+            if instance["api_key"] == current_api_key:
+                messages.info(
+                    self.request,
+                    f"The provided API-key matches the current API-key for identity {owner.name}, all good.",
+                )
+            else:
+                owner.secrets["api-keys"] = owner_api_keys | {
+                    connection_name: instance["api_key"]
+                }
+                owner.save()
+                messages.success(
+                    self.request,
+                    f"Updated API-key for identity {owner.name} and connection {connection_name}.",
+                )
 
     name = forms.CharField(
         required=False,

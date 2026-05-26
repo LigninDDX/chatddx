@@ -2,6 +2,7 @@
 from typing import Any, override
 
 from django.forms import ModelForm
+from django.http import HttpRequest
 from pydantic import ValidationError as PydanticValidationError
 
 from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, BranchModel
@@ -19,6 +20,7 @@ class BaseForm(ModelForm):
     form_data_in: type[BaseFormDataIn]
 
     validated_data: BaseFormDataIn | None
+    request: HttpRequest
 
     def validate(self, data: dict[str, Any]):
         try:
@@ -33,6 +35,10 @@ class BaseForm(ModelForm):
         cleaned = super().clean()
         self.validated_data = self.validate(cleaned)
         return cleaned
+
+    @override
+    def save(self, commit: bool = True) -> Any:
+        return self.cleaned_data
 
     def get_initial(self, instance: BranchModel):
         return load_form_data(instance).model_dump(by_alias=True)

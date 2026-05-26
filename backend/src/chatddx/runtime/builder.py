@@ -1,4 +1,4 @@
-# src/chatddx/django/repo/pydantic_ai/builder.py
+# src/chatddx/runtime/builder.py
 from decimal import Decimal
 from typing import Any, get_args
 
@@ -46,7 +46,7 @@ def build_agent(
         model_settings=model_settings,
     )
 
-    pydantic_agent.output_validator(validate_output)
+    _ = pydantic_agent.output_validator(validate_output)
 
     return pydantic_agent
 

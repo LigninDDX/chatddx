@@ -20,8 +20,8 @@ class SuperAgent(BranchProxy, AgentBranchModel):
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         proxy = True
         app_label = "orm"
-        verbose_name = "Super Agent"
-        verbose_name_plural = "Super Agents"
+        verbose_name = "Agent"
+        verbose_name_plural = "Agents"
 
 
 class Agent(BranchProxy, AgentBranchModel):

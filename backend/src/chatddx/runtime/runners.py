@@ -96,7 +96,7 @@ async def run_from_session(
     if not agent_spec:
         agent_spec = session.default_agent.target
 
-    dispatcher.subscribe(
+    _ = dispatcher.subscribe(
         on_result(
             session.id,
             agent_spec.id,
@@ -153,7 +153,7 @@ def on_result(session_id: int, agent_id: int):
             )
 
         if messages_to_create:
-            await MessageModel.objects.abulk_create(messages_to_create)
+            _ = await MessageModel.objects.abulk_create(messages_to_create)
 
     return _on_result
 

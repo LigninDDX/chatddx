@@ -1,5 +1,6 @@
 (function($) {
   $(document).ready(function() {
+
     const registry = JSON.parse($('#template-data').html());
     const formInfo = JSON.parse($('#form-info').html());
 
@@ -12,23 +13,22 @@
         }
       }
     }
+
     const attachTemplateSelector = (_, selector) => {
       const selectorData = registry[selector.key];
-      const maps = selector.maps || {}
-
-      const getFieldId = (prefix, key) => `#id_${prefix || ""}${maps[key] || key}`;
+      const fieldPrefix = selector.field_prefix || "";
+      const maps = selector.maps || {};
 
       $(selector.target).on('change', function() {
-        let clear = false;
         let choice = $(this).val();
+        const clear = (choice === "");
 
-        if (choice === "") {
-          clear = true;
+        if (clear) {
           choice = Object.keys(selectorData)[0]; // boldly expect at least one row exists
         }
 
         $.each(selectorData[choice] || {}, function(key, value) {
-          const fieldId = getFieldId(selector.field_prefix, key);
+          const fieldId = `#id_${fieldPrefix}${maps[key] || key}`;
           if (fieldId === selector.target) return;
           populateField($(fieldId), clear ? "" : value);
         });

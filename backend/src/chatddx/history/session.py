@@ -40,7 +40,9 @@ async def resume_session(
             owner_id=owner_id,
         )
     )
-    await resolve_related_array_fields_async(session_model.default_agent.target)
+    session_model.default_agent.target = await resolve_related_array_fields_async(
+        session_model.default_agent.target
+    )
 
     return SessionSpec.model_validate(session_model)
 
