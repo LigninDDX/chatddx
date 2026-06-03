@@ -13,6 +13,12 @@ model = "4o"
 provider = "openai"
 endpoint = "http://openai.com:12009/v1/"
 
+[agent.swift]
+connection = "qwen3-8b"
+instructions = ""
+sampling_params = ["deterministic", "no-thinking"]
+output_type = "swift"
+
 [agent.qwen3-8b-det]
 partial = true
 connection = "qwen3-8b"
@@ -64,6 +70,9 @@ coercion_strategy = "prompted"
 [output_type.type-check-tool]
 definition_path = "./output_types/type_check.json"
 coercion_strategy = "tool"
+
+[output_type.swift]
+definition_path = "./output_types/swift.json"
 
 [sampling_params.deterministic]
 seed = 0

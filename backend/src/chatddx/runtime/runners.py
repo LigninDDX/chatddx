@@ -1,5 +1,5 @@
-# src/chatddx/django/repo/pydantic_ai/runners.py
-from typing import AsyncGenerator
+# src/chatddx/django/runtime/runners.py
+from collections.abc import AsyncGenerator
 
 from pydantic_ai import AgentRunResult, ModelResponse
 from pydantic_ai.result import StreamedRunResult
@@ -9,11 +9,10 @@ from chatddx.core.choices import RoleChoices
 from chatddx.history.models import MessageModel
 from chatddx.history.schemas import SessionSpec
 from chatddx.repo.trail_specs import AgentSpec
-from chatddx.runtime.context import AgentContext
+from chatddx.runtime.context import AgentContext, OutputType
 from chatddx.utils import Dispatcher
 
 from .builder import (
-    OutputType,
     build_agent,
     build_output_type,
 )

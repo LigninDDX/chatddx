@@ -75,6 +75,22 @@ parameters: list[
 ]
 
 
+@pytest.mark.django_db
+def debug_admin_route(admin_client: Client):
+    resolver = get_resolver()
+
+    print("\n--- ALL AVAILABLE URL NAMES ---")
+    for url_pattern in resolver.url_patterns:
+        if hasattr(url_pattern, "url_patterns"):
+            for sub_pattern in url_pattern.url_patterns:
+                if hasattr(sub_pattern, "name") and sub_pattern.name:
+                    print(f"Name: {sub_pattern.name} -> Pattern: {sub_pattern.pattern}")
+        else:
+            if hasattr(url_pattern, "name") and url_pattern.name:
+                print(f"Name: {url_pattern.name} -> Pattern: {url_pattern.pattern}")
+    assert True
+
+
 @pytest.fixture(autouse=True)
 def branch_registry(owner: IdentityModel):
     path = Path(__file__).parent / "data/test-registry.toml"
@@ -96,22 +112,6 @@ def template_data(branch_registry: BranchModelRegistry):
             form_data[bundle][branch_model.name] = load_form_data(branch_model)
 
     return TemplateData.model_validate(form_data)
-
-
-@pytest.mark.django_db
-def debug_admin_route(admin_client: Client):
-    resolver = get_resolver()
-
-    print("\n--- ALL AVAILABLE URL NAMES ---")
-    for url_pattern in resolver.url_patterns:
-        if hasattr(url_pattern, "url_patterns"):
-            for sub_pattern in url_pattern.url_patterns:
-                if hasattr(sub_pattern, "name") and sub_pattern.name:
-                    print(f"Name: {sub_pattern.name} -> Pattern: {sub_pattern.pattern}")
-        else:
-            if hasattr(url_pattern, "name") and url_pattern.name:
-                print(f"Name: {url_pattern.name} -> Pattern: {url_pattern.pattern}")
-    assert True
 
 
 @pytest.mark.django_db

@@ -91,27 +91,34 @@
           default = pkgs.mkShell {
             inherit name;
             packages = [
-              (pkgs.writeScriptBin "npm" ''echo "use pnpm"'')
-              (pkgs.writeScriptBin "npx" ''echo "use pnpm dlx"'')
               venv
-              pkgs.pnpm
               pkgs.uv
-              pkgs.nodejs
+              pkgs.nodejs_22
+              pkgs.bun
             ];
             env = {
               UV_NO_SYNC = "1";
               UV_PYTHON = pythonSet.python.interpreter;
               UV_PYTHON_DOWNLOADS = "never";
+              UV_VENV = "/dev/null";
             };
             shellHook = ''
               unset PYTHONPATH
               export BACKEND_ROOT=$(git rev-parse --show-toplevel)/backend
+              export SWIFT_ROOT=$(git rev-parse --show-toplevel)/swift
               set -a
               [ -f backend/.env ] && source backend/.env
               [ -f client/.env ] && source client/.env
               set +a
-              echo "flake: ${version}"
-              echo "nixpkgs: ${nixpkgs.shortRev}"
+              echo "===================================================="
+              echo "  🧬 CHATDDX DEVELOPMENT ENV ACTIVE 🧬"
+              echo "===================================================="
+              echo "• Flake version: ${version}"
+              echo "• Nixpkgs:       ${nixpkgs.shortRev}"
+              echo "• Python path:   $UV_PYTHON"
+              echo "• Node version:  $(node --version)"
+              echo "• Bun version:   $(bun --version 2>/dev/null || echo 'not initialized')"
+              echo "===================================================="
             '';
           };
         }
