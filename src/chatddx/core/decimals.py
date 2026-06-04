@@ -2,7 +2,7 @@ import json
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any, override
 
-from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, WithJsonSchema
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, PlainSerializer
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
@@ -14,7 +14,7 @@ decimal_json_schema = {
 }
 
 
-class SamplingDecimal(Decimal):
+class SamplingDecimalBase(Decimal):
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
@@ -34,6 +34,11 @@ class SamplingDecimal(Decimal):
         handler: GetJsonSchemaHandler,
     ) -> JsonSchemaValue:
         return decimal_json_schema
+
+
+SamplingDecimal = Annotated[
+    SamplingDecimalBase, PlainSerializer(lambda v: float(v), return_type=float)
+]
 
 
 class DecimalEncoder(json.JSONEncoder):

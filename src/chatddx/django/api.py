@@ -50,10 +50,7 @@ async def get_agents_endpoint(request: HttpRequest, output_type: str = None):
     try:
         agents = await load_agents_async(owner_name=username, output_type=output_type)
 
-        options = [
-            {"value": agent.name, "label": f"{agent.name.capitalize()} Agent"}
-            for agent in agents
-        ]
+        options = [{"value": agent.name, "label": agent.name} for agent in agents]
 
         return options
 

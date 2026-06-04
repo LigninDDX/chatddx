@@ -106,7 +106,9 @@ class AgentForm(BaseForm):
                     f"Recreated a branch for trail '{relation}' with fingerprint '{relation_trail.fingerprint[:6]}' fyi 👇",
                 )
 
-        return agent_dict | {name: values.pk for name, values in relations_dict.items()}
+        return agent_dict | {
+            name: values["pk"] for name, values in relations_dict.items()
+        }
 
     def clean_tool_group(self):
         tool_group = self.cleaned_data["tool_group"]

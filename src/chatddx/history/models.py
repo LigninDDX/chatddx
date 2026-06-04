@@ -5,6 +5,7 @@ from typing import Any
 
 from django.db.models import (
     PROTECT,
+    SET_DEFAULT,
     CharField,
     DateTimeField,
     ForeignKey,
@@ -42,7 +43,9 @@ class SessionModel(Model):
     )
     default_agent = ForeignKey(
         AgentBranchModel,
-        on_delete=PROTECT,
+        default=None,
+        null=True,
+        on_delete=SET_DEFAULT,
     )
 
     messages: QuerySet[MessageModel]

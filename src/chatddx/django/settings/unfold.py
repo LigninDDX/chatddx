@@ -91,6 +91,11 @@ UNFOLD = {
                         "icon": "people",
                         "link": reverse_lazy("admin:orm_identity_changelist"),
                     },
+                    {
+                        "title": "Messages",
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:orm_message_changelist"),
+                    },
                 ],
             },
         ],

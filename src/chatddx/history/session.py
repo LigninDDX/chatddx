@@ -1,9 +1,12 @@
-# src/chatddx/django/repo/session.py
+# src/chatddx/history/session.py
 from uuid import UUID
+
+from asgiref.sync import sync_to_async
 
 from chatddx.core.models import IdentityModel
 from chatddx.history.models import MessageModel, SessionModel
 from chatddx.history.schemas import IdentitySpec, MessageSpec, SessionSpec
+from chatddx.repo.branch_models import AgentBranchModel
 from chatddx.repo.shufflers.main import resolve_related_array_fields_async
 
 
@@ -30,16 +33,26 @@ async def start_session(
 async def resume_session(
     owner_id: int,
     uuid: UUID | str,
+    default_agent: AgentBranchModel | None = None,
 ) -> SessionSpec:
 
     session_model = (
-        await SessionModel.objects.select_related()
+        await SessionModel.objects.select_related("default_agent")
         .prefetch_related("messages")
         .aget(
             uuid__startswith=uuid,
             owner_id=owner_id,
         )
     )
+
+    if default_agent:
+        session_model.default_agent = default_agent
+
+    if session_model.default_agent is None:
+        raise ValueError("Cannot resume a session without an agent")
+
+    target_attr = await sync_to_async(lambda: session_model.default_agent.target)()
+
     session_model.default_agent.target = await resolve_related_array_fields_async(
         session_model.default_agent.target
     )
