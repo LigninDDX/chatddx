@@ -26,9 +26,10 @@ from chatddx.runtime.context import AgentContext, OutputType
 def build_agent(
     agent_spec: AgentSpec,
     output_type: type[OutputType],
+    api_key: str | None = None,
 ) -> PydanticAgent[AgentContext, OutputType]:
 
-    model: OpenAIChatModel = build_model(agent_spec)
+    model: OpenAIChatModel = build_model(agent_spec, api_key)
     model_settings = build_config(agent_spec.sampling_params)
     tool_group_instructions, tools = build_tools(agent_spec.tool_group)
 
@@ -51,7 +52,10 @@ def build_agent(
     return pydantic_agent
 
 
-def build_model(agent_spec: AgentSpec):
+def build_model(
+    agent_spec: AgentSpec,
+    api_key: str | None = None,
+):
     model_kwargs: dict[str, Any] = {}
     profile_kwargs: dict[str, Any] = agent_spec.connection.profile.copy()
 
@@ -64,7 +68,8 @@ def build_model(agent_spec: AgentSpec):
     model_kwargs["model_name"] = agent_spec.connection.model
 
     model_kwargs["provider"] = OpenAIProvider(
-        base_url=str(agent_spec.connection.endpoint)
+        base_url=str(agent_spec.connection.endpoint),
+        api_key=api_key,
     )
 
     return OpenAIChatModel(**model_kwargs)

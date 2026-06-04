@@ -30,30 +30,6 @@ class ConnectionForm(BaseForm):
     class Meta(BaseForm.Meta):
         model = proxies.Connection
 
-    @override
-    def save(self, commit: bool = True) -> Any:
-        instance = super().save(commit=commit)
-        if instance and instance.get("api_key") and self.validated_data:
-            owner = IdentityModel.objects.get(name=self.request.user.username)
-            owner_api_keys = owner.secrets.get("api-keys", {})
-            connection_name = self.validated_data.name
-            current_api_key = owner_api_keys.get(connection_name, None)
-
-            if instance["api_key"] == current_api_key:
-                messages.info(
-                    self.request,
-                    f"The provided API-key matches the current API-key for identity {owner.name}, all good.",
-                )
-            else:
-                owner.secrets["api-keys"] = owner_api_keys | {
-                    connection_name: instance["api_key"]
-                }
-                owner.save()
-                messages.success(
-                    self.request,
-                    f"Updated API-key for identity {owner.name} and connection {connection_name}.",
-                )
-
     name = forms.CharField(
         required=False,
         max_length=255,
@@ -85,15 +61,6 @@ class ConnectionForm(BaseForm):
         label="API Endpoint URL",
         help_text="The base URL for the provider's API.",
     )
-    api_key = forms.CharField(
-        max_length=255,
-        required=False,
-        widget=UnfoldAdminTextInputWidget(
-            attrs={"placeholder": "Enter key or leave blank to use existing"}
-        ),
-        label="API Key",
-        help_text="Stored securely under your personal user account. It is <strong>not</strong> saved in the shared version history.",
-    )
     profile = forms.CharField(
         widget=UnfoldAdminExpandableTextareaWidget(),
         required=False,
@@ -123,7 +90,6 @@ class ConnectionForm(BaseForm):
                 Column(
                     Row("model"),
                     Row("endpoint"),
-                    Row("api_key"),
                     css_class="w-1/2",
                 ),
                 Column(

@@ -88,6 +88,7 @@ async def run_from_session(
     prompt: str,
     dispatcher: Dispatcher | None = None,
     agent_spec: AgentSpec | None = None,
+    api_key: str | None = None,
 ) -> AgentRunResult[OutputType]:
 
     if not dispatcher:
@@ -106,8 +107,9 @@ async def run_from_session(
     output_type = build_output_type(agent_spec)
 
     agent = build_agent(
-        agent_spec,
-        output_type,
+        agent_spec=agent_spec,
+        output_type=output_type,
+        api_key=api_key,
     )
 
     agent_context = AgentContext(

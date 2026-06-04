@@ -28,7 +28,7 @@ async def owner():
 @pytest.mark.asyncio
 async def test_schemas_from_registry(branches: dict[str, dict[int, BranchModel]]):
     assert len(branches["agent"]) == 5
-    assert len(branches["connection"]) == 2
+    assert len(branches["connection"]) == 3
 
 
 @pytest.mark.django_db

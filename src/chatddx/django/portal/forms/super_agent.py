@@ -13,6 +13,7 @@ from unfold.widgets import (
     UnfoldAdminTextInputWidget,
 )
 
+from chatddx.core.models import IdentityModel
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.django.portal.forms.connection import ConnectionForm
 from chatddx.django.portal.forms.output_type import OutputTypeForm
@@ -92,6 +93,30 @@ class SuperAgentForm(BaseForm):
     form_data_out = SuperAgentFormDataOut
 
     subforms: dict[BundleName, BaseForm]
+
+    @override
+    def save(self, commit: bool = True) -> Any:
+        instance = super().save(commit=commit)
+        if instance and instance.get("api_key") and self.validated_data:
+            owner = IdentityModel.objects.get(name=self.request.user.username)
+            owner_api_keys = owner.secrets.get("api-keys", {})
+            agent_name = self.validated_data.name
+            current_api_key = owner_api_keys.get(agent_name, None)
+
+            if instance["api_key"] == current_api_key:
+                messages.info(
+                    self.request,
+                    f"The provided API-key matches the current API-key for identity {owner.name}, all good.",
+                )
+            else:
+                owner.secrets["api-keys"] = owner_api_keys | {
+                    agent_name: instance["api_key"]
+                }
+                owner.save()
+                messages.success(
+                    self.request,
+                    f"Updated API-key for identity {owner.name} and connection {agent_name}.",
+                )
 
     @override
     def clean(self):
@@ -191,6 +216,16 @@ class SuperAgentForm(BaseForm):
         label="Base Template",
         help_text="Optional. Select a pre-configured template to quickly populate the settings below.",
     )
+    api_key = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=UnfoldAdminTextInputWidget(
+            attrs={"placeholder": "Enter key or leave blank to use existing"}
+        ),
+        label="API Key",
+        help_text="Stored securely under your personal user account. It is <strong>not</strong> saved in the shared version history.",
+    )
+
     instructions = forms.CharField(
         required=False,
         widget=UnfoldAdminExpandableTextareaWidget(
@@ -220,8 +255,14 @@ class SuperAgentForm(BaseForm):
                 ),
             ),
             Row(
-                Column("instructions"),
-                css_class="w-1/2",
+                Column(
+                    "instructions",
+                    css_class="w-1/2",
+                ),
+                Column(
+                    "api_key",
+                    css_class="w-1/2",
+                ),
             ),
             css_class="mb-8",
         )

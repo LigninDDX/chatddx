@@ -99,11 +99,15 @@ async def swift_diagnose_endpoint(request: HttpRequest, payload: SwiftDiagnoseRe
             status=400,
         )
 
-    session = await start_session(owner.id, agent.id)
+    api_key = owner.secrets.get("api-keys", {}).get(agent.name)
+
+    session = await start_session(owner.pk, agent.id)
+
     run_result = await run_from_session(
         session=session,
         prompt=payload.symptoms,
         agent_spec=agent_spec,
+        api_key=api_key,
     )
 
     return run_result.output
