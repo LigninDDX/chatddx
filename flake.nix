@@ -1,3 +1,4 @@
+# flake.nix
 {
   description = "build chatddx";
   inputs = {
@@ -34,7 +35,7 @@
       inherit (nixpkgs) lib;
       version = toString (self.shortRev or self.dirtyShortRev or self.lastModified or "unknown");
       forAllSystems = lib.genAttrs lib.systems.flakeExposed;
-      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./backend; };
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
       overlay = workspace.mkPyprojectOverlay {
         sourcePreference = "wheel";
       };
@@ -70,6 +71,7 @@
           ln -s ${django-app system}/bin/chatddx $out/bin/chatddx
           ln -s ${django-app system}/bin/django $out/bin/chatddx-django
         '';
+
     in
     {
       inherit workspace pythonSets;
@@ -93,8 +95,6 @@
             packages = [
               venv
               pkgs.uv
-              pkgs.nodejs_22
-              pkgs.bun
             ];
             env = {
               UV_NO_SYNC = "1";
@@ -104,20 +104,13 @@
             };
             shellHook = ''
               unset PYTHONPATH
-              export BACKEND_ROOT=$(git rev-parse --show-toplevel)/backend
-              export SWIFT_ROOT=$(git rev-parse --show-toplevel)/swift
+              export BACKEND_ROOT=$(git rev-parse --show-toplevel)
               set -a
-              [ -f backend/.env ] && source backend/.env
-              [ -f client/.env ] && source client/.env
+              source .env
               set +a
-              echo "===================================================="
-              echo "  🧬 CHATDDX DEVELOPMENT ENV ACTIVE 🧬"
-              echo "===================================================="
               echo "• Flake version: ${version}"
               echo "• Nixpkgs:       ${nixpkgs.shortRev}"
               echo "• Python path:   $UV_PYTHON"
-              echo "• Node version:  $(node --version)"
-              echo "• Bun version:   $(bun --version 2>/dev/null || echo 'not initialized')"
               echo "===================================================="
             '';
           };

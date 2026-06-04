@@ -1,4 +1,6 @@
 result
 dumps
 .direnv
-.svelte-kit
+__pycache__
+.env
+.coverage
