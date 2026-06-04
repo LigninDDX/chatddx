@@ -1,15 +1,34 @@
+import json
 from functools import cached_property
+from typing import final, override
 
+import jsonschema
+from pydantic_ai import (
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
+
+from chatddx.core.choices import MessageKindChoices, RoleChoices
 from chatddx.history.models import MessageModel, SessionModel
+from chatddx.history.schemas import MessageSpec
+from chatddx.repo.trail_cache import trail_cache
+from chatddx.repo.trail_specs import AgentSpec
+from chatddx.runtime.utils import get_part_content
+from chatddx.utils import truncate_content
 
 
 class Session(SessionModel):
+    @final
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         proxy = True
         app_label = "orm"
         verbose_name = "Session"
         verbose_name_plural = "Sessions"
 
+    @override
     def __str__(self):
         if self.description:
             return self.description[:100]
@@ -21,12 +40,14 @@ class Session(SessionModel):
 
 
 class Message(MessageModel):
+    @final
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         proxy = True
         app_label = "orm"
         verbose_name = "Message"
         verbose_name_plural = "Messages"
 
+    @override
     def __str__(self):
         return f"[{self.role}]: " + truncate_content(self.content, 55)
 
@@ -35,7 +56,7 @@ class Message(MessageModel):
         return MessageSpec.model_validate(self)
 
     @cached_property
-    def agent_spec(self):
+    def agent_spec(self) -> AgentSpec:
         return trail_cache.get_sync(AgentSpec, self.agent.pk)
 
     @cached_property

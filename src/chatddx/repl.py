@@ -1,9 +1,8 @@
-# src/chatddx/django/repo/management/commands/repl.py
+# src/chatddx/repl.py
 import asyncio
 from typing import Annotated, Any
 
 import typer
-from django_typer.management import Typer
 from prompt_toolkit import prompt
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.history import FileHistory
@@ -17,26 +16,22 @@ from pydantic_ai import (
 )
 from rich.console import Console
 
-from chatddx.django.repo.models import SessionModel
-from chatddx.django.repo.models.history import AgentBranchModel
-from chatddx.django.repo.pydantic_ai.runners import (
-    stream_from_session,
-)
-from chatddx.django.repo.schemas import AgentSpec, BranchSpec, SessionSpec
-from chatddx.django.repo.session import (
-    get_identity,
-    refresh_messages,
-    resume_session,
-    start_session,
-)
+from chatddx.history.models import SessionModel
+from chatddx.history.schemas import SessionSpec
+from chatddx.history.session import refresh_messages, resume_session, start_session
+from chatddx.repo.base import BranchSpec
+from chatddx.repo.branch_models import AgentBranchModel
+from chatddx.repo.shufflers.main import ensure_identity
+from chatddx.repo.trail_specs import AgentSpec
+from chatddx.runtime.runners import stream_from_session
 
-app: Typer[Any, Any] = Typer()
+app = typer.Typer(invoke_without_command=True)
 console = Console()
 
 
-@app.command()
+@app.callback()
 def main(
-    owner_name: str = typer.Argument("name"),
+    owner_name: Annotated[str, typer.Argument()],
     session_uuid: Annotated[str | None, typer.Option("--session")] = None,
     agent_name: Annotated[str | None, typer.Option("--agent")] = None,
 ):
@@ -44,7 +39,7 @@ def main(
     Start a repl with an agent
     """
 
-    owner = asyncio.run(get_identity(owner_name))
+    owner = ensure_identity(owner_name)
 
     if session_uuid is None and agent_name is None:
         typer.echo("Error: You must provide either --session or --agent or both.")

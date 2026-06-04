@@ -7,6 +7,7 @@ import django
 import typer
 
 django.setup()
+from chatddx.repl import app as repl_app
 from chatddx.repo.shufflers.main import (
     dump_trail_registry,
     ensure_identity,
@@ -15,10 +16,9 @@ from chatddx.repo.shufflers.main import (
 app = typer.Typer()
 
 init_data = typer.Typer(invoke_without_command=True)
-repl = typer.Typer(invoke_without_command=True)
 
 app.add_typer(init_data, name="init-data")
-app.add_typer(repl, name="repl")
+app.add_typer(repl_app, name="repl")
 
 
 @dataclass
@@ -27,17 +27,16 @@ class Context:
 
 
 @app.callback()
-def main(_: typer.Context):
+def main():
     pass
 
 
 @init_data.callback()
 def init_data_(
-    _ctx: typer.Context,
     owner: Annotated[
         str,
         typer.Option(
-            help="invoice id",
+            help="owner name",
         ),
     ],
     registry: Annotated[
@@ -46,7 +45,7 @@ def init_data_(
             file_okay=True,
             dir_okay=False,
             exists=True,
-            help="location of invoice registry",
+            help="location of registry",
         ),
     ],
 ):

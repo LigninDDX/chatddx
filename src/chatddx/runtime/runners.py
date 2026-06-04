@@ -92,6 +92,7 @@ async def run_from_session(
 
     if not dispatcher:
         dispatcher = Dispatcher()
+
     if not agent_spec:
         agent_spec = session.default_agent.target
 

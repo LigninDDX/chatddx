@@ -132,3 +132,27 @@
 
 # 2026-05-12 13:10:38.882358
 +Everyone in the world has to take a private vote by pressing a red or blue button. If more than 50% of people press the blue button, everyone survives. If less than 50% of people press the blue button, only people who pressed the red button survive. Which button would you press?
+
+# 2026-06-04 18:25:52.460379
++asdf
+
+# 2026-06-04 18:26:22.922700
++very sick
+
+# 2026-06-04 18:26:53.540814
++drastically improved
+
+# 2026-06-04 18:27:06.903239
++very sick again
+
+# 2026-06-04 18:27:26.608522
++now much better
+
+# 2026-06-04 18:27:38.908480
++now slightly worse
+
+# 2026-06-04 18:28:03.456604
++died
+
+# 2026-06-04 18:30:29.574088
++resurrected, how do we proceed
