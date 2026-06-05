@@ -35,9 +35,8 @@ class SessionAdmin(TypedModelAdmin[Session]):
         "timestamp",
         "uuid_",
         "description",
-        "earliest_message",
         "latest_message",
-        "default_agent",
+        "default_agent_",
         "message_count",
     ]
     fields = list_display + []
@@ -49,6 +48,10 @@ class SessionAdmin(TypedModelAdmin[Session]):
             annotated_earliest=Min("messages__timestamp"),
             annotated_latest=Max("messages__timestamp"),
         )
+
+    @admin.display(description="Default agent")
+    def default_agent_(self, session_model: Session):
+        return session_model.default_agent.name if session_model.default_agent else "-"
 
     @admin.display(description="UUID")
     def uuid_(self, session_model: Session):

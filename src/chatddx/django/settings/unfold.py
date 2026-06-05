@@ -69,14 +69,6 @@ UNFOLD = {
                 "collapsible": False,
                 "items": [
                     {
-                        "title": _("Dashboard"),
-                        "icon": "dashboard",
-                        "link": reverse_lazy("admin:index"),
-                        "badge_variant": "info",
-                        "badge_style": "solid",
-                        "permission": lambda request: request.user.is_superuser,
-                    },
-                    {
                         "title": "Agents",
                         "icon": "precision_manufacturing",
                         "link": reverse_lazy("admin:orm_superagent_changelist"),
@@ -95,6 +87,16 @@ UNFOLD = {
                         "title": "Messages",
                         "icon": "mail",
                         "link": reverse_lazy("admin:orm_message_changelist"),
+                    },
+                    {
+                        "title": "Tools",
+                        "icon": "handyman",
+                        "link": reverse_lazy("admin:orm_tool_changelist"),
+                    },
+                    {
+                        "title": "Database",
+                        "icon": "database",
+                        "link": reverse_lazy("admin:index"),
                     },
                 ],
             },

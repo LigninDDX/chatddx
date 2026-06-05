@@ -79,13 +79,13 @@ LANGUAGES = [
     ("sv", _("Swedish")),
 ]
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Stockholm"
 
 USE_I18N = True
 
 USE_TZ = True
 FORMAT_MODULE_PATH = [
-    "formats",
+    "chatddx.django.settings.formats",
 ]
 
 CRISPY_TEMPLATE_PACK = "unfold_crispy"

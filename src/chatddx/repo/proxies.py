@@ -28,8 +28,8 @@ class Agent(BranchProxy, AgentBranchModel):
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         proxy = True
         app_label = "orm"
-        verbose_name = "Agent"
-        verbose_name_plural = "Agents"
+        verbose_name = "Agent (simple)"
+        verbose_name_plural = "Agents (simple)"
 
 
 class Connection(BranchProxy, ConnectionBranchModel):
