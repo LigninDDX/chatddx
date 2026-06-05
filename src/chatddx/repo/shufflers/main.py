@@ -10,7 +10,9 @@ from django.db.models import (
     OuterRef,
     QuerySet,
     Subquery,
+    Window,
 )
+from django.db.models.functions import RowNumber
 
 from chatddx.core.django_fields import RelatedArrayField
 from chatddx.core.models import IdentityModel
@@ -23,7 +25,7 @@ from chatddx.repo.base import (
     TrailSchema,
     TrailSpec,
 )
-from chatddx.repo.branch_models import BranchModelRegistry
+from chatddx.repo.branch_models import BranchModelRegistry, OutputTypeBranchModel
 from chatddx.repo.form_data_out import TemplateData
 from chatddx.repo.main import BundleName, Repo
 from chatddx.repo.trail_schemas import TrailRegistry
@@ -78,6 +80,17 @@ def qs_canon[T: BranchModel](qs: QuerySet[T], owner_name: str) -> QuerySet[T]:
 
 
 def qs_owned[T: BranchModel](qs: QuerySet[T], owner_name: str) -> QuerySet[T]:
+    filtered_qs = qs.filter(owner__name=owner_name)
+
+    annotated_qs = filtered_qs.annotate(
+        _version_count=Window(
+            expression=RowNumber(),
+            partition_by=[F("owner_id"), F("name")],
+            order_by=F("timestamp").asc(),
+        )
+    )
+
+    return annotated_qs.order_by("owner_id", "name", "-timestamp")
     return qs.filter(owner__name=owner_name).order_by("owner_id", "name", "-timestamp")
 
 
@@ -148,15 +161,21 @@ def load_agents(
     owner_name: str,
     output_type: str | None = None,
 ):
+
     model_cls = Repo("agent", BranchModel)
-    qs = model_cls.objects.all()
-    if output_type:
-        qs = qs.filter(target__output_type__fingerprint=output_type)
+
+    collection_a_targets = OutputTypeBranchModel.objects.filter(
+        name=output_type,
+    ).values_list("target_id", flat=True)
+
+    matching_agent_branches = model_cls.objects.filter(
+        target__output_type__in=collection_a_targets
+    ).distinct()
 
     return load_branches(
         bundle_name="agent",
         owner_name=owner_name,
-        qs=qs,
+        qs=qs_canon(matching_agent_branches, owner_name),
     )
 
 

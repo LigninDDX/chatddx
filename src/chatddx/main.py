@@ -13,6 +13,7 @@ from chatddx.repo.shufflers.main import (
     ensure_identity,
 )
 
+CURRENT_DIR = Path(__file__).resolve().parent
 app = typer.Typer()
 
 init_data = typer.Typer(invoke_without_command=True)
@@ -33,21 +34,17 @@ def main():
 
 @init_data.callback()
 def init_data_(
-    owner: Annotated[
-        str,
-        typer.Option(
-            help="owner name",
-        ),
-    ],
+    owner: Annotated[str, typer.Argument()],
     registry: Annotated[
         Path,
         typer.Option(
+            "--registry",
             file_okay=True,
             dir_okay=False,
             exists=True,
             help="location of registry",
         ),
-    ],
+    ] = CURRENT_DIR / "data/registry.toml",
 ):
     _ = ensure_identity(owner)
 

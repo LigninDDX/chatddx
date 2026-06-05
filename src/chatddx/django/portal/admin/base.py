@@ -3,8 +3,8 @@ import json
 from typing import Any, cast, no_type_check, override
 
 from django.contrib import admin, messages
+from django.db.models import Count, Q, QuerySet
 from django.db.models import Model as DjangoModel
-from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponseRedirect
 from django.urls import reverse
 from unfold.admin import ModelAdmin
@@ -43,7 +43,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
 
     @admin.display(description="Versions")
     def versions(self, obj: DjangoModel) -> int:
-        return self.model.objects.filter(name=obj.name).count()
+        return getattr(obj, "_version_count", 1)
 
     def get_form(
         self,
@@ -103,6 +103,11 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         if "_continue" not in request.POST:
             return super().response_change(request, obj)
 
+        msg = 'The %(name)s "%(obj)s" is a new version.' % {
+            "name": obj._meta.verbose_name,
+            "obj": str(obj),
+        }
+        self.message_user(request, msg, messages.SUCCESS)
         opts = self.model._meta
         redirect_url = reverse(
             f"admin:{opts.app_label}_{opts.model_name}_change",
@@ -115,12 +120,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         if "_continue" not in request.POST:
             return super().response_add(request, obj, post_url_continue)
 
-        opts = self.model._meta
-        redirect_url = reverse(
-            f"admin:{opts.app_label}_{opts.model_name}_change",
-            args=(obj.pk,),
-        )
-        return HttpResponseRedirect(redirect_url)
+        return self.response_change(request, obj)
 
     def get_form_context(self, request: HttpRequest, obj: Any) -> dict[str, Any]:
         owner = request.user.username

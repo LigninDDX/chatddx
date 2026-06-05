@@ -4,21 +4,13 @@ from pathlib import Path
 
 DEBUG = False
 
-ALLOWED_HOSTS = [os.environ["HOST"], "localhost"]
-
-SCHEME = os.environ["SCHEME"]
-
-STATE_DIR = Path(os.environ["STATE_DIR"])
-
-CSRF_TRUSTED_ORIGINS = [f"{SCHEME}://{os.environ['HOST']}"]
-CORS_ALLOWED_ORIGINS = [f"{SCHEME}://{os.environ['HOST']}"]
-
 with open(os.environ["SECRET_KEY_FILE"]) as f:
     SECRET_KEY = f.read()
 
 SALT_KEY = SECRET_KEY
 
-CORS_ALLOW_CREDENTIALS = True
+ALLOWED_HOSTS = ["." + os.environ["HOST"]]
+
 
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = True

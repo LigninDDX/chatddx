@@ -13,7 +13,6 @@ from unfold.widgets import (
 
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
-from chatddx.repo.base import TrailModel
 from chatddx.repo.branch_spec import AgentBranchSpec
 from chatddx.repo.form_data_in import AgentFormDataIn
 from chatddx.repo.form_data_out import AgentFormDataOut
@@ -107,7 +106,7 @@ class AgentForm(BaseForm):
                 )
 
         return agent_dict | {
-            name: values["pk"] for name, values in relations_dict.items()
+            name: values["id"] for name, values in relations_dict.items()
         }
 
     def clean_tool_group(self):

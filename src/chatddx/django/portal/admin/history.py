@@ -3,7 +3,7 @@ from dataclasses import asdict
 from typing import Any
 
 from django.contrib import admin
-from django.db.models import Max, Min
+from django.db.models import Max, Min, QuerySet
 from django.http import HttpRequest
 from django.utils.formats import date_format
 from markdown import markdown
@@ -44,7 +44,10 @@ class SessionAdmin(TypedModelAdmin[Session]):
 
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
-        return qs.annotate(
+
+        return qs.filter(
+            owner__name=request.user.username,
+        ).annotate(
             annotated_earliest=Min("messages__timestamp"),
             annotated_latest=Max("messages__timestamp"),
         )
@@ -80,6 +83,8 @@ class SessionAdmin(TypedModelAdmin[Session]):
 
 @admin.register(Message)
 class MessageAdmin(TypedModelAdmin[Message]):
+    change_form_template = "admin/agents/message/change_form.html"
+    add_form_template = "admin/agents/message/change_form.html"
     list_display = [
         "timestamp",
         "role",
@@ -99,6 +104,10 @@ class MessageAdmin(TypedModelAdmin[Message]):
 
     show_add_link = False
     compressed_fields = True
+
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+        return qs.filter(session__owner__name=request.user.username)
 
     @admin.display(description="Session", ordering="session__id")
     def get_session(self, message: Message):

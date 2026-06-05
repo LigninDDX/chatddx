@@ -1,5 +1,3 @@
-from typing import List
-
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
@@ -9,11 +7,10 @@ from chatddx.core.models import IdentityModel
 from chatddx.history.session import start_session
 from chatddx.repo.shufflers.main import (
     ensure_identity,
-    load_agents,
     load_agents_async,
     load_branch_async,
 )
-from chatddx.runtime.runners import run_from_session, run_from_spec
+from chatddx.runtime.runners import run_from_session
 
 api = NinjaAPI(title="ChatDDx Swift API", version="1.0.0")
 User = get_user_model()
@@ -36,30 +33,22 @@ def get_authenticated_username(request: HttpRequest) -> IdentityModel | None:
     return owner
 
 
-@api.get("/agents", response=List[ModelOptionResponse])
-async def get_agents_endpoint(request: HttpRequest, output_type: str = None):
-    username = await sync_to_async(get_authenticated_username)(request)
+@api.get("/agents", response=list[ModelOptionResponse])
+async def get_agents_endpoint(request: HttpRequest, output_type: str | None = None):
+    owner = await sync_to_async(get_authenticated_username)(request)
 
-    if username is None:
+    if owner is None:
         return api.create_response(
             request,
             {"error": "Authentication required."},
             status=401,
         )
 
-    try:
-        agents = await load_agents_async(owner_name=username, output_type=output_type)
+    agents = await load_agents_async(owner_name=owner.name, output_type=output_type)
 
-        options = [{"value": agent.name, "label": agent.name} for agent in agents]
+    options = [{"value": agent.name, "label": agent.name} for agent in agents]
 
-        return options
-
-    except Exception as e:
-        return api.create_response(
-            request,
-            {"error": f"Failed to load agent configurations. Detail: {e}"},
-            status=500,
-        )
+    return options
 
 
 @api.post("/diagnose")

@@ -9,9 +9,9 @@ UNFOLD = {
     "SITE_SUBHEADER": "Manage agent configurations",
     "SITE_DROPDOWN": [
         {
-            "icon": "diamond",
-            "title": "ChatDDX Site",
-            "link": "https://chatddx.com",
+            "icon": "storefront",
+            "title": "Swift UI",
+            "link": "/",
         },
         # ...
     ],

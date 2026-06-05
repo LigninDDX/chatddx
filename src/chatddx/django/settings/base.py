@@ -1,6 +1,13 @@
 import os
+from pathlib import Path
 
 from django.utils.translation import gettext_lazy as _
+
+STATE_DIR = Path(os.environ["STATE_DIR"])
+SCHEME = os.environ["SCHEME"]
+CSRF_TRUSTED_ORIGINS = os.environ["TRUSTED_ORIGINS"].split(",")
+CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
+CORS_ALLOW_CREDENTIALS = True
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
