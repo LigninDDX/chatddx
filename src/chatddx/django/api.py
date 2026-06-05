@@ -26,23 +26,20 @@ class ModelOptionResponse(Schema):
     label: str
 
 
-def get_authenticated_username(request: HttpRequest) -> IdentityModel | None:
+def get_authenticated_username(request: HttpRequest) -> IdentityModel:
     if not request.user or request.user.is_anonymous:
-        return None
-    owner = ensure_identity(request.user.username)
+        username = "guest"
+    else:
+        username = request.user.username
+
+    owner = ensure_identity(username)
+
     return owner
 
 
 @api.get("/agents", response=list[ModelOptionResponse])
 async def get_agents_endpoint(request: HttpRequest, output_type: str | None = None):
     owner = await sync_to_async(get_authenticated_username)(request)
-
-    if owner is None:
-        return api.create_response(
-            request,
-            {"error": "Authentication required."},
-            status=401,
-        )
 
     agents = await load_agents_async(owner_name=owner.name, output_type=output_type)
 
@@ -54,15 +51,6 @@ async def get_agents_endpoint(request: HttpRequest, output_type: str | None = No
 @api.post("/diagnose")
 async def swift_diagnose_endpoint(request: HttpRequest, payload: SwiftDiagnoseRequest):
     owner = await sync_to_async(get_authenticated_username)(request)
-
-    if owner is None:
-        return api.create_response(
-            request,
-            {
-                "error": "Authentication required. Your session cookie was missing or expired."
-            },
-            status=401,
-        )
 
     try:
         agent = await load_branch_async(

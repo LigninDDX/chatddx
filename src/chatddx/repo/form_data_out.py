@@ -21,12 +21,12 @@ TextList = Annotated[str, BeforeValidator(list_to_text)]
 
 
 class TemplateData(BaseModel):
-    agent: dict[str, AgentFormDataOut]
-    connection: dict[str, ConnectionFormDataOut]
-    sampling_params: dict[str, SamplingParamsFormDataOut]
-    output_type: dict[str, OutputTypeFormDataOut]
-    tool_group: dict[str, ToolGroupFormDataOut]
-    tool: dict[str, ToolFormDataOut]
+    agent: dict[str, AgentFormDataOut] = Field(default_factory=dict)
+    connection: dict[str, ConnectionFormDataOut] = Field(default_factory=dict)
+    sampling_params: dict[str, SamplingParamsFormDataOut] = Field(default_factory=dict)
+    output_type: dict[str, OutputTypeFormDataOut] = Field(default_factory=dict)
+    tool_group: dict[str, ToolGroupFormDataOut] = Field(default_factory=dict)
+    tool: dict[str, ToolFormDataOut] = Field(default_factory=dict)
 
 
 class ToolFormDataOut(ToolBasePrimitives, BaseFormDataOut):
