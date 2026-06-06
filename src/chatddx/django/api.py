@@ -2,6 +2,7 @@ from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from ninja import NinjaAPI, Schema
+from pydantic_ai.exceptions import ModelHTTPError
 
 from chatddx.core.models import IdentityModel
 from chatddx.history.session import start_session
@@ -74,14 +75,32 @@ async def swift_diagnose_endpoint(request: HttpRequest, payload: SwiftDiagnoseRe
         )
 
     api_key = owner.secrets.get("api-keys", {}).get(agent.name)
-
     session = await start_session(owner.pk, agent.id)
 
-    run_result = await run_from_session(
-        session=session,
-        prompt=payload.symptoms,
-        agent_spec=agent_spec,
-        api_key=api_key,
-    )
+    try:
+        run_result = await run_from_session(
+            session=session,
+            prompt=payload.symptoms,
+            agent_spec=agent_spec,
+            api_key=api_key,
+        )
+        return run_result.output
 
-    return run_result.output
+    except ModelHTTPError as e:
+        error_message = "An upstream model error occurred."
+        if isinstance(e.body, dict) and "message" in e.body:
+            error_message = e.body["message"]
+        elif hasattr(e, "message"):
+            error_message = e.message
+
+        return api.create_response(
+            request,
+            {"error": error_message},
+            status=400,
+        )
+    except Exception as e:
+        return api.create_response(
+            request,
+            {"error": f"Execution error: {str(e)}"},
+            status=500,
+        )
