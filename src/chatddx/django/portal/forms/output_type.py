@@ -13,6 +13,7 @@ from unfold.layout import Hr
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
+    UnfoldAdminTextareaWidget,
     UnfoldAdminTextInputWidget,
 )
 
@@ -62,7 +63,7 @@ class OutputTypeForm(BaseForm):
     )
     definition = CharField(
         required=False,
-        widget=UnfoldAdminExpandableTextareaWidget(
+        widget=UnfoldAdminTextareaWidget(
             attrs={
                 "placeholder": 'type = "object"\n\n[properties.summary]\ntype = "string"\n\n[properties.score]\ntype = "number"'
             }
