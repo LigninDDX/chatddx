@@ -26,7 +26,7 @@ from chatddx.repo.shufflers.main import (
 )
 
 
-def _get_branch_link(obj: BranchModel, field_name: str):
+def get_branch_link(obj: BranchModel, field_name: str):
     branch_id = getattr(obj, f"{field_name}_id")
     branch_name = getattr(obj, f"{field_name}_name")
     target = getattr(obj.target, field_name)
@@ -77,19 +77,19 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
 
     @admin.display(description="Connection", ordering="connection_name")
     def connection(self, obj: proxies.Agent):
-        return _get_branch_link(obj, "connection")
+        return get_branch_link(obj, "connection")
 
     @admin.display(description="Output Type", ordering="output_type_name")
     def output_type(self, obj: proxies.Agent):
-        return _get_branch_link(obj, "output_type")
+        return get_branch_link(obj, "output_type")
 
     @admin.display(description="Sampling Params", ordering="sampling_params_name")
     def sampling_params(self, obj: proxies.Agent):
-        return _get_branch_link(obj, "sampling_params")
+        return get_branch_link(obj, "sampling_params")
 
     @admin.display(description="Tool Group", ordering="tool_group_name")
     def tool_group(self, obj: proxies.Agent):
-        return _get_branch_link(obj, "tool_group")
+        return get_branch_link(obj, "tool_group")
 
     @override
     def get_form_context(

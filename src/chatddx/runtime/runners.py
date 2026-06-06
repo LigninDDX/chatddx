@@ -1,6 +1,9 @@
 # src/chatddx/django/runtime/runners.py
+import uuid
 from collections.abc import AsyncGenerator
+from datetime import datetime
 
+from django.utils import timezone
 from pydantic_ai import AgentRunResult, ModelResponse
 from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
@@ -103,6 +106,20 @@ async def run_from_session(
             agent_spec.id,
         )
     )
+    _ = dispatcher.subscribe(
+        on_prompt(
+            session.id,
+            agent_spec.id,
+        )
+    )
+    _ = dispatcher.subscribe(
+        on_error(
+            session.id,
+            agent_spec.id,
+        )
+    )
+
+    await dispatcher.publish(prompt)
 
     output_type = build_output_type(agent_spec)
 
@@ -118,15 +135,51 @@ async def run_from_session(
         session=session,
     )
 
-    result = await agent.run(
-        prompt,
-        deps=agent_context,
-        message_history=[m.payload for m in session.messages],
-    )
+    try:
+        result = await agent.run(
+            prompt,
+            deps=agent_context,
+            message_history=[m.payload for m in session.messages],
+        )
 
-    await dispatcher.publish(result)
+        await dispatcher.publish(result)
+        return result
 
-    return result
+    except Exception as e:
+        await dispatcher.publish(e)
+        raise e
+
+
+def on_prompt(session_id: int, agent_id: int):
+    async def _on_prompt(prompt: str):
+        _ = await MessageModel.objects.acreate(
+            agent_id=agent_id,
+            session_id=session_id,
+            kind="prompt",
+            run_id=uuid.UUID(int=0),
+            role=RoleChoices.USER,
+            payload={"content": prompt},
+            timestamp=timezone.now(),
+        )
+
+    return _on_prompt
+
+
+def on_error(session_id: int, agent_id: int):
+    async def _on_error(error: Exception):
+        error_message = f"Agent execution failed: {type(error).__name__} - {str(error)}"
+
+        _ = await MessageModel.objects.acreate(
+            agent_id=agent_id,
+            session_id=session_id,
+            kind="error",
+            run_id=uuid.UUID(int=0),
+            role=RoleChoices.SYSTEM,
+            payload={"error_type": type(error).__name__, "content": error_message},
+            timestamp=timezone.now(),
+        )
+
+    return _on_error
 
 
 def on_result(session_id: int, agent_id: int):

@@ -68,6 +68,8 @@ class Message(MessageModel):
         return {
             MessageKindChoices.REQUEST: "->",
             MessageKindChoices.RESPONSE: "<-",
+            MessageKindChoices.PROMPT: "p",
+            MessageKindChoices.ERROR: "e",
         }[self.spec.kind]
 
     @cached_property
@@ -97,6 +99,10 @@ class Message(MessageModel):
     @cached_property
     def content(self):
         match self.spec.kind:
+            case MessageKindChoices.PROMPT:
+                return self.spec.payload.content
+            case MessageKindChoices.ERROR:
+                return self.spec.payload.content
             case MessageKindChoices.REQUEST:
                 match self.spec.role:
                     case RoleChoices.USER:

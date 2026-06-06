@@ -45,6 +45,15 @@ class SessionSpec(SessionBase, NinjaSchema):
     messages: list[MessageSpec]
 
 
+class PromptPayload(BaseModel):
+    content: str
+
+
+class ErrorPayload(BaseModel):
+    error_type: str
+    content: str
+
+
 class MessageSpec(NinjaSchema):
     id: int
     agent_id: int
@@ -52,5 +61,5 @@ class MessageSpec(NinjaSchema):
     role: RoleChoices
     run_id: UUID
     kind: MessageKindChoices
-    payload: ModelMessage
+    payload: ModelMessage | PromptPayload | ErrorPayload
     timestamp: datetime

@@ -3,8 +3,9 @@ from dataclasses import asdict
 from typing import Any
 
 from django.contrib import admin
-from django.db.models import Max, Min, QuerySet
+from django.db.models import Max, Min, OuterRef, QuerySet, Subquery
 from django.http import HttpRequest
+from django.urls import reverse
 from django.utils.formats import date_format
 from markdown import markdown
 from unfold.admin import mark_safe
@@ -13,7 +14,22 @@ from unfold.utils import format_html
 from chatddx.core.proxies import Identity
 from chatddx.django.portal.admin.base import TypedModelAdmin
 from chatddx.history.proxies import Message, Session
+from chatddx.repo.proxies import Agent
+from chatddx.repo.shufflers.main import load_agent
 from chatddx.utils import get_step_nav, truncate_content
+
+
+def get_agent_link(msg: Message):
+    url = (
+        reverse(
+            f"admin:orm_superagent_change",
+            args=[msg.agent_branch_id],
+        )
+        + f"?from_message={msg.pk}"
+    )
+    label = f"{msg.agent_branch_name} ({msg.agent.fingerprint[:6]})"
+
+    return format_html('<a href="{}">{}</a>', url, label)
 
 
 @admin.register(Identity)
@@ -45,11 +61,15 @@ class SessionAdmin(TypedModelAdmin[Session]):
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
 
-        return qs.filter(
-            owner__name=request.user.username,
-        ).annotate(
-            annotated_earliest=Min("messages__timestamp"),
-            annotated_latest=Max("messages__timestamp"),
+        return (
+            qs.filter(
+                owner__name=request.user.username,
+            )
+            .annotate(
+                annotated_earliest=Min("messages__timestamp"),
+                annotated_latest=Max("messages__timestamp"),
+            )
+            .order_by("-timestamp")
         )
 
     @admin.display(description="Default agent")
@@ -90,7 +110,7 @@ class MessageAdmin(TypedModelAdmin[Message]):
         "role",
         "content_short",
         "direction",
-        "agent",
+        "agent_",
     ]
     fields = list_display + [
         "run_id",
@@ -100,16 +120,32 @@ class MessageAdmin(TypedModelAdmin[Message]):
         "payload",
     ]
 
+    ordering = ("-timestamp",)
     readonly_fields = fields
 
     show_add_link = False
     compressed_fields = True
 
-    def get_queryset(self, request: HttpRequest):
-        qs = super().get_queryset(request)
-        return qs.filter(session__owner__name=request.user.username)
+    def agent_(self, obj):
+        return get_agent_link(obj)
 
-    @admin.display(description="Session", ordering="session__id")
+    def get_queryset(self, request: HttpRequest):
+        owner_name = request.user.username
+        qs = super().get_queryset(request)
+
+        agent_branch = Agent.objects.filter(
+            target=OuterRef("agent"),
+            owner__name=owner_name,
+        ).order_by("-timestamp")
+
+        qs = qs.annotate(
+            agent_branch_id=Subquery(agent_branch.values("id")[:1]),
+            agent_branch_name=Subquery(agent_branch.values("name")[:1]),
+        )
+
+        return qs.filter(session__owner__name=owner_name).order_by("-timestamp")
+
+    @admin.display(description="Session")
     def get_session(self, message: Message):
         return Session.objects.get(pk=message.session.pk)
 

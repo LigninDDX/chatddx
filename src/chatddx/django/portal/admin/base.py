@@ -178,6 +178,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
                         "pk": prev_pk,
                         "text": f"Older ({prev_ts.strftime('%Y-%m-%d %H:%M')})",
                     }
+                    context["first_"] = {"pk": pks[0]}
 
                 if idx < len(pks) - 1:
                     next_pk, next_ts = timeline[idx + 1]
@@ -185,8 +186,10 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
                         "pk": next_pk,
                         "text": f"Newer ({next_ts.strftime('%Y-%m-%d %H:%M')})",
                     }
+                    context["last_"] = {"pk": pks[-1]}
 
                 context["version_info"] = {"current": idx + 1, "total": len(pks)}
+                context["fingerprint"] = obj.target.fingerprint[:6]
             except ValueError:
                 pass
 
