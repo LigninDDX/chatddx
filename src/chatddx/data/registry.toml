@@ -1,21 +1,50 @@
 # src/chatddx/django/repo/data/registry.toml
+
 [agent."qwen-3b"]
+partial = true
 connection = "qwen3-8b"
 instructions = ""
 sampling_params = ["no-thinking"]
-output_type = "swift"
-
-[agent."qwen-3b seed=0"]
-connection = "qwen3-8b"
-instructions = ""
-sampling_params = ["deterministic", "no-thinking"]
-output_type = "swift"
 
 [agent."gpt-4o"]
+partial = true
 connection = "openai-gpt-4o"
 instructions = "You are a helpful medical diagnostic assistant."
 sampling_params = ["standard-openai"]
-output_type = "swift"
+
+[agent."qwen-3b swift-tool"]
+extends = ["qwen-3b"]
+output_type = "swift-tool"
+
+[agent."qwen-3b swift-prompt"]
+extends = ["qwen-3b"]
+output_type = "swift-prompt"
+
+[agent."qwen-3b swift-native"]
+extends = ["qwen-3b"]
+output_type = "swift-native"
+
+[agent."qwen-3b seed=0"]
+extends = ["qwen-3b"]
+sampling_params = ["deterministic", "no-thinking"]
+output_type = "swift-native"
+
+[agent."gpt-4o swift-tool"]
+extends = ["gpt-4o"]
+output_type = "swift-tool"
+
+[agent."gpt-4o swift-prompt"]
+extends = ["gpt-4o"]
+output_type = "swift-prompt"
+
+[agent."gpt-4o swift-native"]
+extends = ["gpt-4o"]
+output_type = "swift-native"
+
+[agent."gpt-4o seed=0"]
+extends = ["gpt-4o"]
+sampling_params = ["deterministic", "standard-openai"]
+output_type = "swift-native"
 
 [connection.qwen3-8b]
 model = "Qwen/Qwen3-8B-AWQ"
@@ -45,5 +74,14 @@ provider_params_path = "./provider_params/disable_thinking.json"
 temperature = 0.7
 max_tokens = 4096
 
-[output_type.swift]
+[output_type.swift-tool]
 definition_path = "./output_types/swift.json"
+coercion_strategy = "tool"
+
+[output_type.swift-native]
+definition_path = "./output_types/swift.json"
+coercion_strategy = "native"
+
+[output_type.swift-prompt]
+definition_path = "./output_types/swift.json"
+coercion_strategy = "prompted"

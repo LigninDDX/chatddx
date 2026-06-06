@@ -165,7 +165,7 @@ def load_agents(
     model_cls = Repo("agent", BranchModel)
 
     collection_a_targets = OutputTypeBranchModel.objects.filter(
-        name=output_type,
+        name__startswith=output_type,
     ).values_list("target_id", flat=True)
 
     matching_agent_branches = model_cls.objects.filter(
