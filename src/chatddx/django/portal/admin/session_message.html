@@ -1,0 +1,58 @@
+{% load i18n %}
+
+<div class="mb-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-850">
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-gray-500 dark:text-gray-400">
+        {{ instance.timestamp|date:"Y-m-d H:i:s" }}
+      </span>
+      <span class="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium font-semibold 
+        {% if instance.kind == 'prompt' %} bg-primary-50 text-primary-700 dark:bg-primary-800 dark:text-primary-200
+        {% elif instance.kind == 'request' %} bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400
+        {% elif instance.kind == 'response' %} bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400
+        {% elif instance.kind == 'error' %} bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400
+        {% endif %}">
+        {{ instance.get_kind_display }}
+      </span>
+
+      <span class="inline-flex items-center rounded-md bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+        {{ instance.get_role_display }}
+      </span>
+        <span class="a-link">
+          {{ instance.agent_link }}
+        </span>
+
+    </div>
+      <div class="a-link text-xs font-mono text-gray-500 dark:text-gray-400">
+        {{ instance.link }}
+      </div>
+
+  </div>
+
+  <div class="p-4 space-y-3 text-sm">
+    <div class="relative">
+      {% if instance.kind == 'prompt' or instance.kind == 'error' %}
+      <code class="language-json">{{ instance.payload.content }}</code>
+      {% else %}
+      <code class="language-json">{{ instance.content }}</code>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<style>
+  .a-link a {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+  .a-link a:hover {
+    color: #1d4ed8;
+  }
+  @media (prefers-color-scheme: dark) {
+    .a-link a {
+      color: #60a5fa;
+    }
+    .a-link a:hover {
+      color: #93c5fd;
+    }
+  }
+</style>

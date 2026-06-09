@@ -5,7 +5,7 @@ from uuid import UUID
 
 from ninja import Schema as NinjaSchema
 from pydantic import BaseModel, Field, JsonValue
-from pydantic_ai import ModelMessage
+from pydantic_ai import ModelRequest, ModelResponse
 
 from chatddx.core.choices import MessageKindChoices, RoleChoices
 from chatddx.repo.base import BranchSchema, BranchSpec
@@ -61,5 +61,5 @@ class MessageSpec(NinjaSchema):
     role: RoleChoices
     run_id: UUID
     kind: MessageKindChoices
-    payload: ModelMessage | PromptPayload | ErrorPayload
+    payload: ModelRequest | ModelResponse | PromptPayload | ErrorPayload
     timestamp: datetime

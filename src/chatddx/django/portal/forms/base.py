@@ -5,9 +5,12 @@ from django.forms import ModelForm
 from django.http import HttpRequest
 from pydantic import ValidationError as PydanticValidationError
 
-from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, BranchModel
+from chatddx.repo.base import BaseFormDataIn, BaseFormDataOut, BranchModel, TrailModel
+from chatddx.repo.main import Repo
 from chatddx.repo.shufflers.main import (
+    ensure_identity,
     load_form_data,
+    load_trail,
     qs_canon,
 )
 
@@ -18,6 +21,7 @@ class BaseForm(ModelForm):
 
     form_data_out: type[BaseFormDataOut]
     form_data_in: type[BaseFormDataIn]
+    bundle_name: str
 
     validated_data: BaseFormDataIn | None
     request: HttpRequest
@@ -48,11 +52,21 @@ class BaseForm(ModelForm):
         self.request = kwargs.pop("request")
         self.validated_data = None
 
+        fingerprint = self.request.GET.get(f"{self.bundle_name}_fingerprint")
+        owner = self.request.user.username
+
         if instance:
             kwargs["initial"] = self.get_initial(instance)
+        elif fingerprint:
+            new_branch = Repo(self.bundle_name, BranchModel)(
+                id=0,
+                name=fingerprint[:6],
+                target=load_trail(self.bundle_name, fingerprint, TrailModel),
+                owner=ensure_identity(owner),
+            )
+            kwargs["initial"] = self.get_initial(new_branch)
 
         super().__init__(*args, **kwargs)
-        owner = self.request.user.username
         owned = qs_canon(self._meta.model.objects.all(), owner)
 
         self.fields["template"].choices = [("", "=== clear ===")] + [

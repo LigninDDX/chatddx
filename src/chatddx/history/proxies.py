@@ -3,13 +3,16 @@ from functools import cached_property
 from typing import final, override
 
 import jsonschema
+from django.urls import reverse
 from pydantic_ai import (
+    ModelResponse,
     TextPart,
     ThinkingPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
 )
+from unfold.admin import format_html
 
 from chatddx.core.choices import MessageKindChoices, RoleChoices
 from chatddx.history.models import MessageModel, SessionModel
@@ -39,6 +42,15 @@ class Session(SessionModel):
         return len(self.messages.all())
 
 
+class SharedSession(SessionModel):
+    @final
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+        proxy = True
+        app_label = "orm"
+        verbose_name = "Shared Session"
+        verbose_name_plural = "Shared Sessions"
+
+
 class Message(MessageModel):
     @final
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
@@ -60,26 +72,65 @@ class Message(MessageModel):
         return trail_cache.get_sync(AgentSpec, self.agent.pk)
 
     @cached_property
+    def agent_link(self):
+        if self.agent_branch_id:
+            url = (
+                reverse(
+                    "admin:orm_superagent_change",
+                    args=[self.agent_branch_id],
+                )
+                + f"?from_message={self.pk}"
+            )
+            label = f"{self.agent_branch_name} ({self.agent.fingerprint[:6]})"
+        else:
+            url = (
+                reverse("admin:orm_superagent_add")
+            ) + f"?from_message={self.pk}&agent_fingerprint={self.agent.fingerprint}"
+            label = self.agent.fingerprint[:6]
+
+        return format_html('<a href="{}">{}</a>', url, label)
+
+    @cached_property
+    def link(self):
+        url = reverse(
+            "admin:orm_message_change",
+            args=[self.pk],
+        )
+        label = f"#{self.pk}"
+
+        return format_html('<a href="{}">{}</a>', url, label)
+
+    @cached_property
     def output_schema(self):
         return self.agent_spec.output_type.definition
 
     @cached_property
+    def tokens(self):
+        if "usage" in self.payload:
+            return (
+                self.payload["usage"]["input_tokens"]
+                + self.payload["usage"]["output_tokens"]
+            )
+
+    @cached_property
     def direction(self):
         return {
-            MessageKindChoices.REQUEST: "->",
-            MessageKindChoices.RESPONSE: "<-",
-            MessageKindChoices.PROMPT: "p",
-            MessageKindChoices.ERROR: "e",
+            MessageKindChoices.REQUEST: "sent",
+            MessageKindChoices.RESPONSE: "received",
+            MessageKindChoices.PROMPT: "init",
+            MessageKindChoices.ERROR: "error",
         }[self.spec.kind]
 
     @cached_property
     def parts(self):
-        return len(self.spec.payload.parts)
+        if isinstance(self.spec.kind, ModelResponse):
+            return len(self.spec.payload.parts)
 
     @cached_property
     def thinking(self):
-        part_content = get_part_content(self.spec.payload.parts, ThinkingPart)
-        return part_content
+        if isinstance(self.spec.kind, ModelResponse):
+            part_content = get_part_content(self.spec.payload.parts, ThinkingPart)
+            return part_content
 
     @cached_property
     def typed_content(self):

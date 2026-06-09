@@ -37,6 +37,7 @@ from chatddx.repo.trail_models import (
 class AgentForm(BaseForm):
     form_data_in = AgentFormDataIn
     form_data_out = AgentFormDataOut
+    bundle_name = "agent"
 
     @final
     class Meta(BaseForm.Meta):

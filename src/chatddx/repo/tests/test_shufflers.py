@@ -36,7 +36,7 @@ async def owner():
 async def test_swift_list(owner: IdentityModel):
     agents = await load_agents_async(
         owner_name=owner.name,
-        output_type="d79e5f55839294a0b9e69360e640c15e0aa6175d1c386d32dd24ef08687bb02b",
+        output_type="swift",
     )
 
     assert len(agents) == 1

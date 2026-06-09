@@ -27,7 +27,7 @@ ROOT_URLCONF = "chatddx.django.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [Path(__file__).parent.parent / "portal/admin"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

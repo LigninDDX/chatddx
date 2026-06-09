@@ -28,6 +28,7 @@ from chatddx.repo.trail_models import ToolTrailModel
 class ToolGroupForm(BaseForm):
     form_data_in = ToolGroupFormDataIn
     form_data_out = ToolGroupFormDataOut
+    bundle_name = "tool_group"
 
     @final
     class Meta(BaseForm.Meta):

@@ -29,6 +29,7 @@ from chatddx.repo.form_data_out import SamplingParamsFormDataOut
 class SamplingParamsForm(BaseForm):
     form_data_in = SamplingParamsFormDataIn
     form_data_out = SamplingParamsFormDataOut
+    bundle_name = "sampling_params"
 
     @final
     class Meta(BaseForm.Meta):

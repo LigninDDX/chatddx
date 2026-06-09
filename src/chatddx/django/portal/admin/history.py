@@ -1,11 +1,10 @@
 import json
 from dataclasses import asdict
-from typing import Any
+from typing import Any, override
 
 from django.contrib import admin
-from django.db.models import Max, Min, OuterRef, QuerySet, Subquery
+from django.db.models import Max, Min
 from django.http import HttpRequest
-from django.urls import reverse
 from django.utils.formats import date_format
 from markdown import markdown
 from unfold.admin import mark_safe
@@ -13,23 +12,9 @@ from unfold.utils import format_html
 
 from chatddx.core.proxies import Identity
 from chatddx.django.portal.admin.base import TypedModelAdmin
-from chatddx.history.proxies import Message, Session
-from chatddx.repo.proxies import Agent
-from chatddx.repo.shufflers.main import load_agent
+from chatddx.django.portal.admin.utils import qs_messages
+from chatddx.history.proxies import Message, Session, SharedSession
 from chatddx.utils import get_step_nav, truncate_content
-
-
-def get_agent_link(msg: Message):
-    url = (
-        reverse(
-            f"admin:orm_superagent_change",
-            args=[msg.agent_branch_id],
-        )
-        + f"?from_message={msg.pk}"
-    )
-    label = f"{msg.agent_branch_name} ({msg.agent.fingerprint[:6]})"
-
-    return format_html('<a href="{}">{}</a>', url, label)
 
 
 @admin.register(Identity)
@@ -47,6 +32,8 @@ class IdentityAdmin(TypedModelAdmin[Identity]):
 
 @admin.register(Session)
 class SessionAdmin(TypedModelAdmin[Session]):
+    change_form_template: str = "session.html"
+    add_form_template: str = "session.html"
     list_display = [
         "timestamp",
         "uuid_",
@@ -100,16 +87,97 @@ class SessionAdmin(TypedModelAdmin[Session]):
             return date_format(timestamp, "DATETIME_FORMAT")
         return None
 
+    @override
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict[str, Any] | None = None,
+    ):
+        extra_context = extra_context or {}
+
+        if object_id:
+            session = self.get_object(request, object_id)
+            extra_context["related_messages"] = qs_messages(
+                Message.objects.filter(session_id=object_id),
+                owner_name=request.user.username,
+            )
+
+        return super().change_view(
+            request,
+            object_id,
+            form_url,
+            extra_context=extra_context,
+        )
+
+
+@admin.register(SharedSession)
+class SharedSessionAdmin(TypedModelAdmin[SharedSession]):
+    list_display = [
+        "timestamp",
+        "uuid_",
+        "description",
+        "latest_message",
+        "default_agent_",
+    ]
+    fields = list_display + []
+    readonly_fields = fields
+
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+
+        return (
+            qs.filter(
+                owner__name=request.user.username,
+            )
+            .annotate(
+                annotated_earliest=Min("messages__timestamp"),
+                annotated_latest=Max("messages__timestamp"),
+            )
+            .order_by("-timestamp")
+        )
+
+    @admin.display(description="Default agent")
+    def default_agent_(self, session_model: Session):
+        return session_model.default_agent.name if session_model.default_agent else "-"
+
+    @admin.display(description="UUID")
+    def uuid_(self, session_model: Session):
+        return session_model.uuid
+
+    @admin.display(
+        description="Earliest Message",
+        ordering="annotated_earliest",
+    )
+    def earliest_message(self, session_model: Session):
+        timestamp = getattr(session_model, "annotated_earliest", None)
+        if timestamp:
+            return date_format(timestamp, "DATETIME_FORMAT")
+        return None
+
+    @admin.display(
+        description="Latest Message",
+        ordering="annotated_latest",
+    )
+    def latest_message(self, session_model: Session):
+        timestamp = getattr(session_model, "annotated_latest", None)
+        if timestamp:
+            return date_format(timestamp, "DATETIME_FORMAT")
+        return None
+
 
 @admin.register(Message)
 class MessageAdmin(TypedModelAdmin[Message]):
-    change_form_template = "admin/agents/message/change_form.html"
-    add_form_template = "admin/agents/message/change_form.html"
+    change_form_template: str = "message.html"
+    add_form_template: str = "message.html"
+
     list_display = [
         "timestamp",
         "role",
         "content_short",
         "direction",
+        "tokens",
         "agent_",
     ]
     fields = list_display + [
@@ -127,23 +195,14 @@ class MessageAdmin(TypedModelAdmin[Message]):
     compressed_fields = True
 
     def agent_(self, obj):
-        return get_agent_link(obj)
+        return obj.agent_link
 
     def get_queryset(self, request: HttpRequest):
         owner_name = request.user.username
         qs = super().get_queryset(request)
-
-        agent_branch = Agent.objects.filter(
-            target=OuterRef("agent"),
-            owner__name=owner_name,
-        ).order_by("-timestamp")
-
-        qs = qs.annotate(
-            agent_branch_id=Subquery(agent_branch.values("id")[:1]),
-            agent_branch_name=Subquery(agent_branch.values("name")[:1]),
-        )
-
-        return qs.filter(session__owner__name=owner_name).order_by("-timestamp")
+        qs = qs_messages(qs, owner_name)
+        qs = qs.filter(session__owner__name=owner_name)
+        return qs
 
     @admin.display(description="Session")
     def get_session(self, message: Message):
@@ -174,9 +233,11 @@ class MessageAdmin(TypedModelAdmin[Message]):
                 json_data = json.dumps(message.typed_content, indent=4)
                 return format_html(json_data_tpl, json_data)
 
+    @override
     def has_add_permission(self, request: HttpRequest):
         return False
 
+    @override
     def has_change_permission(
         self,
         request: HttpRequest,
@@ -184,6 +245,7 @@ class MessageAdmin(TypedModelAdmin[Message]):
     ):
         return False
 
+    @override
     def has_delete_permission(
         self,
         request: HttpRequest,
@@ -191,6 +253,7 @@ class MessageAdmin(TypedModelAdmin[Message]):
     ):
         return False
 
+    @override
     def change_view(
         self,
         request: HttpRequest,

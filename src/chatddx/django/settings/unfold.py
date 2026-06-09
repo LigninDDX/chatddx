@@ -4,8 +4,8 @@ from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 
 UNFOLD = {
-    "SITE_TITLE": "Custom suffix in <title> tag",
-    "SITE_HEADER": "ChatDDX Admin",
+    "SITE_TITLE": "chatddx",
+    "SITE_HEADER": "ChatDDX Portal",
     "SITE_SUBHEADER": "Manage agent configurations",
     "SITE_DROPDOWN": [
         {
@@ -102,4 +102,22 @@ UNFOLD = {
             },
         ],
     },
+    "TABS": [
+        {
+            "models": [
+                "orm.session",
+                "orm.sharedsession",
+            ],
+            "items": [
+                {
+                    "title": "My Sessions",
+                    "link": reverse_lazy("admin:orm_session_changelist"),
+                },
+                {
+                    "title": "Shared with Me",
+                    "link": reverse_lazy("admin:orm_sharedsession_changelist"),
+                },
+            ],
+        },
+    ],
 }

@@ -1,14 +1,13 @@
 # src/chatddx/django/runtime/runners.py
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime
 
 from django.utils import timezone
-from pydantic_ai import AgentRunResult, ModelResponse
+from pydantic_ai import AgentRunResult, ModelRequest, ModelResponse
 from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
 
-from chatddx.core.choices import RoleChoices
+from chatddx.core.choices import MessageKindChoices, RoleChoices
 from chatddx.history.models import MessageModel
 from chatddx.history.schemas import SessionSpec
 from chatddx.repo.trail_specs import AgentSpec
@@ -54,7 +53,7 @@ async def stream_from_session(
     if not agent_spec:
         agent_spec = session.default_agent.target
 
-    dispatcher.subscribe(
+    _ = dispatcher.subscribe(
         on_result(
             session.id,
             agent_spec.id,
@@ -77,13 +76,21 @@ async def stream_from_session(
     async with agent.run_stream(
         prompt,
         deps=agent_context,
-        message_history=[m.payload for m in session.messages],
+        message_history=get_message_history(session),
     ) as result:
         async for msg in result.stream_response(debounce_by=0.1):
             is_last = msg.state != "incomplete"
             yield msg, is_last
 
         await dispatcher.publish(result)
+
+
+def get_message_history(session: SessionSpec):
+    return [
+        m.payload
+        for m in session.messages
+        if isinstance(m.payload, (ModelResponse, ModelRequest))
+    ]
 
 
 async def run_from_session(
@@ -139,7 +146,7 @@ async def run_from_session(
         result = await agent.run(
             prompt,
             deps=agent_context,
-            message_history=[m.payload for m in session.messages],
+            message_history=get_message_history(session),
         )
 
         await dispatcher.publish(result)

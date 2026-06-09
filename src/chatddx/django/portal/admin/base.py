@@ -158,40 +158,45 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         obj: DjangoModel | None = None,
     ):
         context = {**context, **self.get_form_context(request, obj)}
-        if obj and hasattr(obj, "name"):
-            timeline = list(
-                self.model.objects.filter(
-                    owner__name=request.user.username,
-                    name=obj.name,
-                )
-                .order_by("timestamp")
-                .values_list("pk", "timestamp")
+        if obj is None:
+            fingerprint = request.GET.get(f"{self.name}_fingerprint")
+            if fingerprint:
+                context["fingerprint"] = fingerprint[:6]
+                context["version_info"] = {"current": 0, "total": 0}
+            return super().render_change_form(
+                request, context, add, change, form_url, obj
             )
 
-            pks = [item[0] for item in timeline]
-            try:
-                idx = pks.index(obj.pk)
+        timeline = list(
+            self.model.objects.filter(
+                owner__name=request.user.username,
+                name=obj.name,
+            )
+            .order_by("timestamp")
+            .values_list("pk", "timestamp")
+        )
 
-                if idx > 0:
-                    prev_pk, prev_ts = timeline[idx - 1]
-                    context["prev_"] = {
-                        "pk": prev_pk,
-                        "text": f"Older ({prev_ts.strftime('%Y-%m-%d %H:%M')})",
-                    }
-                    context["first_"] = {"pk": pks[0]}
+        pks = [item[0] for item in timeline]
+        idx = pks.index(obj.pk)
 
-                if idx < len(pks) - 1:
-                    next_pk, next_ts = timeline[idx + 1]
-                    context["next_"] = {
-                        "pk": next_pk,
-                        "text": f"Newer ({next_ts.strftime('%Y-%m-%d %H:%M')})",
-                    }
-                    context["last_"] = {"pk": pks[-1]}
+        if idx > 0:
+            prev_pk, prev_ts = timeline[idx - 1]
+            context["prev_"] = {
+                "pk": prev_pk,
+                "text": f"Older ({prev_ts.strftime('%Y-%m-%d %H:%M')})",
+            }
+            context["first_"] = {"pk": pks[0]}
 
-                context["version_info"] = {"current": idx + 1, "total": len(pks)}
-                context["fingerprint"] = obj.target.fingerprint[:6]
-            except ValueError:
-                pass
+        if idx < len(pks) - 1:
+            next_pk, next_ts = timeline[idx + 1]
+            context["next_"] = {
+                "pk": next_pk,
+                "text": f"Newer ({next_ts.strftime('%Y-%m-%d %H:%M')})",
+            }
+            context["last_"] = {"pk": pks[-1]}
+
+        context["version_info"] = {"current": idx + 1, "total": len(pks)}
+        context["fingerprint"] = obj.target.fingerprint[:6]
 
         return super().render_change_form(request, context, add, change, form_url, obj)
 

@@ -1,7 +1,7 @@
 # src/chatddx/repo/shufflers/main.py
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, cast, get_args
 
 from django.db.models import (
     F,
@@ -294,15 +294,18 @@ def dump_branch(
 dump_branch_async = make_async(dump_branch)
 
 
-def load_trail[T: TrailSpec](
-    bundle_name: str,
+def load_trail[T: (TrailSpec, TrailModel)](
+    bundle: Any,
     fingerprint: str,
     as_schema: type[T],
-):
-    trail_model_cls = Repo(bundle_name, TrailModel)
+) -> T:
+    trail_model_cls = Repo(bundle, TrailModel)
     trail_model = trail_model_cls.objects.get(fingerprint=fingerprint)
 
     trail_model = resolve_related_array_fields(trail_model)
+
+    if as_schema == TrailModel:
+        return cast(T, trail_model)
 
     return as_schema.model_validate(trail_model)
 

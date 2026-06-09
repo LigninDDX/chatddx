@@ -91,6 +91,7 @@ class SuperAgentForm(BaseForm):
 
     form_data_in = SuperAgentFormDataIn
     form_data_out = SuperAgentFormDataOut
+    bundle_name = "agent"
 
     subforms: dict[BundleName, BaseForm]
 

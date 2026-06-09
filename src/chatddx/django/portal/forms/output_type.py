@@ -11,7 +11,6 @@ from django.forms import (
 )
 from unfold.layout import Hr
 from unfold.widgets import (
-    UnfoldAdminExpandableTextareaWidget,
     UnfoldAdminSelect2Widget,
     UnfoldAdminTextareaWidget,
     UnfoldAdminTextInputWidget,
@@ -28,6 +27,7 @@ from chatddx.repo.form_data_out import OutputTypeFormDataOut
 class OutputTypeForm(BaseForm):
     form_data_in = OutputTypeFormDataIn
     form_data_out = OutputTypeFormDataOut
+    bundle_name = "output_type"
 
     @final
     class Meta(BaseForm.Meta):

@@ -40,11 +40,11 @@ async def test_swift_diagnose_endpoint_success(branch_registry, admin_user):
 
     assert response.status_code == 200
     data = response.json()
-    (Path(__file__).parent / "data/responses/swift.json").write_text(json.dumps(data))
+    # (Path(__file__).parent / "data/responses/swift.json").write_text(json.dumps(data))
 
     assert (
         data["acute_warning"]
-        == "This is an acute condition that requires immediate medical attention. If the patient is in severe pain, appears ill, or has signs of systemic infection, seek emergency care immediately."
+        == "This presentation is concerning for acute appendicitis, which can rapidly progress to perforation and peritonitis, leading to sepsis and potentially life-threatening complications. Immediate evaluation and intervention are essential."
     )
     assert len(data["diagnoses"]) == 5
     assert data["diagnoses"][0]["diagnosis"] == "Acute Appendicitis"

@@ -27,6 +27,7 @@ from chatddx.repo.form_data_out import ToolFormDataOut
 class ToolForm(BaseForm):
     form_data_in = ToolFormDataIn
     form_data_out = ToolFormDataOut
+    bundle_name = "tool"
 
     @final
     class Meta(BaseForm.Meta):

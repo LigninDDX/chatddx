@@ -25,6 +25,7 @@ from chatddx.repo.form_data_out import ConnectionFormDataOut
 class ConnectionForm(BaseForm):
     form_data_in = ConnectionFormDataIn
     form_data_out = ConnectionFormDataOut
+    bundle_name = "connection"
 
     @final
     class Meta(BaseForm.Meta):
