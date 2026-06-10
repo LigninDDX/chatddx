@@ -36,14 +36,15 @@ class SessionAdmin(TypedModelAdmin[Session]):
     add_form_template: str = "session.html"
     list_display = [
         "timestamp",
-        "uuid_",
         "description",
-        "latest_message",
-        "default_agent_",
+        "status",
+        "total_tokens",
         "message_count",
+        "collaborators_csv",
     ]
-    fields = list_display + []
-    readonly_fields = fields
+
+    fields = list_display + ["collaborators"]
+    readonly_fields = [f for f in fields if f not in ["description", "collaborators"]]
 
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
@@ -58,34 +59,6 @@ class SessionAdmin(TypedModelAdmin[Session]):
             )
             .order_by("-timestamp")
         )
-
-    @admin.display(description="Default agent")
-    def default_agent_(self, session_model: Session):
-        return session_model.default_agent.name if session_model.default_agent else "-"
-
-    @admin.display(description="UUID")
-    def uuid_(self, session_model: Session):
-        return session_model.uuid
-
-    @admin.display(
-        description="Earliest Message",
-        ordering="annotated_earliest",
-    )
-    def earliest_message(self, session_model: Session):
-        timestamp = getattr(session_model, "annotated_earliest", None)
-        if timestamp:
-            return date_format(timestamp, "DATETIME_FORMAT")
-        return None
-
-    @admin.display(
-        description="Latest Message",
-        ordering="annotated_latest",
-    )
-    def latest_message(self, session_model: Session):
-        timestamp = getattr(session_model, "annotated_latest", None)
-        if timestamp:
-            return date_format(timestamp, "DATETIME_FORMAT")
-        return None
 
     @override
     def change_view(
@@ -114,22 +87,26 @@ class SessionAdmin(TypedModelAdmin[Session]):
 
 @admin.register(SharedSession)
 class SharedSessionAdmin(TypedModelAdmin[SharedSession]):
+    change_form_template: str = "session.html"
+    add_form_template: str = "session.html"
     list_display = [
         "timestamp",
-        "uuid_",
         "description",
-        "latest_message",
-        "default_agent_",
+        "status",
+        "total_tokens",
+        "message_count",
+        "owner",
     ]
-    fields = list_display + []
-    readonly_fields = fields
+
+    fields = list_display + ["collaborators"]
+    readonly_fields = [f for f in fields if f not in ["description", "collaborators"]]
 
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
 
         return (
             qs.filter(
-                owner__name=request.user.username,
+                collaborators__name=request.user.username,
             )
             .annotate(
                 annotated_earliest=Min("messages__timestamp"),
@@ -138,33 +115,29 @@ class SharedSessionAdmin(TypedModelAdmin[SharedSession]):
             .order_by("-timestamp")
         )
 
-    @admin.display(description="Default agent")
-    def default_agent_(self, session_model: Session):
-        return session_model.default_agent.name if session_model.default_agent else "-"
+    @override
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict[str, Any] | None = None,
+    ):
+        extra_context = extra_context or {}
 
-    @admin.display(description="UUID")
-    def uuid_(self, session_model: Session):
-        return session_model.uuid
+        if object_id:
+            session = self.get_object(request, object_id)
+            extra_context["related_messages"] = qs_messages(
+                Message.objects.filter(session_id=object_id),
+                owner_name=request.user.username,
+            )
 
-    @admin.display(
-        description="Earliest Message",
-        ordering="annotated_earliest",
-    )
-    def earliest_message(self, session_model: Session):
-        timestamp = getattr(session_model, "annotated_earliest", None)
-        if timestamp:
-            return date_format(timestamp, "DATETIME_FORMAT")
-        return None
-
-    @admin.display(
-        description="Latest Message",
-        ordering="annotated_latest",
-    )
-    def latest_message(self, session_model: Session):
-        timestamp = getattr(session_model, "annotated_latest", None)
-        if timestamp:
-            return date_format(timestamp, "DATETIME_FORMAT")
-        return None
+        return super().change_view(
+            request,
+            object_id,
+            form_url,
+            extra_context=extra_context,
+        )
 
 
 @admin.register(Message)

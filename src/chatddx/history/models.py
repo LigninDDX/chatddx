@@ -10,9 +10,9 @@ from django.db.models import (
     DateTimeField,
     ForeignKey,
     JSONField,
+    ManyToManyField,
     Model,
     QuerySet,
-    TextField,
     UUIDField,
 )
 
@@ -31,7 +31,8 @@ class SessionModel(Model):
         default=uuid.uuid4,
         editable=False,
     )
-    description = TextField(
+    description = CharField(
+        max_length=255,
         null=True,
         default=None,
         blank=True,
@@ -46,6 +47,10 @@ class SessionModel(Model):
         default=None,
         null=True,
         on_delete=SET_DEFAULT,
+    )
+    collaborators = ManyToManyField(
+        IdentityModel,
+        related_name="shared_sessions",
     )
 
     messages: QuerySet[MessageModel]

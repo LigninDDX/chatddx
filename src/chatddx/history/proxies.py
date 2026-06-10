@@ -3,7 +3,10 @@ from functools import cached_property
 from typing import final, override
 
 import jsonschema
+from django.contrib import admin
+from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from pydantic_ai import (
     ModelResponse,
     TextPart,
@@ -37,9 +40,30 @@ class Session(SessionModel):
             return self.description[:100]
         return f"[{self.uuid}]"
 
-    @cached_property
+    @admin.display(description="Tokens")
+    def total_tokens(self):
+        tokens = 0
+        for message in self.messages.all():
+            if "usage" in message.payload:
+                tokens += message.payload["usage"].get("input_tokens", 0)
+                tokens += message.payload["usage"].get("output_tokens", 0)
+        return tokens
+
+    @admin.display(description="Messages")
     def message_count(self):
-        return len(self.messages.all())
+        return self.messages.count()
+
+    @admin.display(description="Collaborators")
+    def collaborators_csv(self):
+        return ", ".join([str(c) for c in self.collaborators.all()]) or None
+
+    @admin.display(description="Status")
+    def status(self):
+        message = self.messages.latest("timestamp")
+        context = {"kind": message.kind, "display_name": message.get_kind_display()}
+        html_string = render_to_string("status_badge.html", context)
+
+        return mark_safe(html_string)
 
 
 class SharedSession(SessionModel):
@@ -49,6 +73,37 @@ class SharedSession(SessionModel):
         app_label = "orm"
         verbose_name = "Shared Session"
         verbose_name_plural = "Shared Sessions"
+
+    @override
+    def __str__(self):
+        if self.description:
+            return self.description[:100]
+        return f"[{self.uuid}]"
+
+    @admin.display(description="Tokens")
+    def total_tokens(self):
+        tokens = 0
+        for message in self.messages.all():
+            if "usage" in message.payload:
+                tokens += message.payload["usage"].get("input_tokens", 0)
+                tokens += message.payload["usage"].get("output_tokens", 0)
+        return tokens
+
+    @admin.display(description="Messages")
+    def message_count(self):
+        return self.messages.count()
+
+    @admin.display(description="Collaborators")
+    def collaborators_csv(self):
+        return ", ".join([str(c) for c in self.collaborators.all()]) or None
+
+    @admin.display(description="Status")
+    def status(self):
+        message = self.messages.latest("timestamp")
+        context = {"kind": message.kind, "display_name": message.get_kind_display()}
+        html_string = render_to_string("status_badge.html", context)
+
+        return mark_safe(html_string)
 
 
 class Message(MessageModel):

@@ -10,6 +10,9 @@ class IdentityModel(Model):
         app_label = "orm"
         db_table = "agents_identity"
 
+    def __str__(self):
+        return self.name
+
     name = CharField(
         max_length=255,
         unique=True,
