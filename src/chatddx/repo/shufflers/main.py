@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, cast, get_args
 
 from django.db.models import (
+    Count,
     F,
     ForeignKey,
     OneToOneField,
@@ -76,22 +77,30 @@ def qs_owned_trails[T: TrailModel](qs: QuerySet[T], owner_name: str) -> QuerySet
 
 
 def qs_canon[T: BranchModel](qs: QuerySet[T], owner_name: str) -> QuerySet[T]:
-    return qs_owned(qs, owner_name).distinct("owner_id", "name")
+    owned_qs = qs.filter(owner__name=owner_name)
+
+    count_subquery = (
+        qs.filter(owner_id=OuterRef("owner_id"), name=OuterRef("name"))
+        .values("owner_id", "name")
+        .annotate(total=Count("id"))
+        .values("total")
+    )
+
+    canonical_ids = (
+        owned_qs.order_by("owner_id", "name", "-timestamp")
+        .distinct("owner_id", "name")
+        .values_list("id", flat=True)
+    )
+
+    return (
+        owned_qs.filter(id__in=canonical_ids)
+        .annotate(_version_count=Subquery(count_subquery))
+        .order_by("-timestamp")
+    )
 
 
 def qs_owned[T: BranchModel](qs: QuerySet[T], owner_name: str) -> QuerySet[T]:
-    filtered_qs = qs.filter(owner__name=owner_name)
-
-    annotated_qs = filtered_qs.annotate(
-        _version_count=Window(
-            expression=RowNumber(),
-            partition_by=[F("owner_id"), F("name")],
-            order_by=F("timestamp").asc(),
-        )
-    )
-
-    return annotated_qs.order_by("owner_id", "name", "-timestamp")
-    return qs.filter(owner__name=owner_name).order_by("owner_id", "name", "-timestamp")
+    return qs.filter(owner__name=owner_name)
 
 
 def dump_trail_registry(registry_path: Path, owner_name: str):

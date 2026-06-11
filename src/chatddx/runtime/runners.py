@@ -7,7 +7,7 @@ from pydantic_ai import AgentRunResult, ModelRequest, ModelResponse
 from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
 
-from chatddx.core.choices import MessageKindChoices, RoleChoices
+from chatddx.core.choices import RoleChoices
 from chatddx.history.models import MessageModel
 from chatddx.history.schemas import SessionSpec
 from chatddx.repo.trail_specs import AgentSpec

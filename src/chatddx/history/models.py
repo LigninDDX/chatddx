@@ -50,6 +50,7 @@ class SessionModel(Model):
     )
     collaborators = ManyToManyField(
         IdentityModel,
+        blank=True,
         related_name="shared_sessions",
     )
 

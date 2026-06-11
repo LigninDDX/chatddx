@@ -3,8 +3,9 @@ import json
 from typing import Any, cast, no_type_check, override
 
 from django.contrib import admin, messages
-from django.db.models import Count, Q, QuerySet
+from django.core.exceptions import ValidationError
 from django.db.models import Model as DjangoModel
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponseRedirect
 from django.urls import reverse
 from unfold.admin import ModelAdmin
@@ -34,8 +35,8 @@ class TrailModelAdmin[T: TrailModel](TypedModelAdmin[T]):
 
 class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
     name: BundleName
-    change_form_template = "admin/agents/branch_change_form.html"
-    add_form_template = "admin/agents/branch_change_form.html"
+    change_form_template = "branch_change_form.html"
+    add_form_template = "branch_change_form.html"
     list_display = [
         "name",
         "versions",
@@ -43,7 +44,27 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
 
     @admin.display(description="Versions")
     def versions(self, obj: DjangoModel) -> int:
-        return getattr(obj, "_version_count", 1)
+        return getattr(obj, "_version_count", None)
+
+    def get_queryset(self, request: HttpRequest):
+        qs: QuerySet[Any] = super().get_queryset(request)
+        return qs_canon(qs, request.user.username)
+
+    def get_object(self, request, object_id, from_field=None):
+        queryset = super().get_queryset(request)
+        model = queryset.model
+        field = (
+            model._meta.pk if from_field is None else model._meta.get_field(from_field)
+        )
+        try:
+            object_id = field.to_python(object_id)
+            return queryset.get(**{field.name: object_id})
+        except (model.DoesNotExist, ValidationError, ValueError):
+            return None
+
+    def delete_queryset(self, request: HttpRequest, queryset: QuerySet[DjangoModel]):
+        names_subquery = queryset.values_list("name", flat=True)
+        self.model.objects.filter(name__in=names_subquery).delete()  # pyright: ignore[reportUnknownMemberType]
 
     def get_form(
         self,
@@ -138,14 +159,6 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
                 }
             ),
         }
-
-    def get_queryset(self, request: HttpRequest):
-        qs: QuerySet[Any] = super().get_queryset(request)
-        return qs_canon(qs, request.user.username)
-
-    def delete_queryset(self, request: HttpRequest, queryset: QuerySet[DjangoModel]):
-        names_subquery = queryset.values_list("name", flat=True)
-        self.model.objects.filter(name__in=names_subquery).delete()  # pyright: ignore[reportUnknownMemberType]
 
     @no_type_check
     def render_change_form(
