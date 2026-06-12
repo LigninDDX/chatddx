@@ -7,18 +7,26 @@
       <span class="text-xs text-gray-500 dark:text-gray-400">
         {{ instance.timestamp|date:"Y-m-d H:i:s" }}
       </span>
-      {% render_status_badge instance %}
-
-      <span class="inline-flex items-center rounded-md bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+      <span class="text-xs text-gray-500 dark:text-gray-400">
         {{ instance.get_role_display }}
       </span>
-        <span class="a-link">
-          {{ instance.agent_link }}
-        </span>
+      {% if instance.tokens %}
+      <span class="text-xs text-gray-500 dark:text-gray-400">
+        ({{ instance.tokens }} tokens)
+      </span>
+      {% endif %}
 
+      {% render_status_badge instance %}
     </div>
-      <div class="a-link text-xs font-mono text-gray-500 dark:text-gray-400">
+      <div class="text-xs font-mono text-gray-500 dark:text-gray-400">
+      Agent:
+      <span class="a-link">
+        {{ instance.agent_link }}
+      </span>
+      Message:
+      <span class="a-link">
         {{ instance.link }}
+      </span>
       </div>
 
   </div>

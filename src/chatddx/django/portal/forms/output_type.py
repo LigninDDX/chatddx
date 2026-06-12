@@ -7,10 +7,12 @@ from crispy_forms.layout import Column, Fieldset, Layout, Row
 from django.forms import (
     CharField,
     ChoiceField,
+    IntegerField,
     ModelChoiceField,
 )
 from unfold.layout import Hr
 from unfold.widgets import (
+    UnfoldAdminIntegerFieldWidget,
     UnfoldAdminSelect2Widget,
     UnfoldAdminTextareaWidget,
     UnfoldAdminTextInputWidget,
@@ -44,21 +46,25 @@ class OutputTypeForm(BaseForm):
     template = ModelChoiceField(
         queryset=proxies.OutputType.objects.none(),
         required=False,
-        empty_label="--- Start from scratch ---",
         widget=UnfoldAdminSelect2Widget(),
         label="Output Template",
-        help_text="Optional. Select a pre-configured template to populate the schema and strategies below.",
+        help_text="Use this to select a pre-configured template to populate the schema and strategies below, the value of this field will not be included in the form.",
+    )
+    output_retries = IntegerField(
+        widget=UnfoldAdminIntegerFieldWidget(),
+        label="Output Retries",
+        help_text="Number of attempts to generate correct output, applies unconditionally to parsing error and also validation if set to 'retry' below.",
     )
     validation_strategy = ChoiceField(
         choices=ValidationChoices.choices,
         widget=UnfoldAdminSelect2Widget(),
-        label="Error Handling Strategy",
-        help_text="What happens if the output fails to match the schema (e.g., Retry generation, attach an Error message, Crash, or Ignore).",
+        label="Validation Strategy",
+        help_text="What to do when schema validation fails, if set to 'retry' make sure to set 'output_retries' to something meaningful, as the default (1) is equivalent to 'crash'",
     )
     coercion_strategy = ChoiceField(
         choices=CoercionChoices.choices,
         widget=UnfoldAdminSelect2Widget(),
-        label="Enforcement Strategy",
+        label="Coerceion Strategy",
         help_text="How the model is forced to follow the schema (e.g., via System Prompts, Native JSON decoding, or Tool/Function Calling).",
     )
     definition = CharField(
@@ -92,6 +98,7 @@ class OutputTypeForm(BaseForm):
             Hr(),
             Row(
                 Column(
+                    Row("output_retries"),
                     Row("validation_strategy"),
                     Row("coercion_strategy"),
                     css_class="w-1/2",

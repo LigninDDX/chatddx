@@ -34,6 +34,7 @@ class RoleChoices(TextChoices):
     USER = "user", "User"
     ASSISTANT = "assistant", "Assistant"
     TOOL = "tool", "Tool"
+    UNKNOWN = "unknown", "Unknown"
 
 
 class MessageKindChoices(TextChoices):

@@ -3,7 +3,12 @@ import uuid
 from collections.abc import AsyncGenerator
 
 from django.utils import timezone
-from pydantic_ai import AgentRunResult, ModelRequest, ModelResponse
+from pydantic_ai import (
+    AgentRunResult,
+    ModelRequest,
+    ModelResponse,
+    UnexpectedModelBehavior,
+)
 from pydantic_ai.result import StreamedRunResult
 from pydantic_core import to_jsonable_python
 
@@ -152,6 +157,25 @@ async def run_from_session(
         await dispatcher.publish(result)
         return result
 
+    except UnexpectedModelBehavior as e:
+        if e.__cause__:
+            enhanced_message = (
+                f"{e}\n\n"
+                f"--- Original Root Cause ({type(e.__cause__).__name__}) ---\n"
+                f"{e.__cause__}"
+            )
+
+            e.enhanced_message = enhanced_message
+
+            new_exception = UnexpectedModelBehavior(enhanced_message)
+            new_exception.__cause__ = e.__cause__
+
+            await dispatcher.publish(new_exception)
+            raise new_exception
+
+        await dispatcher.publish(e)
+        raise e
+
     except Exception as e:
         await dispatcher.publish(e)
         raise e
@@ -195,12 +219,7 @@ def on_result(session_id: int, agent_id: int):
         messages_to_create: list[MessageModel] = []
 
         for msg in messages:
-            match msg.kind:
-                case "response":
-                    role = RoleChoices.ASSISTANT
-                case "request":
-                    kind: str = msg.parts[0].part_kind
-                    role = _request_role(kind)
+            role = infer_role(msg)
 
             messages_to_create.append(
                 MessageModel(
@@ -220,13 +239,17 @@ def on_result(session_id: int, agent_id: int):
     return _on_result
 
 
-def _request_role(kind: str) -> RoleChoices | None:
-    match kind:
-        case "user-prompt":
-            return RoleChoices.USER
-        case "system-prompt":
+def infer_role(msg) -> str:
+    if isinstance(msg, ModelResponse):
+        return RoleChoices.ASSISTANT
+
+    if isinstance(msg, ModelRequest):
+        part_kinds = {part.part_kind for part in msg.parts}
+
+        if "system-prompt" in part_kinds:
             return RoleChoices.SYSTEM
-        case "tool-return":
+        if "tool-return" in part_kinds or "retry-prompt" in part_kinds:
             return RoleChoices.TOOL
-        case _:
-            raise ValueError(f"unexpected kind '{kind}'")
+
+        return RoleChoices.USER
+    return RoleChoices.UNKNOWN

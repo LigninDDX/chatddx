@@ -68,6 +68,7 @@ class SamplingParamsSchema(SamplingParamsBase, TrailSchema):
 
 
 class OutputTypeBasePrimitives(BaseModel):
+    output_retries: int = 1
     validation_strategy: ValidationChoices = ValidationChoices.INFORM
     coercion_strategy: CoercionChoices = CoercionChoices.NATIVE
 

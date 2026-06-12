@@ -51,6 +51,10 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         return qs_canon(qs, request.user.username)
 
     def get_object(self, request, object_id, from_field=None):
+        """
+        This is django's get_object() almost verbatim, except it uses super()'s get_queryset
+        instead of self, so non-canonical entries can be retreived.
+        """
         queryset = super().get_queryset(request)
         model = queryset.model
         field = (

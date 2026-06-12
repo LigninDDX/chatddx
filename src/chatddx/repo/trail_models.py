@@ -129,6 +129,7 @@ class OutputTypeTrailModel(TrailModel):
     definition = JSONSchemaField(
         default=dict,
     )
+    output_retries = IntegerField(default=1)
     validation_strategy = CharField(
         max_length=255,
         default=ValidationChoices.INFORM,
