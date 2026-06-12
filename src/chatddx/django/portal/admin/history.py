@@ -39,6 +39,7 @@ class SessionAdmin(TypedModelAdmin[Session]):
         "description",
         "status",
         "total_tokens",
+        "processing_time",
         "message_count",
         "collaborators_csv",
     ]

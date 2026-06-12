@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 from functools import cached_property
 from typing import final, override
 
@@ -8,6 +9,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from pydantic_ai import (
+    ModelRequest,
     ModelResponse,
     TextPart,
     ThinkingPart,
@@ -52,6 +54,20 @@ class Session(SessionModel):
     @admin.display(description="Messages")
     def message_count(self):
         return self.messages.count()
+
+    @admin.display(description="Processing time")
+    def processing_time(self):
+        ptime = timedelta(0)
+        req_time = None
+        for msg in self.messages.all():
+            msg_spec = MessageSpec.model_validate(msg)
+            if msg_spec.kind == MessageKindChoices.REQUEST:
+                print(msg_spec.payload.timestamp)
+                req_time = msg_spec.payload.timestamp
+            if msg_spec.kind == MessageKindChoices.RESPONSE and req_time:
+                ptime += msg_spec.payload.timestamp - req_time
+
+        return f"{ptime.total_seconds():.2f}s"
 
     @admin.display(description="Collaborators")
     def collaborators_csv(self):
