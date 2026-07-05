@@ -244,13 +244,12 @@ or
 
 python app.py
 
-Please adjust these steps based on the actual implementation in this repository.
+
 
 ⸻
 
 Repository Structure
 
-A typical structure may look like this:
 
 chatddx/
 ├── app/                  # application code
