@@ -245,24 +245,6 @@ or
 python app.py
 
 
-
-⸻
-
-Repository Structure
-
-
-chatddx/
-├── app/                  # application code
-├── components/           # UI components
-├── prompts/              # prompt templates / prompt logic
-├── services/             # model / API integrations
-├── data/                 # local development data or examples
-├── docs/                 # project documentation
-├── public/               # static assets
-├── README.md
-└── ...
-
-
 ⸻
 
 Contributing
