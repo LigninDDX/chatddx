@@ -68,7 +68,18 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
 
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[DjangoModel]):
         names_subquery = queryset.values_list("name", flat=True)
-        self.model.objects.filter(name__in=names_subquery).delete()  # pyright: ignore[reportUnknownMemberType]
+
+        self.model.objects.filter(
+            name__in=names_subquery,
+            owner__name=request.user.username,
+        ).delete()
+
+        ThroughModel = self.model.collaborators.through
+
+        ThroughModel.objects.filter(
+            **{f"{self.name}branchmodel__name__in": names_subquery},
+            identitymodel__name=request.user.username,
+        ).delete()
 
     def get_form(
         self,
