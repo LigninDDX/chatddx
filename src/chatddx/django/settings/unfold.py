@@ -100,6 +100,38 @@ UNFOLD = {
     "TABS": [
         {
             "models": [
+                "orm.superagent",
+                "orm.sharedsuperagent",
+            ],
+            "items": [
+                {
+                    "title": "My Agents",
+                    "link": reverse_lazy("admin:orm_superagent_changelist"),
+                },
+                {
+                    "title": "Shared with Me",
+                    "link": reverse_lazy("admin:orm_sharedsuperagent_changelist"),
+                },
+            ],
+        },
+        {
+            "models": [
+                "orm.agent",
+                "orm.sharedagent",
+            ],
+            "items": [
+                {
+                    "title": "My Agents",
+                    "link": reverse_lazy("admin:orm_agent_changelist"),
+                },
+                {
+                    "title": "Shared with Me",
+                    "link": reverse_lazy("admin:orm_sharedagent_changelist"),
+                },
+            ],
+        },
+        {
+            "models": [
                 "orm.session",
                 "orm.sharedsession",
             ],

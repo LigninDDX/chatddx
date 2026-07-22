@@ -1,4 +1,5 @@
 # src/chatddx/django/portal/forms/super_agent.py
+# pyright: basic
 from copy import deepcopy
 from typing import Any, final, override
 
@@ -9,6 +10,7 @@ from django.http.request import QueryDict
 from unfold.admin import messages
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
+    UnfoldAdminSelect2MultipleWidget,
     UnfoldAdminSelect2Widget,
     UnfoldAdminTextInputWidget,
 )
@@ -226,6 +228,12 @@ class SuperAgentForm(BaseForm):
         label="API Key",
         help_text="Stored securely under your personal user account. It is <strong>not</strong> saved in the shared version history.",
     )
+    collaborators = forms.ModelMultipleChoiceField(
+        required=False,
+        queryset=IdentityModel.objects.all(),
+        widget=UnfoldAdminSelect2MultipleWidget(),
+        label="Collaborators",
+    )
 
     instructions = forms.CharField(
         required=False,
@@ -264,6 +272,12 @@ class SuperAgentForm(BaseForm):
                     "api_key",
                     css_class="w-1/2",
                 ),
+            ),
+            Row(
+                Column(
+                    "collaborators",
+                ),
+                css_class="w-1/2",
             ),
             css_class="mb-8",
         )

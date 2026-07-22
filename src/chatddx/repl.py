@@ -44,11 +44,11 @@ def main(
     if session_uuid is None and agent_name is None:
         typer.echo("Error: You must provide either --session or --agent or both.")
         typer.secho("\nAvailable agents:", bold=True)
-        for agent in AgentBranchModel.objects.filter(owner_id=owner.id):
+        for agent in AgentBranchModel.objects.filter(owner_id=owner.pk):
             typer.echo(agent.name)
 
         typer.secho("\nAvailable sessions:", bold=True)
-        for session in SessionModel.objects.filter(owner_id=owner.id):
+        for session in SessionModel.objects.filter(owner_id=owner.pk):
             typer.echo(
                 f"{session.uuid} {session.timestamp.strftime('%Y-%m-%d %H:%M')} {session.default_agent.name} {len(session.messages.all())}"
             )

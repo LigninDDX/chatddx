@@ -1,4 +1,5 @@
 # src/chatddx/django/portal/admin/forms/agent.py
+# pyright: basic
 from typing import Any, final
 
 from crispy_forms.helper import FormHelper
@@ -7,10 +8,12 @@ from django import forms
 from unfold.admin import messages
 from unfold.widgets import (
     UnfoldAdminExpandableTextareaWidget,
+    UnfoldAdminSelect2MultipleWidget,
     UnfoldAdminSelect2Widget,
     UnfoldAdminTextInputWidget,
 )
 
+from chatddx.core.models import IdentityModel
 from chatddx.django.portal.forms.base import BaseForm
 from chatddx.repo import proxies
 from chatddx.repo.branch_spec import AgentBranchSpec
@@ -55,16 +58,16 @@ class AgentForm(BaseForm):
             (model.target.pk, model.name) for model in owned
         ]
 
-        self.fields["connection"].queryset = qs_owned_trails(  # pyright: ignore[reportAttributeAccessIssue]
+        self.fields["connection"].queryset = qs_owned_trails(
             ConnectionTrailModel.objects.all(), owner
         )
-        self.fields["sampling_params"].queryset = qs_owned_trails(  # pyright: ignore[reportAttributeAccessIssue]
+        self.fields["sampling_params"].queryset = qs_owned_trails(
             SamplingParamsTrailModel.objects.all(), owner
         )
-        self.fields["output_type"].queryset = qs_owned_trails(  # pyright: ignore[reportAttributeAccessIssue]
+        self.fields["output_type"].queryset = qs_owned_trails(
             OutputTypeTrailModel.objects.all(), owner
         )
-        self.fields["tool_group"].queryset = qs_owned_trails(  # pyright: ignore[reportAttributeAccessIssue]
+        self.fields["tool_group"].queryset = qs_owned_trails(
             ToolGroupTrailModel.objects.all(), owner
         )
 
@@ -107,7 +110,7 @@ class AgentForm(BaseForm):
                 )
 
         return agent_dict | {
-            name: values["id"] for name, values in relations_dict.items()
+            name: values["pk"] for name, values in relations_dict.items()
         }
 
     def clean_tool_group(self):
@@ -134,6 +137,12 @@ class AgentForm(BaseForm):
         ),
         label="System instructions",
         help_text="The core system prompt that dictates the agent's persona, rules, and boundaries.",
+    )
+    collaborators = forms.ModelMultipleChoiceField(
+        required=False,
+        queryset=IdentityModel.objects.all(),
+        widget=UnfoldAdminSelect2MultipleWidget(),
+        label="Collaborators",
     )
     connection = forms.ModelChoiceField(
         queryset=ConnectionTrailModel.objects.none(),
@@ -175,8 +184,14 @@ class AgentForm(BaseForm):
                 ),
             ),
             Row(
-                Column("instructions"),
-                css_class="w-1/2",
+                Column(
+                    "instructions",
+                    css_class="w-1/2",
+                ),
+                Column(
+                    "collaborators",
+                    css_class="w-1/2",
+                ),
             ),
             css_class="mb-8",
         )

@@ -10,18 +10,17 @@ from django.db.models import (
     ForeignKey,
     Index,
     Manager,
+    ManyToManyField,
 )
 from django.db.models import Field as DjangoField
 from django.db.models import Model as DjangoModel
-from django.forms import model_to_dict
 from ninja import Schema as NinjaSchema
 from pydantic import (
     BaseModel,
     ConfigDict,
+    Field,
     PrivateAttr,
-    ValidationInfo,
     computed_field,
-    model_validator,
 )
 
 from chatddx.core.fields import CoercedStr, NullableStr
@@ -43,6 +42,7 @@ class BranchProxy:
 
 class BranchBase(BaseModel):
     owner_id: int
+    collaborators: list[Any]
     name: str
     timestamp: datetime | None = None
 
@@ -80,6 +80,12 @@ class BranchModel(DjangoModel):
     )
     target: DjangoField[Any, Any]
 
+    collaborators = ManyToManyField(
+        IdentityModel,
+        blank=True,
+        related_name="shared_%(class)s",
+    )
+
     class Meta:
         abstract = True
         indexes = [
@@ -107,6 +113,7 @@ class BranchSpec[T: TrailSpec](BranchBase, NinjaSchema):
 
 class BaseFormDataIn(NinjaSchema):
     name: NullableStr = None
+    collaborators: list[Any] = Field(default_factory=list)
 
 
 class BaseFormDataOut(BaseModel):

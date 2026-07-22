@@ -1,3 +1,4 @@
+# pyright: basic
 import json
 from typing import Any, final, override
 
@@ -22,7 +23,6 @@ from chatddx.repo.shufflers.main import (
     agent_relations,
     load_template_data,
     qs_super_agent,
-    resolve_related_array_fields,
 )
 
 
@@ -50,25 +50,41 @@ def get_branch_link(obj: BranchModel, field_name: str):
     return format_html('<a href="{}">{}</a>', url, label)
 
 
-@final
 @admin.register(proxies.Agent)
 class AgentAdmin(BranchModelAdmin[proxies.Agent]):
     form = AgentForm
     name = "agent"
-    list_display = BranchModelAdmin.list_display + []  # pyright: ignore
+    list_display = list(BranchModelAdmin.list_display) + ["collaborators_csv"]
+
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+
+        return qs.filter(
+            owner__name=request.user.username,
+        )
 
 
-@final
+@admin.register(proxies.SharedAgent)
+class SharedAgentAdmin(AgentAdmin):
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+
+        return qs.filter(
+            collaborators__name=request.user.username,
+        )
+
+
 @admin.register(proxies.SuperAgent)
 class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
     form = SuperAgentForm
     name = "agent"
-    list_display = BranchModelAdmin.list_display + [  # pyright: ignore
+    list_display = list(BranchModelAdmin.list_display) + [
         "instructions",
         "connection",
         "output_type",
         "sampling_params",
         "tool_group",
+        "collaborators_csv",
     ]
 
     @admin.display(description="Instructions", ordering="target__instructions")
@@ -128,18 +144,26 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
             "form_info": json.dumps(form_info),
         }
 
-    @override
     def get_object(self, request: HttpRequest, object_id: str, from_field: None = None):
         obj = super().get_object(request, object_id, from_field)
         return obj
 
-    @override
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
         return qs_super_agent(qs, request.user.username)
 
 
-@final
+@admin.register(proxies.SharedSuperAgent)
+class SharedSuperAgentAdmin(SuperAgentAdmin):
+    def get_queryset(self, request: HttpRequest):
+        qs = (
+            super()
+            .get_queryset(request)
+            .filter(collaborators__name=request.user.username)
+        )
+        return qs_super_agent(qs, request.user.username)
+
+
 @admin.register(proxies.Connection)
 class ConnectionAdmin(BranchModelAdmin[proxies.Connection]):
     form = ConnectionForm

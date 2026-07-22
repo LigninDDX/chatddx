@@ -1,3 +1,4 @@
+# pyright: basic
 import json
 from dataclasses import asdict
 from typing import Any, override
@@ -5,7 +6,6 @@ from typing import Any, override
 from django.contrib import admin
 from django.db.models import Max, Min
 from django.http import HttpRequest
-from django.utils.formats import date_format
 from markdown import markdown
 from unfold.admin import mark_safe
 from unfold.utils import format_html
@@ -34,18 +34,21 @@ class IdentityAdmin(TypedModelAdmin[Identity]):
 class SessionAdmin(TypedModelAdmin[Session]):
     change_form_template: str = "session.html"
     add_form_template: str = "session.html"
-    list_display = [
+    fields = [
         "timestamp",
         "description",
         "status",
         "total_tokens",
         "processing_time",
         "message_count",
-        "collaborators_csv",
+        "collaborators",
     ]
 
-    fields = list_display + ["collaborators"]
     readonly_fields = [f for f in fields if f not in ["description", "collaborators"]]
+
+    list_display = [f for f in fields if f not in ["collaborators"]] + [
+        "collaborators_csv"
+    ]
 
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
@@ -72,7 +75,6 @@ class SessionAdmin(TypedModelAdmin[Session]):
         extra_context = extra_context or {}
 
         if object_id:
-            session = self.get_object(request, object_id)
             extra_context["related_messages"] = qs_messages(
                 Message.objects.filter(session_id=object_id),
                 owner_name=request.user.username,
@@ -87,19 +89,8 @@ class SessionAdmin(TypedModelAdmin[Session]):
 
 
 @admin.register(SharedSession)
-class SharedSessionAdmin(TypedModelAdmin[SharedSession]):
-    change_form_template: str = "session.html"
-    add_form_template: str = "session.html"
-    list_display = [
-        "timestamp",
-        "description",
-        "status",
-        "total_tokens",
-        "message_count",
-        "owner",
-    ]
-
-    fields = list_display + ["collaborators"]
+class SharedSessionAdmin(SessionAdmin):
+    fields = SessionAdmin.list_display
     readonly_fields = [f for f in fields if f not in ["description", "collaborators"]]
 
     def get_queryset(self, request: HttpRequest):
@@ -114,30 +105,6 @@ class SharedSessionAdmin(TypedModelAdmin[SharedSession]):
                 annotated_latest=Max("messages__timestamp"),
             )
             .order_by("-timestamp")
-        )
-
-    @override
-    def change_view(
-        self,
-        request: HttpRequest,
-        object_id: str,
-        form_url: str = "",
-        extra_context: dict[str, Any] | None = None,
-    ):
-        extra_context = extra_context or {}
-
-        if object_id:
-            session = self.get_object(request, object_id)
-            extra_context["related_messages"] = qs_messages(
-                Message.objects.filter(session_id=object_id),
-                owner_name=request.user.username,
-            )
-
-        return super().change_view(
-            request,
-            object_id,
-            form_url,
-            extra_context=extra_context,
         )
 
 

@@ -42,6 +42,7 @@ class BaseForm(ModelForm):
 
     @override
     def save(self, commit: bool = True) -> Any:
+        super().save(commit)
         return self.cleaned_data
 
     def get_initial(self, instance: BranchModel):

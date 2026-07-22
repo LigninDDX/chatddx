@@ -38,7 +38,7 @@ async def resume_session(
 
     session_model = (
         await SessionModel.objects.select_related("default_agent")
-        .prefetch_related("messages")
+        .prefetch_related("messages", "default_agent__collaborators")
         .aget(
             uuid__startswith=uuid,
             owner_id=owner_id,

@@ -1,8 +1,10 @@
 # src/chatddx/django/repo/admin/proxies.py
+# pyright: basic
 from functools import cached_property
 from typing import final
 
 import tomli_w
+from django.contrib import admin
 
 from chatddx.repo.base import BranchProxy
 from chatddx.repo.branch_models import (
@@ -15,25 +17,46 @@ from chatddx.repo.branch_models import (
 )
 
 
-class SuperAgent(BranchProxy, AgentBranchModel):
-    @final
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+class Shared:
+    @admin.display(description="Collaborators")
+    def collaborators_csv(self):
+        return ", ".join([str(c) for c in self.collaborators.all()]) or None
+
+
+class SuperAgent(BranchProxy, AgentBranchModel, Shared):
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Agent"
         verbose_name_plural = "Agents"
 
 
-class Agent(BranchProxy, AgentBranchModel):
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+class SharedSuperAgent(BranchProxy, AgentBranchModel, Shared):
+    class Meta:
+        proxy = True
+        app_label = "orm"
+        verbose_name = "Shared Agent"
+        verbose_name_plural = "Shared Agents"
+
+
+class Agent(BranchProxy, AgentBranchModel, Shared):
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Agent (simple)"
         verbose_name_plural = "Agents (simple)"
 
 
+class SharedAgent(BranchProxy, AgentBranchModel, Shared):
+    class Meta:
+        proxy = True
+        app_label = "orm"
+        verbose_name = "Shared Agent (simple)"
+        verbose_name_plural = "Shared Agents (simple)"
+
+
 class Connection(BranchProxy, ConnectionBranchModel):
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Connection"
@@ -45,7 +68,7 @@ class Connection(BranchProxy, ConnectionBranchModel):
 
 
 class OutputType(BranchProxy, OutputTypeBranchModel):
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Output type"
@@ -53,7 +76,7 @@ class OutputType(BranchProxy, OutputTypeBranchModel):
 
 
 class SamplingParams(BranchProxy, SamplingParamsBranchModel):
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Sampling parameters"
@@ -61,7 +84,7 @@ class SamplingParams(BranchProxy, SamplingParamsBranchModel):
 
 
 class ToolGroup(BranchProxy, ToolGroupBranchModel):
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Tool group"
@@ -69,7 +92,7 @@ class ToolGroup(BranchProxy, ToolGroupBranchModel):
 
 
 class Tool(BranchProxy, ToolBranchModel):
-    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
+    class Meta:
         proxy = True
         app_label = "orm"
         verbose_name = "Tool"

@@ -1,4 +1,5 @@
 # src/chatddx/django/repo/tests/test_admin_timeline.py
+# pyright: basic
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable
@@ -26,7 +27,6 @@ from chatddx.repo.shufflers.main import (
     qs_super_agent,
 )
 from chatddx.repo.trail_models import AgentTrailModel, ConnectionTrailModel
-from chatddx.repo.trail_schemas import ConnectionSchema
 
 parameters: list[
     tuple[
@@ -104,6 +104,13 @@ def owner(admin_user: User):
 
 
 @pytest.fixture
+def collaborators():
+    owner1, _created = IdentityModel.objects.get_or_create(name="alex")
+    owner2, _created = IdentityModel.objects.get_or_create(name="olof")
+    return [owner1, owner2]
+
+
+@pytest.fixture
 def template_data(branch_registry: BranchModelRegistry):
     form_data: dict[str, Any] = defaultdict(dict)
 
@@ -112,6 +119,29 @@ def template_data(branch_registry: BranchModelRegistry):
             form_data[bundle][branch_model.name] = load_form_data(branch_model)
 
     return TemplateData.model_validate(form_data)
+
+
+@pytest.fixture
+def superagent_post_data(template_data):
+    post_data_relations: dict[str, dict[str, Any]] = {
+        "connection_": template_data.connection["some-connection"].model_dump(
+            exclude_none=True
+        ),
+        "sampling_params_": template_data.sampling_params[
+            "some-sampling_params"
+        ].model_dump(exclude_none=True),
+        "tool_group_": template_data.tool_group["some-tool_group"].model_dump(
+            exclude_none=True
+        ),
+        "output_type_": template_data.output_type["some-output_type"].model_dump(
+            exclude_none=True
+        ),
+    }
+    return template_data.agent["some-agent"].model_dump(exclude_none=True) | {
+        f"{outer}{inner}": value
+        for outer, inner_dict in post_data_relations.items()
+        for inner, value in inner_dict.items()
+    }
 
 
 @pytest.mark.django_db
@@ -152,31 +182,12 @@ def test_super_agent_2(
 
 @pytest.mark.django_db
 def test_super_agent(
-    template_data: TemplateData,
     owner: IdentityModel,
     admin_client: Client,
+    superagent_post_data,
 ):
 
-    post_data_relations: dict[str, dict[str, Any]] = {
-        "connection_": template_data.connection["some-connection"].model_dump(
-            exclude_none=True
-        ),
-        "sampling_params_": template_data.sampling_params[
-            "some-sampling_params"
-        ].model_dump(exclude_none=True),
-        "tool_group_": template_data.tool_group["some-tool_group"].model_dump(
-            exclude_none=True
-        ),
-        "output_type_": template_data.output_type["some-output_type"].model_dump(
-            exclude_none=True
-        ),
-    }
-    post_data = template_data.agent["some-agent"].model_dump(exclude_none=True) | {
-        f"{outer}{inner}": value
-        for outer, inner_dict in post_data_relations.items()
-        for inner, value in inner_dict.items()
-    }
-
+    post_data = superagent_post_data
     assert post_data["instructions"] == "some instructions"
     assert len(post_data["tool_group_tools"]) == 2
     assert isinstance(post_data["tool_group_tools"][0], str)
@@ -528,6 +539,92 @@ def test_agent(template_data: TemplateData, admin_client: Client):
 
     (message,) = [str(m) for m in response.context["messages"]]
     assert "up to date" in message
+
+
+@pytest.mark.django_db
+def test_agent_collaborators(
+    template_data: TemplateData,
+    admin_client: Client,
+    collaborators,
+):
+    data = template_data.agent
+    some_key = "some-agent"
+
+    post_data = data[some_key].model_dump(by_alias=True)
+
+    assert isinstance(post_data["instructions"], str)
+    assert post_data["instructions"] == "some instructions"
+
+    assert "connection_id" not in post_data
+    assert post_data["connection"] is not None
+
+    agent_branch = AgentBranchModel.objects.get(name=some_key)
+    assert agent_branch.target.instructions == "some instructions"
+
+    response = admin_client.post(
+        reverse("admin:orm_agent_add"),
+        data=post_data,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    (message,) = [str(m) for m in response.context["messages"]]
+    assert "up to date" in message
+
+    post_data_with_collaborators = post_data.copy()
+    post_data_with_collaborators["collaborators"] = [c.pk for c in collaborators]
+
+    response = admin_client.post(
+        reverse("admin:orm_agent_add"),
+        data=post_data_with_collaborators,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    messages = [str(m) for m in response.context["messages"]]
+    assert any("updated collaborators" in m for m in messages)
+
+    assert not getattr(response.wsgi_request, "_skip_success_message", False)
+
+    agent_branch.refresh_from_db()
+    assert collaborators == list(agent_branch.collaborators.all())
+
+
+@pytest.mark.django_db
+def test_superagent_collaborators(
+    admin_client: Client,
+    collaborators,
+    superagent_post_data,
+):
+    post_data = superagent_post_data
+
+    assert isinstance(post_data["instructions"], str)
+    assert post_data["instructions"] == "some instructions"
+
+    post_data_with_collaborators = post_data.copy()
+    post_data_with_collaborators["collaborators"] = [c.pk for c in collaborators]
+
+    response = admin_client.post(
+        reverse("admin:orm_superagent_add"),
+        data=post_data_with_collaborators,
+        follow=True,
+    )
+    assert response.status_code == 200
+    if "adminform" in response.context:
+        assert response.context["adminform"].form.errors == ""
+
+    messages = [str(m) for m in response.context["messages"]]
+    assert any("updated collaborators" in m for m in messages)
+
+    assert not getattr(response.wsgi_request, "_skip_success_message", False)
+
+    agent_branch = AgentBranchModel.objects.get(name="some-agent")
+
+    assert collaborators == list(agent_branch.collaborators.all())
 
 
 @pytest.mark.django_db

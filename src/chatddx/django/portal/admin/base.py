@@ -86,8 +86,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
 
         return FormWithRequest
 
-    @override
-    def save_form(  # pyright: ignore[reportIncompatibleMethodOverride]
+    def save_form(
         self,
         request: HttpRequest,
         form: BaseForm,
@@ -107,23 +106,45 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
             schema,
         )
 
-        if not created:
-            self.message_user(  # pyright: ignore[reportUnknownMemberType]
-                request,
-                "No changes detected. The current version is up to date.",
-                level=messages.INFO,
-            )
-            request._skip_success_message = True  # pyright: ignore[reportAttributeAccessIssue]
+        new_collaborators = getattr(form.validated_data, "collaborators", None)
+        collaborators_changed = False
 
-        form.save()
+        if new_collaborators is not None:
+            current_ids = set(obj.collaborators.values_list("pk", flat=True))
+            target_ids = {c.pk if hasattr(c, "pk") else c for c in new_collaborators}
+
+            if current_ids != target_ids:
+                obj.collaborators.set(new_collaborators)
+                collaborators_changed = True
+
+        if not created:
+            if collaborators_changed:
+                self.message_user(
+                    request,
+                    "Branch content unchanged, but updated collaborators.",
+                    level=messages.INFO,
+                )
+                request._skip_success_message = True
+            else:
+                self.message_user(
+                    request,
+                    "No changes detected. The current version is up to date.",
+                    level=messages.INFO,
+                )
+                request._skip_success_message = True
+
+        elif collaborators_changed:
+            self.message_user(
+                request,
+                "Collaborators successfully set for the new branch version.",
+                level=messages.SUCCESS,
+            )
 
         return obj.as_proxy(proxy_cls)
 
-    @override
-    def save_related(self, request, form, formsets, change):  # pyright: ignore[reportMissingParameterType]
+    def save_related(self, request, form, formsets, change):
         pass
 
-    @no_type_check
     def response_change(self, request: HttpRequest, obj: DjangoModel):
         if "_continue" not in request.POST:
             return super().response_change(request, obj)

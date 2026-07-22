@@ -2,7 +2,7 @@
 {
   description = "build chatddx";
   inputs = {
-    nixpkgs.url = "github:kompismoln/nixpkgs/nixos-unstable"; # org-wide version pin
+    nixpkgs.url = "github:kompismoln/nixpkgs/nixos-unstable";
     pyproject-nix = {
       url = "github:pyproject-nix/pyproject.nix";
       inputs.nixpkgs.follows = "nixpkgs";
