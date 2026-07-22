@@ -161,7 +161,6 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         )
         return HttpResponseRedirect(redirect_url)
 
-    @no_type_check
     def response_add(self, request, obj, post_url_continue=None):
         if "_continue" not in request.POST:
             return super().response_add(request, obj, post_url_continue)
@@ -185,7 +184,6 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
             ),
         }
 
-    @no_type_check
     def render_change_form(
         self,
         request: HttpRequest,
@@ -205,6 +203,14 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
                 request, context, add, change, form_url, obj
             )
 
+        context["fingerprint"] = obj.target.fingerprint[:6]
+
+        if obj.owner.name != request.user.username:
+            context["version_info"] = {"current": 1, "total": 1}
+            return super().render_change_form(
+                request, context, add, change, form_url, obj
+            )
+
         timeline = list(
             self.model.objects.filter(
                 owner__name=request.user.username,
@@ -215,6 +221,7 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
         )
 
         pks = [item[0] for item in timeline]
+
         idx = pks.index(obj.pk)
 
         if idx > 0:
@@ -234,7 +241,6 @@ class BranchModelAdmin[T: BranchModel](TypedModelAdmin[T]):
             context["last_"] = {"pk": pks[-1]}
 
         context["version_info"] = {"current": idx + 1, "total": len(pks)}
-        context["fingerprint"] = obj.target.fingerprint[:6]
 
         return super().render_change_form(request, context, add, change, form_url, obj)
 
