@@ -3,11 +3,12 @@ import json
 from typing import Any, final, override
 
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.urls import reverse
 from unfold.utils import format_html
 
-from chatddx.django.portal.admin.base import BranchModelAdmin
+from chatddx.django.portal.admin.base import BranchModelAdmin, TypedModelAdmin
 from chatddx.django.portal.forms import (
     AgentForm,
     ConnectionForm,
@@ -157,7 +158,7 @@ class SuperAgentAdmin(BranchModelAdmin[proxies.SuperAgent]):
 class SharedSuperAgentAdmin(SuperAgentAdmin):
     def get_queryset(self, request: HttpRequest):
         qs = (
-            super()
+            super(TypedModelAdmin, self)
             .get_queryset(request)
             .filter(collaborators__name=request.user.username)
         )
